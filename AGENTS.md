@@ -56,6 +56,21 @@ Phân loại mọi quyết định trong báo cáo là `CONFIRMED`, `PROPOSAL` h
 - Trước mọi task liên quan ảnh/visual, đọc `docs/design-system/IMAGE_ASSET_WORKFLOW.md` để biết quy trình kiểm tra asset, tìm kiếm, xác minh nguồn gốc và gắn nhãn demo.
 - Không trình bày stock/reference/placeholder như ảnh thật do FLUX API tạo; không đổi token FLUX-UI-001 để phù hợp ảnh sai chủ đề.
 
+## 5.2. Animation and motion rules
+
+- Read `docs/design-system/MOTION_AND_ICON_RULES.md` for tasks involving motion, transitions, loading, dialogs, drawers, tabs or route changes.
+- Inspect existing animation patterns and dependencies first; prefer CSS and do not add a package without explicit approval.
+- Motion must serve interaction feedback, hierarchy or UI state. Keep it short, smooth and non-disruptive; avoid layout shift, flashing, shaking, strong parallax and continuous decorative motion.
+- Respect `prefers-reduced-motion`, keyboard focus and semantic status text. Motion must not be the only way to communicate a state.
+
+## 5.3. Icon system rules
+
+- Read `docs/design-system/MOTION_AND_ICON_RULES.md` for tasks that add or replace icons.
+- Prefer the existing repository icon set; do not install a new icon library or mix incompatible icon styles without approval.
+- Choose icons by meaning, with consistent stroke/fill, size, alignment, contrast and hit area.
+- Do not use emoji as the primary icon for navigation, forms or product controls. Icon-only buttons require an accessible name and visible focus state.
+- Do not draw complex SVG when an existing icon provides the same meaning; do not use color alone to communicate state.
+
 ## 6. Security and user data
 
 - Secret API key, session secret, database URL và storage credential chỉ ở server/environment; không commit secret thật.
