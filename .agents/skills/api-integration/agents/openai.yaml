@@ -1,0 +1,3 @@
+interface:
+  display_name: "API Integration"
+  short_description: "Connect UI to API contracts"
