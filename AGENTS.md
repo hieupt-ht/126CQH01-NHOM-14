@@ -51,6 +51,16 @@ Phân loại mọi quyết định trong báo cáo là `CONFIRMED`, `PROPOSAL` h
 - Không tạo control giả: không thêm search, light mode, bell, style dropdown, multi-image hoặc Advanced nếu backend/Issue chưa xác nhận.
 - Ảnh phải được hiển thị đúng khung, không phủ filter làm sai màu artwork.
 
+## 5.1. Image asset rules
+
+- Đọc `writing-block.md` và `docs/design-system/IMAGE_ASSET_WORKFLOW.md` trước mọi task liên quan đến ảnh/visual.
+- Kiểm tra asset đã có trong repository trước khi tìm hoặc tải ảnh Internet.
+- Chỉ tìm/tải ảnh bên ngoài khi task cho phép và công cụ truy cập đã được xác minh; ưu tiên nguồn có thể kiểm tra nguồn gốc và điều kiện dùng.
+- Không dùng ảnh có nguồn gốc/quyền sử dụng không rõ, không hotlink tùy tiện, không bịa URL và không vượt qua giới hạn truy cập.
+- Không tự thay/xóa asset đã được nhóm phê duyệt. Ghi nguồn, license/attribution và trạng thái demo trong manifest khi có asset mới được cho phép.
+- Stock, reference và placeholder chỉ là minh họa/demo; không trình bày chúng như ảnh thật do FLUX API tạo.
+- Không đổi token FLUX-UI-001 để làm một ảnh không phù hợp trở nên phù hợp; ưu tiên đổi asset hoặc báo giới hạn.
+
 ## 6. Security and user data
 
 - Secret API key, session secret, database URL và storage credential chỉ ở server/environment; không commit secret thật.
@@ -82,7 +92,7 @@ Skills trong `.agents/skills/` là workflow chuyên biệt; `AGENTS.md` là quy 
 - `code-review`: review correctness, security, regression và scope.
 - `pr-preparation`: chuẩn bị PR, kiểm thử và báo cáo giới hạn.
 
-Khi skill cần nguồn chi tiết, đọc tài liệu liên quan trong `docs/`; không tuyên bố skill tự động được nạp nếu cơ chế discovery của môi trường chưa được xác minh.
+Khi skill cần nguồn chi tiết, đọc tài liệu liên quan trong `docs/`. Cơ chế discovery và cách gọi được ghi trong `docs/development/CODEX_SKILLS.md`; nếu runtime không đăng ký local skill directory, gọi tường minh `$skill-name` hoặc cung cấp path theo cấu hình runtime. Không coi việc file nằm trong `.agents/skills/` là bằng chứng đủ cho mọi runtime.
 
 ## 9. Team collaboration
 

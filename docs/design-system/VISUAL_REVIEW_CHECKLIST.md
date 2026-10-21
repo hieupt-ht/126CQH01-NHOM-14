@@ -13,6 +13,9 @@
 - [ ] Primary CTA uses the approved gradient; secondary controls remain restrained.
 - [ ] Cards, borders, radii, shadows and spacing match the shared language.
 - [ ] Artwork is not tinted, cropped incorrectly or covered by decorative neon effects.
+- [ ] Existing repository assets were considered before external assets.
+- [ ] External source and usage/attribution status are recorded to the extent actually verified.
+- [ ] Demo/reference images cannot be mistaken for real FLUX API output.
 
 ## Behavior and states
 
@@ -27,5 +30,12 @@
 - [ ] No horizontal overflow exists.
 - [ ] Keyboard, focus, dialog Escape/focus return and reduced motion were checked.
 - [ ] Status is understandable without color alone and contrast is acceptable.
+
+## Image-specific review
+
+- [ ] Image purpose, mood, lighting, focal point and text-safe space fit the route.
+- [ ] The asset family is consistent with neighboring images.
+- [ ] Crop preserves the primary subject at 360/768/1280/1536px.
+- [ ] No unapproved download, hotlink, source claim or token change was introduced.
 
 Record screenshots, viewport sizes, route, data source and unresolved deviations in the review report.
