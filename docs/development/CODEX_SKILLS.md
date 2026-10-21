@@ -16,6 +16,13 @@ The loading mechanism depends on the runtime:
 
 Therefore, a repository folder named `.agents/skills` is a project convention, not proof that every runtime automatically mounts it. Explicitly request `Use the $skill-name skill` when deterministic selection is needed, or configure the runtime with the absolute skill path/parent directory.
 
+## Visual rule routing
+
+- Use `frontend-design` for any frontend layout, styling, artwork, motion or icon decision. It reads `IMAGE_ASSET_WORKFLOW.md` and `MOTION_AND_ICON_RULES.md` when relevant.
+- Use `create-page` only for a confirmed route. It applies the same image, motion and icon rules while checking responsive, accessibility and API-state requirements.
+- Use `create-component` for a reusable UI primitive; it must keep a narrow typed contract and follow the same token and accessibility rules.
+- `MOTION_AND_ICON_RULES.md` is shared guidance, not a standalone Skill. It is referenced by the Skills above to avoid duplicated or conflicting instructions.
+
 ## Current repository status
 
 - Confirmed in this Codex session: the eight project skills are listed in the available skills catalog.
