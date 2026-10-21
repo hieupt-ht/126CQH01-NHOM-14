@@ -1,4 +1,4 @@
-# Codex Skills: Discovery and Invocation
+# Moved
 
 ## Repository convention
 

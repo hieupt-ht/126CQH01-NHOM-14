@@ -1,4 +1,4 @@
-# FLUX STUDIO — Codex Project Rules
+# FLUX STUDIO — Project Rules
 
 ## 1. Project context
 
@@ -53,13 +53,8 @@ Phân loại mọi quyết định trong báo cáo là `CONFIRMED`, `PROPOSAL` h
 
 ## 5.1. Image asset rules
 
-- Đọc `writing-block.md` và `docs/design-system/IMAGE_ASSET_WORKFLOW.md` trước mọi task liên quan đến ảnh/visual.
-- Kiểm tra asset đã có trong repository trước khi tìm hoặc tải ảnh Internet.
-- Chỉ tìm/tải ảnh bên ngoài khi task cho phép và công cụ truy cập đã được xác minh; ưu tiên nguồn có thể kiểm tra nguồn gốc và điều kiện dùng.
-- Không dùng ảnh có nguồn gốc/quyền sử dụng không rõ, không hotlink tùy tiện, không bịa URL và không vượt qua giới hạn truy cập.
-- Không tự thay/xóa asset đã được nhóm phê duyệt. Ghi nguồn, license/attribution và trạng thái demo trong manifest khi có asset mới được cho phép.
-- Stock, reference và placeholder chỉ là minh họa/demo; không trình bày chúng như ảnh thật do FLUX API tạo.
-- Không đổi token FLUX-UI-001 để làm một ảnh không phù hợp trở nên phù hợp; ưu tiên đổi asset hoặc báo giới hạn.
+- Trước mọi task liên quan ảnh/visual, đọc `docs/design-system/IMAGE_ASSET_WORKFLOW.md` để biết quy trình kiểm tra asset, tìm kiếm, xác minh nguồn gốc và gắn nhãn demo.
+- Không trình bày stock/reference/placeholder như ảnh thật do FLUX API tạo; không đổi token FLUX-UI-001 để phù hợp ảnh sai chủ đề.
 
 ## 5.2. Animation and motion rules
 
@@ -107,7 +102,7 @@ Skills trong `.agents/skills/` là workflow chuyên biệt; `AGENTS.md` là quy 
 - `code-review`: review correctness, security, regression và scope.
 - `pr-preparation`: chuẩn bị PR, kiểm thử và báo cáo giới hạn.
 
-Khi skill cần nguồn chi tiết, đọc tài liệu liên quan trong `docs/`. Cơ chế discovery và cách gọi được ghi trong `docs/development/CODEX_SKILLS.md`; nếu runtime không đăng ký local skill directory, gọi tường minh `$skill-name` hoặc cung cấp path theo cấu hình runtime. Không coi việc file nằm trong `.agents/skills/` là bằng chứng đủ cho mọi runtime.
+Khi skill cần nguồn chi tiết, đọc tài liệu liên quan trong `docs/`. Cơ chế discovery và cách gọi được ghi trong `docs/development/AGENT_SKILLS.md`. Không coi việc file nằm trong `.agents/skills/` là bằng chứng đủ cho mọi runtime; xem tài liệu đó để biết cách kích hoạt theo từng công cụ.
 
 ## 9. Team collaboration
 
