@@ -1,0 +1,5 @@
+import ReferenceArtwork from './ReferenceArtwork';
+import Icon from '../ui/Icon';
+export default function DashboardHero() {
+  return <section className="dashboard-hero" aria-labelledby="dashboard-title"><ReferenceArtwork region={{ x: 788, y: 72, width: 391, height: 283 }} label="Artwork tham chiếu: cô gái giữa ánh sáng xanh tím và sứa phát quang" className="dashboard-hero__art" /><div className="dashboard-hero__blend" /><div className="dashboard-hero__content"><span className="dashboard-eyebrow"><span />KHÔNG GIAN SÁNG TẠO VỚI AI</span><h1 id="dashboard-title">Biến ý tưởng<br />thành <span>hiện thực.</span></h1><p>Một dòng mô tả. Một thế giới mới.<br />Khơi nguồn sáng tạo cùng FLUX STUDIO.</p><div className="dashboard-hero__features"><span><Icon name="shield" size={16} />Tự do ý tưởng</span><span><Icon name="bolt" size={16} />Sáng tạo cùng FLUX</span><span><Icon name="image" size={16} />Lưu giữ cảm hứng</span></div></div><span className="dashboard-hero__caption">ARTWORK THAM CHIẾU</span></section>;
+}
