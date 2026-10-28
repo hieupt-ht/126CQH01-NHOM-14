@@ -1,0 +1,5 @@
+.studio-brand { display: inline-flex; align-items: center; gap: 10px; }
+.studio-brand__symbol { display: flex; color: var(--accent-primary-hover); filter: drop-shadow(var(--shadow-primary)); }
+.studio-brand__wordmark > span { font-size: 20px; letter-spacing: -.6px; font-weight: 300; white-space: nowrap; }
+.studio-brand__wordmark strong { font-weight: 850; letter-spacing: -.5px; }
+.studio-brand__wordmark small { display: block; margin-top: 3px; font-size: 8px; letter-spacing: 2px; color: var(--text-secondary); }
