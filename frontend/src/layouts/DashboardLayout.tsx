@@ -3,7 +3,7 @@ import Brand from '../components/dashboard/Brand';
 import Icon from '../components/ui/Icon';
 import './DashboardLayout.css';
 
-type Props = { children: ReactNode; search: string; onSearch: (value: string) => void; favoritesOnly: boolean; onFavorites: (value: boolean) => void; onCompose: () => void; activeItem?: 'home' | 'create' | 'library'; showSearch?: boolean };
+type Props = { children: ReactNode; search: string; onSearch: (value: string) => void; favoritesOnly: boolean; onFavorites: (value: boolean) => void; onCompose: () => void; activeItem?: 'home' | 'create' | 'library' | 'history'; showSearch?: boolean };
 
 function SidebarContent({ favoritesOnly, onFavorites, onCompose, activeItem = 'home', onNavigate }: Pick<Props, 'favoritesOnly' | 'onFavorites' | 'onCompose' | 'activeItem'> & { onNavigate?: () => void }) {
   return <><div className="studio-sidebar__brand"><Brand /></div><div className="studio-sidebar__label">KHÔNG GIAN CỦA BẠN</div>
@@ -11,7 +11,7 @@ function SidebarContent({ favoritesOnly, onFavorites, onCompose, activeItem = 'h
       <a href="#home" className={`studio-nav__item ${activeItem === 'home' ? 'studio-nav__item--active' : ''}`} aria-current={activeItem === 'home' ? 'page' : undefined} onClick={onNavigate}><Icon name="home" />Tổng quan</a>
       <a href="/app/create" className={`studio-nav__item ${activeItem === 'create' ? 'studio-nav__item--active' : ''}`} aria-current={activeItem === 'create' ? 'page' : undefined} onClick={onNavigate}><Icon name="sparkles" />Tạo ảnh</a>
       <a href="/app/library" className={`studio-nav__item ${activeItem === 'library' ? 'studio-nav__item--active' : ''}`} aria-current={activeItem === 'library' ? 'page' : undefined} onClick={() => { onFavorites(false); onNavigate?.(); }}><Icon name="image" />Thư viện ảnh</a>
-      <button className="studio-nav__item" disabled title="Sẽ có khi kết nối backend"><Icon name="history" />Lịch sử<span className="studio-nav__soon">Sắp có</span></button>
+      <a href="/app/history" className={`studio-nav__item ${activeItem === 'history' ? 'studio-nav__item--active' : ''}`} aria-current={activeItem === 'history' ? 'page' : undefined} onClick={onNavigate}><Icon name="history" />Lịch sử</a>
       <a href="#creations" className={`studio-nav__item ${favoritesOnly ? 'studio-nav__item--selected' : ''}`} onClick={() => { onFavorites(true); onNavigate?.(); }}><Icon name="heart" />Yêu thích</a>
       <button className="studio-nav__item" disabled title="Sẽ được triển khai sau"><Icon name="settings" />Cài đặt<span className="studio-nav__soon">Sắp có</span></button>
     </nav>
