@@ -11,6 +11,11 @@ const PAGE_SIZE = 20;
 type LibraryView = 'gallery' | 'loading' | 'empty' | 'error';
 type DialogName = 'rename' | 'delete' | null;
 
+function getInitialPage() {
+  const value = Number(new URLSearchParams(window.location.search).get('page'));
+  return Number.isInteger(value) && value > 0 ? value : 1;
+}
+
 function LibrarySkeleton() {
   return <div className="library-grid library-grid--skeleton" aria-label="Đang tải dữ liệu minh họa" aria-busy="true">{Array.from({ length: 8 }, (_, index) => <div className="library-skeleton-card" key={index}><span /><div><span /><span /></div></div>)}</div>;
 }
@@ -30,7 +35,7 @@ function Pagination({ page, pageCount, onPage }: { page: number; pageCount: numb
 
 export default function LibraryPage() {
   const [images, setImages] = useState<LibraryImage[]>(libraryDemoImages);
-  const [page, setPage] = useState(1);
+  const [page, setPage] = useState(getInitialPage);
   const [view, setView] = useState<LibraryView>('gallery');
   const [brokenKey, setBrokenKey] = useState<string | null>(null);
   const [dialog, setDialog] = useState<DialogName>(null);
@@ -78,6 +83,10 @@ export default function LibraryPage() {
   const handleAction = (action: ImageCardAction, image: LibraryImage, trigger: HTMLButtonElement) => {
     lastActionTrigger.current = trigger;
     setSelectedKey(image.fixtureKey);
+    if (action === 'view') {
+      window.location.assign(`/app/images/${encodeURIComponent(image.fixtureKey)}?from=library&page=${page}`);
+      return;
+    }
     if (action === 'download') {
       setFeedback('Tải ảnh minh họa chưa có file gốc; backend download chưa được kết nối.');
       return;
