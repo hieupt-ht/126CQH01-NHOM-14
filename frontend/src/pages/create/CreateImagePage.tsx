@@ -27,7 +27,7 @@ function CreateHero() {
       <h1 id="create-page-title">Biến ý tưởng của bạn<br /><span>thành hình ảnh.</span></h1>
       <p>Mô tả điều bạn đang hình dung. FLUX STUDIO sẽ giúp bạn bắt đầu từ một khung hình đầy cảm hứng.</p>
     </div>
-    <ReferenceArtwork region={{ x: 788, y: 72, width: 391, height: 283 }} label="Ảnh minh họa không gian sáng tạo AI" className="create-hero__art" />
+    <ReferenceArtwork region={{ x: 788, y: 72, width: 391, height: 283 }} label="Ảnh minh họa không gian sáng tạo AI" className="create-hero__art" loading="eager" />
     <span className="create-hero__orb create-hero__orb--one" aria-hidden="true" />
     <span className="create-hero__orb create-hero__orb--two" aria-hidden="true" />
   </section>;

@@ -3,14 +3,14 @@ import Brand from '../components/dashboard/Brand';
 import Icon from '../components/ui/Icon';
 import './DashboardLayout.css';
 
-type Props = { children: ReactNode; search: string; onSearch: (value: string) => void; favoritesOnly: boolean; onFavorites: (value: boolean) => void; onCompose: () => void; activeItem?: 'home' | 'create' };
+type Props = { children: ReactNode; search: string; onSearch: (value: string) => void; favoritesOnly: boolean; onFavorites: (value: boolean) => void; onCompose: () => void; activeItem?: 'home' | 'create' | 'library'; showSearch?: boolean };
 
 function SidebarContent({ favoritesOnly, onFavorites, onCompose, activeItem = 'home', onNavigate }: Pick<Props, 'favoritesOnly' | 'onFavorites' | 'onCompose' | 'activeItem'> & { onNavigate?: () => void }) {
   return <><div className="studio-sidebar__brand"><Brand /></div><div className="studio-sidebar__label">KHÔNG GIAN CỦA BẠN</div>
     <nav className="studio-nav" aria-label="Điều hướng chính">
       <a href="#home" className={`studio-nav__item ${activeItem === 'home' ? 'studio-nav__item--active' : ''}`} aria-current={activeItem === 'home' ? 'page' : undefined} onClick={onNavigate}><Icon name="home" />Tổng quan</a>
       <a href="/app/create" className={`studio-nav__item ${activeItem === 'create' ? 'studio-nav__item--active' : ''}`} aria-current={activeItem === 'create' ? 'page' : undefined} onClick={onNavigate}><Icon name="sparkles" />Tạo ảnh</a>
-      <a href="#creations" className="studio-nav__item" onClick={() => { onFavorites(false); onNavigate?.(); }}><Icon name="image" />Thư viện ảnh</a>
+      <a href="/app/library" className={`studio-nav__item ${activeItem === 'library' ? 'studio-nav__item--active' : ''}`} aria-current={activeItem === 'library' ? 'page' : undefined} onClick={() => { onFavorites(false); onNavigate?.(); }}><Icon name="image" />Thư viện ảnh</a>
       <button className="studio-nav__item" disabled title="Sẽ có khi kết nối backend"><Icon name="history" />Lịch sử<span className="studio-nav__soon">Sắp có</span></button>
       <a href="#creations" className={`studio-nav__item ${favoritesOnly ? 'studio-nav__item--selected' : ''}`} onClick={() => { onFavorites(true); onNavigate?.(); }}><Icon name="heart" />Yêu thích</a>
       <button className="studio-nav__item" disabled title="Sẽ được triển khai sau"><Icon name="settings" />Cài đặt<span className="studio-nav__soon">Sắp có</span></button>
@@ -20,7 +20,7 @@ function SidebarContent({ favoritesOnly, onFavorites, onCompose, activeItem = 'h
       <div className="studio-sidebar__footer"><span className="status-dot" />FLUX STUDIO<span>v0.1</span></div></div></>;
 }
 
-export default function DashboardLayout({ children, search, onSearch, favoritesOnly, onFavorites, onCompose, activeItem = 'home' }: Props) {
+export default function DashboardLayout({ children, search, onSearch, favoritesOnly, onFavorites, onCompose, activeItem = 'home', showSearch = true }: Props) {
   const drawer = useRef<HTMLDialogElement>(null);
   const searchInput = useRef<HTMLInputElement>(null);
   const account = useRef<HTMLDetailsElement>(null);
@@ -36,7 +36,7 @@ export default function DashboardLayout({ children, search, onSearch, favoritesO
     <aside className="studio-sidebar"><SidebarContent {...sidebarProps} /></aside>
     <dialog className="studio-drawer" ref={drawer} aria-label="Menu điều hướng" onClick={(event) => { if (event.target === event.currentTarget) drawer.current?.close(); }}><button className="studio-icon-button studio-drawer__close" aria-label="Đóng menu" onClick={() => drawer.current?.close()}><Icon name="close" /></button><SidebarContent {...sidebarProps} onNavigate={() => drawer.current?.close()} /></dialog>
     <div className="studio-workspace"><header className="studio-topbar"><button className="studio-icon-button studio-menu-toggle" aria-label="Mở menu điều hướng" onClick={() => drawer.current?.showModal()}><Icon name="menu" /></button>
-      <div className="studio-search"><Icon name="search" size={18} /><input ref={searchInput} value={search} onChange={(event) => onSearch(event.target.value)} aria-label="Tìm ảnh minh họa theo tên" placeholder="Tìm cảm hứng trong bộ ảnh mẫu..." />{search ? <button className="studio-icon-button" onClick={() => onSearch('')} aria-label="Xóa tìm kiếm"><Icon name="close" size={15} /></button> : <kbd>Ctrl K</kbd>}</div>
+      {showSearch && <div className="studio-search"><Icon name="search" size={18} /><input ref={searchInput} value={search} onChange={(event) => onSearch(event.target.value)} aria-label="Tìm ảnh minh họa theo tên" placeholder="Tìm cảm hứng trong bộ ảnh mẫu..." />{search ? <button className="studio-icon-button" onClick={() => onSearch('')} aria-label="Xóa tìm kiếm"><Icon name="close" size={15} /></button> : <kbd>Ctrl K</kbd>}</div>}
       <div className="studio-topbar__right"><span className="preview-badge"><span className="status-dot" />Bản xem trước</span><span className="studio-topbar__divider" /><details className="account-menu" ref={account}><summary className="account-menu__trigger" aria-label="Thông tin không gian cá nhân"><span className="account-avatar">PV</span><span className="account-menu__name"><strong>Không gian cá nhân</strong><small>Chế độ giao diện</small></span><Icon name="chevron" size={16} /></summary><div className="account-menu__panel"><strong>Chào mừng đến FLUX STUDIO</strong><p>Đây là bản xem trước dashboard. Đăng nhập và đăng ký sẽ được kết nối sau.</p></div></details></div>
     </header><main className="studio-main" id="main-content">{children}</main><footer className="studio-footer"><span>FLUX STUDIO<span className="studio-footer__dot">·</span>Không gian cho những ý tưởng mới.</span><span>Thiết kế với Midnight Aurora</span></footer></div></div>;
 }

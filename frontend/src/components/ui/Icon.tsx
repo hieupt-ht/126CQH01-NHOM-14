@@ -22,6 +22,7 @@ const paths = {
   copy: ['M9 8h11v13H9z', 'M15 8V3H4v13h5'],
   wand: ['m3 20 14-14 3 3L6 23', 'm14 9 3 3', 'M5 3v4', 'M3 5h4', 'M19 2v4', 'M17 4h4'],
   book: ['M3 4h7l2 2 2-2h7v15h-7l-2 2-2-2H3z', 'M12 6v15'],
+  more: ['M5 12h.01', 'M12 12h.01', 'M19 12h.01'],
 } as const;
 
 export type IconName = keyof typeof paths;
