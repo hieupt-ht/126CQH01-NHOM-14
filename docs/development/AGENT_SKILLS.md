@@ -48,3 +48,12 @@ What is verified from official Antigravity documentation:
 ## Security
 
 Skills are instructions that can influence tool use and commands. Review them as project-controlled privileged instructions before exposing them to another runtime or user. Keep network/image-download actions bounded by the image workflow and explicit task authorization.
+
+## UI implementation routing
+
+For a frontend screen, read `docs/design-system/IMPLEMENTED_UI_REFERENCE.md` after the canonical
+requirements and before selecting a component or layout skill. It records the current `/`
+Dashboard preview and `/login` implementation, measured breakpoints, token usage, image treatment
+and known `Not yet defined` areas. It is evidence for reuse, not authorization to add routes or
+controls. Use `frontend-design` for visual decisions, `create-page` only for confirmed routes,
+`create-component` for a real reusable consumer, and `ui-review` for evidence-based review.

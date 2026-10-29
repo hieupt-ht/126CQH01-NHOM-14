@@ -26,3 +26,16 @@ The reference image informs composition only. Search, notifications, multi-model
 - Keep destructive actions explicit and reversible where possible.
 - Preserve user input on recoverable errors and never turn an uncertain result into a new generation automatically.
 - Respect `prefers-reduced-motion` and keep focus visible.
+
+## Implemented reference evidence
+
+The current source confirms the direction above in two previews:
+
+- Login: `frontend/src/pages/auth/LoginPage.tsx` and `LoginPage.css` use a portrait aurora artwork,
+  split showcase/form composition, editorial headings and a restrained form surface.
+- Dashboard: `frontend/src/pages/dashboard/DashboardPage.tsx`, `DashboardPage.css` and
+  `DashboardLayout.css` use a dark workbench, a right generation panel, prompt editor and
+  reference-art gallery.
+
+Use `docs/design-system/IMPLEMENTED_UI_REFERENCE.md` for measured values and implementation
+evidence. The reference record does not add controls to the confirmed product scope.

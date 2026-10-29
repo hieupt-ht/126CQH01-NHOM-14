@@ -4,6 +4,7 @@
 
 - [ ] Repository status/diff and existing files checked.
 - [ ] Relevant Issue, PRD and `writing-block.md` sections read.
+- [ ] `docs/design-system/IMPLEMENTED_UI_REFERENCE.md` and the cited current source patterns read for UI work.
 - [ ] Scope is P0/P1 and contract/schema impact is identified.
 - [ ] Open questions are recorded rather than guessed.
 

@@ -13,16 +13,19 @@ Use for a reusable UI primitive or feature component needed by a confirmed page.
 
 - `AGENTS.md` and complete `writing-block.md`.
 - `docs/design-system/COMPONENT_GUIDELINES.md`, `COLOR_TOKENS.md` and `ACCESSIBILITY.md`.
+- `docs/design-system/IMPLEMENTED_UI_REFERENCE.md` and the existing component source before
+  promoting a local pattern to a shared component.
 - The screen requirement and existing component conventions.
 
 ## Workflow
 
 1. State the component's one responsibility and its real consumers.
-2. Define minimal typed props, callbacks and controlled/uncontrolled behavior.
-3. Decide loading, empty, error, disabled, focus and destructive states where relevant.
-4. Keep data fetching, authorization, quota and navigation out of low-level visual primitives.
-5. Reuse existing tokens and semantic HTML; provide labels, keyboard behavior and focus return for interactive controls.
-6. Test the component at required widths and with long Vietnamese text.
+2. Search for an existing consumer such as `Brand`, `Icon`, `ReferenceArtwork`, `studio-button`, `PromptComposer`, `GenerationPanel` or `CreationGallery` before creating a new abstraction.
+3. Define minimal typed props, callbacks and controlled/uncontrolled behavior.
+4. Decide loading, empty, error, disabled, focus and destructive states where relevant.
+5. Keep data fetching, authorization, quota and navigation out of low-level visual primitives.
+6. Reuse existing tokens and semantic HTML; provide labels, keyboard behavior and focus return for interactive controls.
+7. Test the component at required widths and with long Vietnamese text.
 
 ## Never
 
@@ -38,3 +41,4 @@ Use for a reusable UI primitive or feature component needed by a confirmed page.
 - [ ] Tokens, semantic HTML and keyboard behavior are correct.
 - [ ] No scope, API or design-token change was smuggled in.
 - [ ] Relevant checks and remaining limitations are reported.
+- [ ] The component is not a duplicate of an existing implementation pattern.

@@ -6,6 +6,9 @@
 - [ ] The reviewed screen and states exist in the confirmed scope.
 - [ ] No unapproved control, feature, palette or copy was introduced.
 
+For the current implementation, record whether the review targets `/` (`DashboardPage`) or
+`/login` (`LoginPage`). Do not call `/` a confirmed `/app` route without a routing decision.
+
 ## Visual system
 
 - [ ] Midnight Aurora background/surface hierarchy is used.

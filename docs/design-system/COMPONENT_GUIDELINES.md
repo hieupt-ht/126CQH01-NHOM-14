@@ -22,3 +22,14 @@ Use the shared vocabulary from Issue #1 before creating a new component: `AppShe
 ## Styling
 
 All colors, shadows, radii and transitions come from `writing-block.md`. Reuse existing tokens and component patterns. Do not introduce arbitrary Tailwind colors or a second theme.
+
+## Current component vocabulary
+
+Confirmed reusable implementation: `Brand`, `Icon`, `DashboardLayout`, `studio-button` variants,
+`ReferenceArtwork`, `PromptComposer`, `GenerationPanel`, `CreationGallery` and the native artwork
+dialog. Login field styles are currently local to `LoginPage`; a generic shared `Input` component
+is `Not yet defined`.
+
+Before creating a similar primitive, inspect these files and the measurements in
+`docs/design-system/IMPLEMENTED_UI_REFERENCE.md`. If the new screen is the first consumer, keep
+the style local and typed; promote it only when a second real consumer exists.
