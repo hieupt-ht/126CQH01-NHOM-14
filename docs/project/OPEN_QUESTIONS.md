@@ -12,6 +12,8 @@ These are not implementation permissions. Resolve them before the dependent feat
 | Is the product name `FLUX STUDIO` final, or is `PromptCanvas` still used? | Affects title, copy and repo documentation. | Use FLUX STUDIO for the interface; do not rename repository/package without approval. | OPEN |
 | Do local `PRD.md` and `writing-block.md` replace the older Issue inline copy? | Issue describes an earlier repository state. | Preserve both sources and record conflicts; never silently edit the design source. | OPEN |
 | Is authentication session storage library selected? | Cookie/session behavior affects security and API contract. | Keep implementation unspecified until library and CSRF/CORS policy are chosen. | OPEN |
+| Does the task's “Home” reference mean the current `/` `DashboardPage` preview, or should a separate Home route be added later? | `frontend/src/App.tsx` currently renders `DashboardPage` for `/` and has no `HomePage` import. | Treat `/` as the implemented Dashboard preview; do not add or rename routes during a visual-rules task. | OPEN |
+| When should `/register` and the `/app/*` product routes be wired? | `PRD.md` confirms them as product surfaces, but the current frontend only routes `/login` explicitly and uses a preview fallback elsewhere. | Do not infer authenticated routing or registration behavior from the current preview. | OPEN |
 
 ## Conflict handling
 

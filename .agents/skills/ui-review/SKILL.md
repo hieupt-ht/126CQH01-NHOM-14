@@ -14,11 +14,12 @@ Use for a visual/UX review of an implemented screen, component or responsive sta
 - `AGENTS.md`.
 - Complete `writing-block.md`.
 - `docs/design-system/VISUAL_REVIEW_CHECKLIST.md`, `DESIGN_PRINCIPLES.md`, `LAYOUT_AND_RESPONSIVE.md` and `ACCESSIBILITY.md`.
+- `docs/design-system/IMPLEMENTED_UI_REFERENCE.md` and the source files cited by the reviewed route.
 - GitHub Issue #1 and the relevant PRD screen/acceptance section.
 
 ## Workflow
 
-1. Record route, viewport, data source, commit/diff and states reviewed.
+1. Record route, viewport, data source, commit/diff and states reviewed. For this repository, distinguish `/` (`DashboardPage` preview) from `/login` (`LoginPage`) and do not infer `/app` or `/register` behavior.
 2. Compare layout hierarchy, content, controls and copy against confirmed requirements and the reference composition.
 3. Check tokens, hardcoded colors, surfaces, gradients, borders, radii, shadows, artwork treatment and neon restraint.
 4. Check default, hover, focus, disabled, loading, empty, error, success and job states.
@@ -37,3 +38,4 @@ Use for a visual/UX review of an implemented screen, component or responsive sta
 - [ ] Visual, responsive, state and accessibility checks are complete.
 - [ ] Findings distinguish defect, open question and proposal.
 - [ ] Screenshots/viewport evidence are attached when available.
+- [ ] Source-only findings are labeled as not visually verified; no browser observation is claimed without evidence.

@@ -127,7 +127,7 @@ export default function LoginPage() {
 
           <div className="login-register">
             <span>Chưa có tài khoản?</span>
-            <span className="login-register__upcoming">Đăng ký<span>SẮP CÓ</span></span>
+            <a className="login-register__upcoming" href="/register">Đăng ký</a>
           </div>
 
           <div className="login-card__closing"><span /><Icon name="sparkles" size={14} /><span /></div>
