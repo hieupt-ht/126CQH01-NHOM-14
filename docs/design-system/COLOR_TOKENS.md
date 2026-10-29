@@ -1,6 +1,12 @@
 # Color Tokens
 
-The exact token values live only in `writing-block.md` under Rule `FLUX-UI-001`. Do not duplicate or create a second palette here. If this summary disagrees with the source, the source wins.
+The canonical token values live in `writing-block.md` under Rule `FLUX-UI-001`. The verified runtime
+mirror is `frontend/src/styles/tokens.css`, imported by `frontend/src/index.css`. It is an
+implementation mirror, not a second palette; if it disagrees with the canonical source, the source
+wins and the drift must be corrected in a separate code task.
+
+For the extracted evidence from the current Login and Dashboard previews, see
+`docs/design-system/IMPLEMENTED_UI_REFERENCE.md`.
 
 ## Approved token groups
 
@@ -26,3 +32,12 @@ The exact token values live only in `writing-block.md` under Rule `FLUX-UI-001`.
 ## Enforcement
 
 Use CSS variables from the canonical root. Do not hardcode hex/RGB/HSL/named colors in components, do not redefine tokens locally and do not add a light theme. A new token requires explicit owner approval and an update to `writing-block.md` first.
+
+## Runtime verification
+
+- Confirmed: `frontend/src/styles/tokens.css` contains the approved token groups and `index.css`
+  imports it before feature styles are loaded.
+- Confirmed: current Login and Dashboard feature CSS consumes token variables rather than a local
+  feature palette.
+- Not yet defined: a Tailwind theme mapping. The current frontend uses Tailwind's Vite plugin but
+  the inspected UI is styled primarily through feature CSS and CSS variables.

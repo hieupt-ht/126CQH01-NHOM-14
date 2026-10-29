@@ -56,3 +56,16 @@ Stock, reference and placeholder images must be labeled as such in code/docs and
 - [ ] It cannot be mistaken for a real FLUX API result.
 - [ ] A suitable existing repository asset was considered first.
 - [ ] If it fails the criteria, an alternative or limitation is recorded.
+
+## Current repository baseline
+
+The current implemented screens use two approved local sources:
+
+- `frontend/src/assets/auth/login-aurora.png`: locally generated decorative login artwork;
+  classification and dimensions are recorded in its adjacent README.
+- `frontend/src/assets/reference/dashboard-reference.jpg`: user-supplied reference/demo artwork
+  cropped by `ReferenceArtwork`; its provenance and non-production status are recorded in its
+  adjacent README.
+
+The current dashboard gallery is intentionally a crop adapter, not a library of stored user
+images. New screens must keep that distinction until the backend image contract is confirmed.

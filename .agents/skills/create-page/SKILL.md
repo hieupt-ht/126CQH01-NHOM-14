@@ -15,6 +15,8 @@ Use only when the requested page/route is confirmed in GitHub Issue #1 or an app
 - Complete `writing-block.md` and `docs/design-system/*` relevant to the page.
 - `docs/design-system/IMAGE_ASSET_WORKFLOW.md` when the page uses artwork, background, illustration or gallery fixtures.
 - `docs/design-system/MOTION_AND_ICON_RULES.md` when the page introduces motion, loading feedback, icon controls or a new icon treatment.
+- `docs/design-system/IMPLEMENTED_UI_REFERENCE.md` and its cited source files for measured current
+  patterns, route reality and existing component reuse.
 - The Issue screen specification and matching `PRD.md` requirements.
 - `docs/development/FRONTEND_BACKEND_CONTRACT.md` for data and status behavior.
 - Existing `AppShell`, layouts, components and service conventions.
@@ -22,15 +24,16 @@ Use only when the requested page/route is confirmed in GitHub Issue #1 or an app
 ## Workflow
 
 1. Confirm route, priority, owner and acceptance states.
-2. Define the page's content hierarchy and desktop/tablet/mobile composition before coding.
-3. Classify image needs before coding; inspect approved repository assets first. If external imagery is authorized, follow the image workflow and record source/usage status.
-4. Reuse shared layout and primitives; create a new component only when the responsibility is real and typed.
-5. Choose motion only for interaction feedback, hierarchy or state transition; verify reduced-motion behavior before implementation.
-6. Reuse the existing icon system for navigation and controls; make icon-only actions named, focusable and understandable without relying on color alone.
-7. Connect only confirmed API contract. Keep server state authoritative for auth, quota, ownership and generation status.
-8. Implement default, loading, empty, error, success, unauthorized/not-found and relevant job states.
-9. Keep user input on recoverable errors; preserve idempotency and never create a new job from reload, polling failure or `needs_review`.
-10. Check keyboard/focus, reduced motion, no horizontal overflow, crop safety and artwork treatment at required viewports.
+2. Confirm whether the requested route exists in `App.tsx`; if it does not, record an open question instead of using the current preview fallback as authorization.
+3. Define the page's content hierarchy and desktop/tablet/mobile composition before coding.
+4. Classify image needs before coding; inspect approved repository assets first. If external imagery is authorized, follow the image workflow and record source/usage status.
+5. Reuse shared layout and primitives; create a new component only when the responsibility is real and typed.
+6. Choose motion only for interaction feedback, hierarchy or state transition; verify reduced-motion behavior before implementation.
+7. Reuse the existing icon system for navigation and controls; make icon-only actions named, focusable and understandable without relying on color alone.
+8. Connect only confirmed API contract. Keep server state authoritative for auth, quota, ownership and generation status.
+9. Implement default, loading, empty, error, success, unauthorized/not-found and relevant job states.
+10. Keep user input on recoverable errors; preserve idempotency and never create a new job from reload, polling failure or `needs_review`.
+11. Check keyboard/focus, reduced motion, no horizontal overflow, crop safety and artwork treatment at required viewports.
 
 ## Never
 
@@ -49,3 +52,4 @@ Use only when the requested page/route is confirmed in GitHub Issue #1 or an app
 - [ ] Image provenance, licensing/attribution status and demo/generated labeling are clear when applicable.
 - [ ] Mobile/tablet/desktop and accessibility behavior are checked.
 - [ ] Relevant build/test checks are run and reported.
+- [ ] The implemented reference baseline was checked and any route discrepancy was recorded as an open question.

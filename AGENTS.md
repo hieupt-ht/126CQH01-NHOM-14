@@ -118,6 +118,20 @@ Sau thay đổi, chạy kiểm tra phù hợp với phạm vi: link/path, valida
 
 Báo cáo phải nêu: file tạo/cập nhật, nguồn đã đọc, quyết định `CONFIRMED/PROPOSAL/OPEN QUESTION`, kiểm tra đã chạy, giới hạn còn lại và xác nhận không có thay đổi ngoài scope.
 
+## 10.1. Existing UI reference rules
+
+- Resolve Home/Login versus Dashboard/Login terminology against the repository before coding. In
+  the current source, `/` renders `DashboardPage` and `/login` renders `LoginPage`; this is
+  implementation evidence, not permission to add an unconfirmed route.
+- Before implementing a new screen, read `docs/design-system/IMPLEMENTED_UI_REFERENCE.md` and
+  inspect the cited source files. Reuse its measured token, typography, spacing, breakpoint,
+  component, image and motion patterns.
+- Treat screenshot/reference/demo imagery and local preview data as reference only. Keep the
+  `reference/demo` label and do not claim authenticated records, generated output or provider
+  state without a confirmed contract.
+- If the implemented preview conflicts with a canonical product/design rule, record an
+  `OPEN QUESTION`; do not silently redesign the existing screen in a new feature task.
+
 ## 11. Current setup-task boundary
 
 Task thiết lập rules/skills/docs chỉ được tạo hoặc cập nhật `AGENTS.md`, `.agents/skills/` và tài liệu hướng dẫn trong `docs/`. Không triển khai màn hình React, component sản phẩm, API nghiệp vụ, MongoDB/FLUX integration, dữ liệu demo, dependency mới hoặc sửa `writing-block.md`.

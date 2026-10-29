@@ -1,0 +1,192 @@
+.register-page .register-showcase h1 span {
+  color: var(--accent-cyan);
+}
+
+.register-panel {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.register-card {
+  width: min(100%, 390px);
+  margin: auto;
+  padding-block: 16px 12px;
+}
+
+.register-card .login-card__emblem {
+  width: 44px;
+  height: 44px;
+  margin-bottom: 16px;
+}
+
+.register-form {
+  display: grid;
+  gap: 10px;
+  margin-top: 16px;
+  scroll-margin-top: 30px;
+}
+
+.register-form .login-field {
+  gap: 5px;
+}
+
+.register-form .login-field > label {
+  font-size: 11px;
+}
+
+.register-form .login-field__control {
+  min-height: 46px;
+}
+
+.register-form .login-field__control input {
+  min-height: 44px;
+  padding-block: 8px;
+  font-size: 12px;
+}
+
+.register-form .login-password-toggle {
+  width: 38px;
+  height: 38px;
+}
+
+.register-submit {
+  min-height: 46px;
+  margin-top: 2px;
+  padding-block: 11px;
+}
+
+.register-submit:disabled {
+  opacity: .72;
+  transform: none;
+  cursor: wait;
+}
+
+.register-login-link {
+  text-decoration: none;
+  transition: color var(--transition-fast);
+}
+
+.register-login-link:hover {
+  color: var(--accent-cyan);
+}
+
+@media (min-width: 1700px) {
+  .register-card {
+    width: min(100%, 420px);
+  }
+}
+
+@media (max-width: 1279px) {
+  .register-card {
+    width: min(100%, 360px);
+  }
+}
+
+@media (max-width: 767px) {
+  .register-card {
+    width: 100%;
+    padding: 8px 0 6px;
+  }
+
+  .register-card .login-card__emblem {
+    display: none;
+  }
+
+  .register-form {
+    gap: 10px;
+    margin-top: 16px;
+  }
+
+  .register-heading h2 {
+    font-size: 32px;
+  }
+}
+
+@media (max-width: 380px) {
+  .register-heading h2 {
+    font-size: 29px;
+  }
+}
+
+@media (max-height: 760px) and (min-width: 768px) {
+  .register-card {
+    padding-block: 8px 6px;
+  }
+
+  .register-card .login-card__emblem {
+    width: 40px;
+    height: 40px;
+    margin-bottom: 10px;
+  }
+
+  .register-heading h2 {
+    margin-block: 6px 7px;
+    font-size: 34px;
+  }
+
+  .register-heading > p {
+    font-size: 11px;
+    line-height: 1.5;
+  }
+
+  .register-form {
+    gap: 7px;
+    margin-top: 12px;
+  }
+
+  .register-form .login-field__control {
+    min-height: 42px;
+  }
+
+  .register-form .login-field__control input {
+    min-height: 40px;
+  }
+
+  .register-form .login-password-toggle {
+    width: 36px;
+    height: 36px;
+  }
+
+  .register-submit {
+    min-height: 42px;
+    padding-block: 9px;
+  }
+
+  .register-card .login-register {
+    margin-top: 9px;
+  }
+
+  .register-card .login-card__closing {
+    margin-block: 11px 6px;
+  }
+}
+
+@media (max-width: 767px) and (max-height: 640px) {
+  .register-card {
+    padding-block: 4px;
+  }
+
+  .register-form {
+    gap: 7px;
+    margin-top: 12px;
+  }
+
+  .register-form .login-field__control {
+    min-height: 40px;
+  }
+
+  .register-form .login-field__control input {
+    min-height: 38px;
+    font-size: 14px;
+  }
+
+  .register-form .login-password-toggle {
+    width: 34px;
+    height: 34px;
+  }
+
+  .register-submit {
+    min-height: 40px;
+    padding-block: 9px;
+  }
+}

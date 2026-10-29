@@ -18,6 +18,9 @@ Therefore, a repository folder named `.agents/skills` is a project convention, n
 
 ## Visual rule routing
 
+- Before implementing UI, read `docs/design-system/IMPLEMENTED_UI_REFERENCE.md` to distinguish
+  measured current patterns from product requirements and to resolve whether `/` is the current
+  Dashboard preview or a confirmed Home route.
 - Use `frontend-design` for any frontend layout, styling, artwork, motion or icon decision. It reads `IMAGE_ASSET_WORKFLOW.md` and `MOTION_AND_ICON_RULES.md` when relevant.
 - Use `create-page` only for a confirmed route. It applies the same image, motion and icon rules while checking responsive, accessibility and API-state requirements.
 - Use `create-component` for a reusable UI primitive; it must keep a narrow typed contract and follow the same token and accessibility rules.
