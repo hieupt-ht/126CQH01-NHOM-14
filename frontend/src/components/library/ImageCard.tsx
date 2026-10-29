@@ -49,7 +49,7 @@ export default function ImageCard({ image, imageUnavailable = false, onAction }:
       <span className="library-image-card__demo">Ảnh minh họa</span>
       <button ref={triggerRef} type="button" className="library-image-card__menu-trigger" aria-label={`Mở thao tác cho ${image.title}`} aria-haspopup="menu" aria-expanded={menuOpen} onClick={(event) => { event.stopPropagation(); setMenuOpen((open) => !open); }}><Icon name="more" size={18} /></button>
       {menuOpen && <div className="library-image-card__menu" ref={menuRef} role="menu" aria-label={`Thao tác cho ${image.title}`}>
-        <button type="button" role="menuitem" disabled title="SCR-05 chưa được triển khai" onClick={() => selectAction('view')}><Icon name="image" size={15} />Xem chi tiết<span className="library-menu__hint">Sắp có</span></button>
+        <button type="button" role="menuitem" onClick={() => selectAction('view')}><Icon name="image" size={15} />Xem chi tiết</button>
         <button type="button" role="menuitem" onClick={() => selectAction('download')}><Icon name="arrow" size={15} />Tải ảnh minh họa</button>
         <button type="button" role="menuitem" onClick={() => selectAction('rename')}><Icon name="wand" size={15} />Đổi tên</button>
         <button type="button" role="menuitem" className="library-menu__danger" onClick={() => selectAction('delete')}><Icon name="close" size={15} />Xóa khỏi bản minh họa</button>

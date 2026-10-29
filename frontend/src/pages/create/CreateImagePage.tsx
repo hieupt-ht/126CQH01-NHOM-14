@@ -142,7 +142,7 @@ function RecentImages({ artworks }: { artworks: DemoArtwork[] }) {
 }
 
 export default function CreateImagePage() {
-  const [prompt, setPrompt] = useState('');
+  const [prompt, setPrompt] = useState(() => new URLSearchParams(window.location.search).get('prompt') ?? '');
   const [search, setSearch] = useState('');
   const [state, setState] = useState<GenerationState>('idle');
   const [promptError, setPromptError] = useState('');
