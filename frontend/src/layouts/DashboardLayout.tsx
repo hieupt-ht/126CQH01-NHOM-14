@@ -3,7 +3,7 @@ import Brand from '../components/dashboard/Brand';
 import Icon from '../components/ui/Icon';
 import './DashboardLayout.css';
 
-type Props = { children: ReactNode; search: string; onSearch: (value: string) => void; favoritesOnly: boolean; onFavorites: (value: boolean) => void; onCompose: () => void; activeItem?: 'home' | 'create' | 'library' | 'history'; showSearch?: boolean };
+type Props = { children: ReactNode; search: string; onSearch: (value: string) => void; favoritesOnly: boolean; onFavorites: (value: boolean) => void; onCompose: () => void; activeItem?: 'home' | 'create' | 'library' | 'history' | 'settings'; showSearch?: boolean };
 
 function SidebarContent({ favoritesOnly, onFavorites, onCompose, activeItem = 'home', onNavigate }: Pick<Props, 'favoritesOnly' | 'onFavorites' | 'onCompose' | 'activeItem'> & { onNavigate?: () => void }) {
   return <><div className="studio-sidebar__brand"><Brand /></div><div className="studio-sidebar__label">KHÔNG GIAN CỦA BẠN</div>
@@ -13,7 +13,7 @@ function SidebarContent({ favoritesOnly, onFavorites, onCompose, activeItem = 'h
       <a href="/app/library" className={`studio-nav__item ${activeItem === 'library' ? 'studio-nav__item--active' : ''}`} aria-current={activeItem === 'library' ? 'page' : undefined} onClick={() => { onFavorites(false); onNavigate?.(); }}><Icon name="image" />Thư viện ảnh</a>
       <a href="/app/history" className={`studio-nav__item ${activeItem === 'history' ? 'studio-nav__item--active' : ''}`} aria-current={activeItem === 'history' ? 'page' : undefined} onClick={onNavigate}><Icon name="history" />Lịch sử</a>
       <a href="#creations" className={`studio-nav__item ${favoritesOnly ? 'studio-nav__item--selected' : ''}`} onClick={() => { onFavorites(true); onNavigate?.(); }}><Icon name="heart" />Yêu thích</a>
-      <button className="studio-nav__item" disabled title="Sẽ được triển khai sau"><Icon name="settings" />Cài đặt<span className="studio-nav__soon">Sắp có</span></button>
+      <a href="/app/settings" className={`studio-nav__item ${activeItem === 'settings' ? 'studio-nav__item--active' : ''}`} aria-current={activeItem === 'settings' ? 'page' : undefined} onClick={onNavigate}><Icon name="settings" />Cài đặt</a>
     </nav>
     <div className="studio-sidebar__bottom"><div className="inspiration-card"><span className="inspiration-card__icon"><Icon name="sparkles" size={23} /></span><span className="inspiration-card__decoration" aria-hidden="true"><Icon name="sparkles" size={52} /></span><h2>Một ý tưởng.<br />Vô vàn khả năng.</h2><p>Viết điều bạn tưởng tượng.<br />Để cảm hứng bắt đầu.</p><button className="studio-button studio-button--primary" onClick={() => { onNavigate?.(); requestAnimationFrame(onCompose); }}>Bắt đầu sáng tạo<Icon name="arrow" size={17} /></button></div>
       <div className="usage-card"><div className="usage-card__heading"><span>Lượt sử dụng</span><span>Hôm nay</span></div><div className="usage-card__status"><span className="status-dot" />Số lượt còn: Chưa kết nối</div><p>Hạn mức sẽ hiển thị khi tài khoản và API sẵn sàng.</p></div>

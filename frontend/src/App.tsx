@@ -5,6 +5,7 @@ import CreateImagePage from './pages/create/CreateImagePage';
 import LibraryPage from './pages/library/LibraryPage';
 import ImageDetailPage from './pages/detail/ImageDetailPage';
 import HistoryPage from './pages/history/HistoryPage';
+import AccountSettingsPage from './pages/settings/AccountSettingsPage';
 
 // Keep the preview routes public until authentication and backend sessions are connected.
 export default function App() {
@@ -14,6 +15,7 @@ export default function App() {
   if (pathname === '/app/create') return <CreateImagePage />;
   if (pathname === '/app/library') return <LibraryPage />;
   if (pathname === '/app/history') return <HistoryPage />;
+  if (pathname === '/app/settings') return <AccountSettingsPage />;
   const imageDetailMatch = pathname.match(/^\/app\/images\/([^/]+)$/);
   if (imageDetailMatch) return <ImageDetailPage fixtureKey={decodeURIComponent(imageDetailMatch[1])} />;
   return <DashboardPage />;
