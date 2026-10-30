@@ -14,7 +14,7 @@ export async function startServer(config: AppConfig = validateEnv()): Promise<Se
 
   try {
     if (config.mongooseAutoIndex) await createDeclaredIndexes();
-    const server = createApp(config).listen(config.port);
+    const server = createApp(config).listen(config.port, '0.0.0.0');
     await once(server, 'listening');
     console.info(`Backend listening on port ${config.port}.`);
     return server;
