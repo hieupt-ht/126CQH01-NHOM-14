@@ -1,8 +1,10 @@
 # Moved
 
+The canonical current skill inventory and runtime discovery status are maintained in [`AGENT_SKILLS.md`](AGENT_SKILLS.md). Keep this file for Codex-specific background only.
+
 ## Repository convention
 
-This repository stores project skills under `.agents/skills/<skill-name>/SKILL.md`, with optional `agents/openai.yaml`. Each skill has a lowercase name, a concise description and focused workflow instructions. The current environment exposes these project skills in its available-skill catalog.
+This repository stores project skills under `.agents/skills/<skill-name>/SKILL.md`, with optional `agents/openai.yaml`. Each skill has a lowercase name, a concise description and focused workflow instructions. Availability in a tool catalog depends on that runtime's registration configuration.
 
 ## What is verified from official OpenAI documentation
 
@@ -28,7 +30,7 @@ Therefore, a repository folder named `.agents/skills` is a project convention, n
 
 ## Current repository status
 
-- Confirmed in this Codex session: the eight project skills are listed in the available skills catalog.
+- At the start of the 2026-10-30 setup task, this Codex session exposed eight existing repository skills. Five backend skill directories were added afterward; their automatic registration in this live runtime was not verified. See [`AGENT_SKILLS.md`](AGENT_SKILLS.md) for current routing and handoff.
 - Not confirmed: whether another Codex client, hosted shell, local shell runner or Agents API session will automatically register this repository's `.agents/skills` directory.
 - Safe handoff: use the explicit skill name and read the repository `SKILL.md`; do not rely on conversation memory or a private local installation.
 

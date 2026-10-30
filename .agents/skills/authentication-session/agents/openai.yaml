@@ -1,0 +1,3 @@
+interface:
+  display_name: "Authentication Session"
+  short_description: "Build secure server-side sessions"

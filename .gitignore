@@ -1,6 +1,9 @@
 # Dependencies
 node_modules/
 
+# Local generated images and worker checkpoints
+/backend/data/
+
 # Build output
 dist/
 build/

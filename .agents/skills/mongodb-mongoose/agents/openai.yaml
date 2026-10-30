@@ -1,0 +1,3 @@
+interface:
+  display_name: "MongoDB Mongoose"
+  short_description: "Implement safe Mongoose persistence"
