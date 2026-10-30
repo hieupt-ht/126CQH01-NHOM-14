@@ -41,9 +41,25 @@ What is verified from official Antigravity documentation:
 
 ## Current repository status
 
-- Confirmed in both Codex and Antigravity sessions: the eight project skills are listed in the available skills catalog.
-- Not confirmed: whether every possible Codex client configuration automatically registers this repository's `.agents/skills/` directory without explicit setup.
+- This document is the canonical map of repository skills. The always-on repository rules are in `AGENTS.md`; backend tasks must also read `docs/development/BACKEND_RULES.md`. The latter is guidance, not automatically loaded by every runtime.
+- Codex skill discovery is runtime-controlled. The Codex catalog available at the start of this task listed the existing eight skills; the five newly added skill directories are not confirmed as registered in that live catalog. Reopen/restart or configure the runtime with `.agents/skills/` before relying on automatic loading, or explicitly request the skill by name and read its path.
+- Antigravity scans `.agents/skills/` at session startup; skills added during an active session may require restart/rescan. Its documented per-file parsing limit is 24 KB; added skills are intentionally concise.
 - Safe handoff: use the explicit skill name and read the repository `SKILL.md`; do not rely on conversation memory or a private local installation.
+
+## Backend skill routing
+
+Read `docs/development/BACKEND_RULES.md` for every backend task, then select the focused skill(s) matching the work. Keep `backend-api` as the authority for endpoint/domain semantics; focused skills add implementation workflow and do not override its invariants.
+
+| Skill | Use for | Pair with |
+|---|---|---|
+| `backend-api` (existing) | Confirmed API contract, ownership, quota, idempotency, safe errors | Any business endpoint work |
+| `express-api-development` (new) | Express routes, controllers, middleware and HTTP boundary | `backend-api` for domain behavior |
+| `mongodb-mongoose` (new) | Mongoose schemas, indexes, queries and persistence tests | `backend-api` when enforcing business invariants |
+| `authentication-session` (new) | Opaque server-side sessions, cookies, CSRF and auth flows | `backend-api`; resolve deployment open questions first |
+| `gemini-image-generation` (new) | Official Google Gen AI SDK integration and generation recovery | `backend-api`; explicit provider authorization required for live calls |
+| `backend-testing` (new) | Backend unit/API/database/security/lifecycle tests | Relevant implementation skill |
+
+Use `api-integration` for frontend-to-backend wiring only when frontend work is separately authorized. Existing visual/UI skills remain frontend-specific and are unchanged.
 
 ## Security
 

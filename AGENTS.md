@@ -4,7 +4,8 @@
 
 - Product: FLUX STUDIO, website tạo và quản lý ảnh từ mô tả tự do.
 - Verified local stack: React + Vite + Tailwind CSS + TypeScript ở `frontend/`; Node.js + Express + TypeScript + ES Modules ở `backend/`.
-- Planned integrations, not yet implemented: MongoDB, FLUX provider, object storage và worker xử lý job.
+- Backend foundation đã có scaffold cho Node.js + Express + TypeScript, Mongoose, cấu hình môi trường, kết nối MongoDB, health/error handling và 5 model. Điều này không chứng minh MongoDB đã kết nối thành công hoặc các luồng nghiệp vụ đã hoạt động.
+- Kiến trúc backend đã xác nhận: MongoDB + Mongoose, Google Gemini API qua official `@google/genai`, local filesystem cho demo và `/api/v1`. Authentication, provider calls, generation workflow và image delivery vẫn cần được triển khai theo phase đã duyệt.
 - Canonical product requirements: GitHub Issue #1 và `PRD.md` trong repository.
 - Canonical visual requirements: `writing-block.md`, Rule `FLUX-UI-001`, theme `Midnight Aurora`.
 
@@ -93,10 +94,18 @@ Phân loại mọi quyết định trong báo cáo là `CONFIRMED`, `PROPOSAL` h
 
 Skills trong `.agents/skills/` là workflow chuyên biệt; `AGENTS.md` là quy tắc nền. Skill không được nới scope, lặp lại toàn bộ PRD hoặc ghi đè rule này.
 
+- Mọi backend task phải đọc `docs/development/BACKEND_RULES.md` và tài liệu domain/API được trỏ từ đó.
+- Chọn skill theo phần việc: `express-api-development`, `mongodb-mongoose`, `authentication-session`, `gemini-image-generation`, `backend-testing`. Dùng `backend-api` để giữ contract nghiệp vụ, ownership, quota, idempotency và safe errors; skill Express không thay thế các quy tắc đó.
+
 - `frontend-design`: thiết kế theo token và ảnh tham chiếu.
 - `create-page`: xây page đã có route/nghiệp vụ xác nhận.
 - `create-component`: xây component tái sử dụng có contract rõ.
 - `backend-api`: phát triển API an toàn, không bịa endpoint/schema.
+- `express-api-development`: route/controller/service và HTTP boundary đã được contract xác nhận.
+- `mongodb-mongoose`: schema, index, query và persistence theo database design.
+- `authentication-session`: auth/session cookie và CSRF khi chi tiết deployment đã được chốt.
+- `gemini-image-generation`: tích hợp Gemini server-side theo model, quyền truy cập và chi phí đã xác minh.
+- `backend-testing`: kiểm thử backend an toàn, cô lập database/provider và đúng invariant.
 - `api-integration`: nối frontend/backend theo contract và trạng thái job.
 - `ui-review`: review UI bằng bằng chứng so với nguồn thiết kế.
 - `code-review`: review correctness, security, regression và scope.
