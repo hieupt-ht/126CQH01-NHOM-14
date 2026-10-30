@@ -19,7 +19,7 @@ From the repository root, create the ignored local environment file:
 Copy-Item .env.example .env
 ```
 
-Replace `MONGO_INITDB_ROOT_PASSWORD` in `.env` with a unique local random value. Keep it to URI-safe letters and numbers, or percent-encode special characters before using it in a URI. `.env` is ignored by Git. The Compose file passes the MongoDB URI only to the backend and does not pass database credentials to the frontend.
+Replace `MONGO_INITDB_ROOT_PASSWORD` in `.env` with a unique local random value. `.env` is ignored by Git. Compose passes the database URI and credentials only to the backend; Mongoose receives credentials separately from the URI, so URI-reserved password characters do not need manual encoding. No database credentials are passed to the frontend.
 
 The root `.env.example` configures:
 

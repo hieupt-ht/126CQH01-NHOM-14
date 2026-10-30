@@ -8,6 +8,9 @@ export interface AppConfig {
   nodeEnv: NodeEnvironment;
   port: number;
   mongodbUri: string;
+  mongodbUsername?: string;
+  mongodbPassword?: string;
+  mongodbAuthSource: string;
   mongodbServerSelectionTimeoutMs: number;
   frontendOrigin: string;
   mongooseAutoIndex: boolean;
@@ -77,6 +80,12 @@ export function validateEnv(source: EnvSource = process.env): AppConfig {
     throw new EnvironmentValidationError('MONGODB_URI must use the mongodb:// or mongodb+srv:// scheme.');
   }
 
+  const mongodbUsername = source.MONGODB_USERNAME?.trim() || undefined;
+  const mongodbPassword = source.MONGODB_PASSWORD;
+  if ((mongodbUsername === undefined) !== (mongodbPassword === undefined) || mongodbPassword === '') {
+    throw new EnvironmentValidationError('MONGODB_USERNAME and MONGODB_PASSWORD must be set together.');
+  }
+
   const sameSiteRaw = source.SESSION_COOKIE_SAME_SITE?.trim().toLowerCase() || 'lax';
   if (!['lax', 'strict', 'none'].includes(sameSiteRaw)) {
     throw new EnvironmentValidationError('SESSION_COOKIE_SAME_SITE must be lax, strict, or none.');
@@ -90,6 +99,9 @@ export function validateEnv(source: EnvSource = process.env): AppConfig {
     nodeEnv,
     port: readInteger(source, 'PORT', 3000, 1, 65535),
     mongodbUri,
+    mongodbUsername,
+    mongodbPassword,
+    mongodbAuthSource: source.MONGODB_AUTH_SOURCE?.trim() || 'admin',
     mongodbServerSelectionTimeoutMs: readInteger(source, 'MONGODB_SERVER_SELECTION_TIMEOUT_MS', 5000, 100, 120000),
     frontendOrigin: readOrigin(source),
     mongooseAutoIndex: readBoolean(source, 'MONGOOSE_AUTO_INDEX', nodeEnv !== 'production'),

@@ -10,6 +10,12 @@ import { createDeclaredIndexes } from './models/index.js';
 export async function startServer(config: AppConfig = validateEnv()): Promise<Server> {
   await connectMongo(config.mongodbUri, {
     serverSelectionTimeoutMS: config.mongodbServerSelectionTimeoutMs,
+    ...(config.mongodbUsername !== undefined && config.mongodbPassword !== undefined
+      ? {
+          auth: { username: config.mongodbUsername, password: config.mongodbPassword },
+          authSource: config.mongodbAuthSource,
+        }
+      : {}),
   });
 
   try {

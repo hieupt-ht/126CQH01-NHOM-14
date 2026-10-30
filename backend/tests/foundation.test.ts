@@ -30,10 +30,31 @@ after(async () => {
 test('environment validation accepts valid configuration and applies safe defaults', () => {
   const config = validateEnv(validEnvironment);
   assert.equal(config.port, 3000);
+  assert.equal(config.mongodbUsername, undefined);
+  assert.equal(config.mongodbPassword, undefined);
+  assert.equal(config.mongodbAuthSource, 'admin');
   assert.equal(config.frontendOrigin, 'http://localhost:5173');
   assert.equal(config.sessionCookieName, 'flux_session');
   assert.equal(config.sessionCookieSecure, false);
   assert.equal(config.mongooseAutoIndex, true);
+});
+
+test('environment validation keeps MongoDB credentials separate from the URI', () => {
+  const password = 'p@ss:/?#% with spaces';
+  const config = validateEnv({
+    ...validEnvironment,
+    MONGODB_USERNAME: 'flux_dev',
+    MONGODB_PASSWORD: password,
+    MONGODB_AUTH_SOURCE: 'admin',
+  });
+
+  assert.equal(config.mongodbUri, validEnvironment.MONGODB_URI);
+  assert.equal(config.mongodbUsername, 'flux_dev');
+  assert.equal(config.mongodbPassword, password);
+  assert.throws(
+    () => validateEnv({ ...validEnvironment, MONGODB_USERNAME: 'flux_dev' }),
+    /MONGODB_USERNAME and MONGODB_PASSWORD must be set together/,
+  );
 });
 
 test('environment validation rejects invalid values without echoing secrets', () => {
