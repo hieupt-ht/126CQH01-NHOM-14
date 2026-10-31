@@ -155,7 +155,7 @@ export function createProductRouter(
       throw new AppError(
         503,
         "GENERATION_NOT_CONFIGURED",
-        "Chưa cấu hình Cloudflare và Azure. Chưa nhận job hoặc trừ lượt.",
+        "Chưa cấu hình Cloudflare và Cloudinary. Chưa nhận job hoặc trừ lượt.",
       );
     const job = await dependencies.generations.accept(
       owner(response),

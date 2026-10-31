@@ -6,6 +6,9 @@ async function main(): Promise<void> {
   const config = validateEnv();
   await connectMongo(config.mongodbUri, {
     serverSelectionTimeoutMS: config.mongodbServerSelectionTimeoutMs,
+    ...(config.mongodbUsername !== undefined && config.mongodbPassword !== undefined
+      ? { auth: { username: config.mongodbUsername, password: config.mongodbPassword }, authSource: config.mongodbAuthSource }
+      : {}),
   });
   try {
     await createDeclaredIndexes();

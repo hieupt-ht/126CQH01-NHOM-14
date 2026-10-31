@@ -1,5 +1,6 @@
 import 'dotenv/config';
 import { resolve } from 'node:path';
+import { DEFAULT_MAX_IMAGE_UPLOAD_MB, MAX_IMAGE_UPLOAD_MB } from './image-upload.js';
 
 export type NodeEnvironment = 'development' | 'test' | 'production';
 export type SameSitePolicy = 'lax' | 'strict' | 'none';
@@ -8,6 +9,9 @@ export interface AppConfig {
   nodeEnv: NodeEnvironment;
   port: number;
   mongodbUri: string;
+  mongodbUsername?: string;
+  mongodbPassword?: string;
+  mongodbAuthSource: string;
   mongodbServerSelectionTimeoutMs: number;
   frontendOrigin: string;
   mongooseAutoIndex: boolean;
@@ -18,9 +22,12 @@ export interface AppConfig {
   generationEnabled: boolean;
   cloudflareAccountId?: string;
   cloudflareApiToken?: string;
-  azureAccountUrl?: string;
-  azureContainer?: string;
-  azureAccountAlias: string;
+  cloudinaryCloudName?: string;
+  cloudinaryApiKey?: string;
+  cloudinaryApiSecret?: string;
+  cloudinaryAccountAlias: string;
+  cloudinaryTimeoutMs: number;
+  maxImageUploadMb: number;
   storageNamespace: string;
   dailyUserLimit: number;
   dailyAppLimit: number;
@@ -95,26 +102,34 @@ export function validateEnv(source: EnvSource = process.env): AppConfig {
 
   if (nodeEnv === 'production' && !sessionCookieSecure) throw new EnvironmentValidationError('SESSION_COOKIE_SECURE must be true in production.');
 
+  const mongodbUsername = source.MONGODB_USERNAME?.trim() || undefined;
+  const mongodbPassword = source.MONGODB_PASSWORD;
+  if ((mongodbUsername === undefined) !== (mongodbPassword === undefined) || mongodbPassword === '')
+    throw new EnvironmentValidationError('MONGODB_USERNAME and MONGODB_PASSWORD must be set together.');
+  const cloudKeys = ['CLOUDINARY_CLOUD_NAME', 'CLOUDINARY_API_KEY', 'CLOUDINARY_API_SECRET'] as const;
+  const hasCloud = cloudKeys.some(key => Boolean(source[key]?.trim()));
+  if (hasCloud) for (const key of cloudKeys)
+    if (!source[key]?.trim()) throw new EnvironmentValidationError(key + ' is required when configuring Cloudinary.');
+  if (source.CLOUDINARY_CLOUD_NAME?.trim() && !/^[a-zA-Z0-9_-]+$/.test(source.CLOUDINARY_CLOUD_NAME.trim()))
+    throw new EnvironmentValidationError('CLOUDINARY_CLOUD_NAME is invalid.');
   const generationEnabled = readBoolean(source, 'GENERATION_ENABLED', false);
   if (generationEnabled) {
-    for (const key of ['CLOUDFLARE_ACCOUNT_ID','CLOUDFLARE_API_TOKEN','AZURE_STORAGE_ACCOUNT_URL','AZURE_STORAGE_CONTAINER']) {
+    for (const key of ['CLOUDFLARE_ACCOUNT_ID','CLOUDFLARE_API_TOKEN', ...cloudKeys])
       if (!source[key]?.trim()) throw new EnvironmentValidationError(key + ' is required when GENERATION_ENABLED=true.');
-    }
     if (!/^[a-f0-9]{32}$/i.test(source.CLOUDFLARE_ACCOUNT_ID!.trim())) throw new EnvironmentValidationError('CLOUDFLARE_ACCOUNT_ID is invalid.');
-    let azureUrl: URL;
-    try { azureUrl = new URL(source.AZURE_STORAGE_ACCOUNT_URL!); } catch { throw new EnvironmentValidationError('AZURE_STORAGE_ACCOUNT_URL is invalid.'); }
-    if (azureUrl.protocol !== 'https:' || !/^[a-z0-9]+\.blob\.core\.windows\.net$/.test(azureUrl.hostname) || azureUrl.search || azureUrl.username || azureUrl.password || azureUrl.pathname !== '/')
-      throw new EnvironmentValidationError('AZURE_STORAGE_ACCOUNT_URL must be an Azure HTTPS account endpoint without credentials.');
   }
+  const cloudinaryAccountAlias = source.CLOUDINARY_ACCOUNT_ALIAS?.trim() || 'demo-primary';
+  if (!/^[a-zA-Z0-9_-]{1,64}$/.test(cloudinaryAccountAlias)) throw new EnvironmentValidationError('CLOUDINARY_ACCOUNT_ALIAS is invalid.');
   const cookieName = source.SESSION_COOKIE_NAME?.trim() || 'flux_session';
   if (!/^[a-zA-Z0-9_-]{1,64}$/.test(cookieName)) throw new EnvironmentValidationError('SESSION_COOKIE_NAME is invalid.');
   const storageNamespace = source.IMAGE_STORAGE_NAMESPACE?.trim() || 'flux-studio/local';
-  if (!/^[a-z0-9][a-z0-9/_-]{0,99}$/.test(storageNamespace)) throw new EnvironmentValidationError('IMAGE_STORAGE_NAMESPACE is invalid.');
-  if (source.AZURE_STORAGE_CONTAINER?.trim() && !/^[a-z0-9][a-z0-9-]{1,61}[a-z0-9]$/.test(source.AZURE_STORAGE_CONTAINER.trim())) throw new EnvironmentValidationError('AZURE_STORAGE_CONTAINER is invalid.');
+  if ((storageNamespace.length > 100 || !/^[a-z0-9_-]+(?:\/[a-z0-9_-]+)*$/.test(storageNamespace))) throw new EnvironmentValidationError('IMAGE_STORAGE_NAMESPACE is invalid.');
   return {
     nodeEnv,
     port: readInteger(source, 'PORT', 3000, 1, 65535),
     mongodbUri,
+    mongodbUsername, mongodbPassword,
+    mongodbAuthSource: source.MONGODB_AUTH_SOURCE?.trim() || 'admin',
     mongodbServerSelectionTimeoutMs: readInteger(source, 'MONGODB_SERVER_SELECTION_TIMEOUT_MS', 5000, 100, 120000),
     frontendOrigin: readOrigin(source),
     mongooseAutoIndex: readBoolean(source, 'MONGOOSE_AUTO_INDEX', nodeEnv !== 'production'),
@@ -124,8 +139,12 @@ export function validateEnv(source: EnvSource = process.env): AppConfig {
     sessionCookieSecure,
     generationEnabled, storageNamespace,
     cloudflareAccountId: source.CLOUDFLARE_ACCOUNT_ID?.trim(), cloudflareApiToken: source.CLOUDFLARE_API_TOKEN?.trim(),
-    azureAccountUrl: source.AZURE_STORAGE_ACCOUNT_URL?.trim(), azureContainer: source.AZURE_STORAGE_CONTAINER?.trim(),
-    azureAccountAlias: source.AZURE_STORAGE_ACCOUNT_ALIAS?.trim() || 'demo-primary',
+    cloudinaryCloudName: source.CLOUDINARY_CLOUD_NAME?.trim() || undefined,
+    cloudinaryApiKey: source.CLOUDINARY_API_KEY?.trim() || undefined,
+    cloudinaryApiSecret: source.CLOUDINARY_API_SECRET?.trim() || undefined,
+    cloudinaryAccountAlias,
+    cloudinaryTimeoutMs: readInteger(source, 'CLOUDINARY_TIMEOUT_MS', 30000, 1000, 120000),
+    maxImageUploadMb: readInteger(source, 'MAX_IMAGE_UPLOAD_MB', DEFAULT_MAX_IMAGE_UPLOAD_MB, 1, MAX_IMAGE_UPLOAD_MB),
     dailyUserLimit: readInteger(source, 'DAILY_USER_LIMIT', 5, 1, 100), dailyAppLimit: readInteger(source, 'DAILY_APP_LIMIT', 20, 1, 100),
     imageStorageDir: resolve(source.IMAGE_STORAGE_DIR?.trim() || 'data/images'),
   };

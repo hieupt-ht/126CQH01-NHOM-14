@@ -112,7 +112,7 @@ const generationSchema = new Schema<Generation>(
     completedAt: { type: Date, default: null },
     durationMs: { type: Number, min: 0, default: null },
   },
-  { collection: 'generations', autoIndex: false, timestamps: true },
+  { collection: 'generations', autoIndex: false, timestamps: { createdAt: true, updatedAt: false } },
 );
 
 generationSchema.index({ userId: 1, requestKey: 1 }, { unique: true, name: 'generations_user_request_unique' });

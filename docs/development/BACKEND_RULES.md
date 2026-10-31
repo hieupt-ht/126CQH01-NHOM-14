@@ -10,7 +10,7 @@ These rules apply to backend design and implementation. `AGENTS.md` remains the 
 
 - Read `AGENTS.md`, `docs/backend/implementation-plan.md`, `docs/backend/database-design.md`, `docs/backend/api-contract.md`, `docs/development/FRONTEND_BACKEND_CONTRACT.md`, and relevant `PRD.md` sections before changing backend behavior.
 - `docs/backend/` and the shared frontend/backend contract hold the detailed schema, endpoint and lifecycle definitions. Preserve their field names, status values and response semantics.
-- The implementation contract confirms Node.js + Express + TypeScript, MongoDB + Mongoose, `/api/v1`, opaque server-side sessions with HttpOnly cookies, Google Gemini through official `@google/genai`, local filesystem storage for demo, and five collections: `users`, `sessions`, `generations`, `images`, `dailyUsage`.
+- The implementation contract confirms Node.js + Express + TypeScript, MongoDB + Mongoose, `/api/v1`, opaque server-side sessions with HttpOnly cookies, Google Gemini through official `@google/genai`, Cloudinary authenticated image storage, and five collections: `users`, `sessions`, `generations`, `images`, `dailyUsage`.
 - Treat deployment details explicitly labelled `PROPOSAL` or `OPEN QUESTION` as unresolved. Do not silently select a model, quota, retention policy, cookie lifetime, SameSite/CSRF bootstrap, production storage, or password-hash package.
 - Older FLUX/Cloudflare and `/api` references in Issue #1 / PRD are legacy where they conflict with the confirmed implementation contract. Preserve the product invariants.
 
@@ -39,13 +39,13 @@ These rules apply to backend design and implementation. `AGENTS.md` remains the 
 - Keep database URLs, session secrets, Gemini keys and storage credentials in server environment configuration. Never commit real secrets, echo them in errors, or log them.
 - Keep private image files outside public/static roots. Deliver them only through authenticated owner-scoped routes with safe content/disposition headers and private cache policy.
 
-## Gemini and local image storage
+## Gemini and Cloudinary image storage
 
 - Use only the official Node.js SDK `@google/genai`, from the server. Read current Google documentation and verify image-generation capability, project access, limits and pricing for the selected model before enabling calls. Model ID comes from `GEMINI_IMAGE_MODEL`; the API key comes from `GEMINI_API_KEY`. Do not presume a free tier, enable billing, or make a billable request without explicit authorization.
 - Do not send Gemini requests from the frontend. Never log the key, raw response, or image bytes. An ambiguous timeout after dispatch is `needs_review` unless provider evidence proves the call was not accepted; do not retry inference blindly.
-- For local demo storage, use a configured root (proposed default `backend/data/images`) outside any web static root. Generate opaque server-owned filenames; do not use prompts, user filenames or client paths as disk paths. Validate decoded file size, allowed MIME and file signature before persistence; use restrictive filesystem permissions and safe atomic temp-write/rename where supported.
-- Create an `images` metadata record only for a validated persisted result. Mark generation `succeeded` only after file and metadata are persisted. On failure, remove temporary/partial files and compensate metadata/state safely; make cleanup idempotent and retain cleanup/reconciliation evidence when deletion fails. User deletion hides the image from Library immediately while generation history remains; physical file cleanup follows the approved retryable deletion policy.
-- Local storage is single-host/demo storage: replicas do not share files, ephemeral disks can lose them, and backup/retention/durability require a deployment decision before production.
+- Store images in Cloudinary using server-side credentials only. Use authenticated delivery, `resource_type: image`, unique server-generated public IDs and dynamic `asset_folder` values based on the session-derived MongoDB user `_id`; never accept a folder or public ID from the client as authorization.
+- Validate decoded image size, supported format and file signature before upload. Do not log Base64, credentials or raw Cloudinary responses. Map provider timeouts to an uncertain outcome; do not retry uploads blindly. Cloudinary deletion must follow an owner-checked database lookup and remain idempotent.
+- MongoDB stores only image metadata and Cloudinary identifiers. Keep generation success conditional on persisted image metadata; authenticated image delivery and retryable deletion must be implemented behind owner-scoped API routes before frontend use. Confirm the Cloudinary account uses dynamic folder mode before uploading because `asset_folder` is not supported in fixed-folder mode.
 
 ## Change and verification workflow
 

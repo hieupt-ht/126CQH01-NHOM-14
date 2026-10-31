@@ -1,10 +1,12 @@
 import { GenerationService } from './modules/generations/service.js';
 import { CloudflareProvider } from './providers/cloudflare.js';
-import { AzureBlobStorage, StorageRegistry } from './storage/storage.js';
+import { CloudinaryImageStorage, StorageRegistry } from './storage/storage.js';
+import { configureCloudinary, getCloudinaryClient } from './config/cloudinary.js';
 import { once } from 'node:events';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import type { Server } from 'node:http';
+import mongoose from 'mongoose';
 import { createApp } from './app.js';
 import { AppConfig, validateEnv } from './config/env.js';
 import { connectMongo, disconnectMongo } from './config/database.js';
@@ -15,15 +17,25 @@ const workers = new WeakMap<Server, GenerationService>();
 export async function startServer(config: AppConfig = validateEnv()): Promise<Server> {
   await connectMongo(config.mongodbUri, {
     serverSelectionTimeoutMS: config.mongodbServerSelectionTimeoutMs,
+    ...(config.mongodbUsername !== undefined && config.mongodbPassword !== undefined
+      ? { auth: { username: config.mongodbUsername, password: config.mongodbPassword }, authSource: config.mongodbAuthSource }
+      : {}),
   });
 
   try {
+    if (config.generationEnabled) {
+      const hello = await mongoose.connection.db!.admin().command({ hello: 1 });
+      if ((!hello.setName && hello.msg !== 'isdbgrid') || !hello.isWritablePrimary)
+        throw new Error('Image generation requires a writable MongoDB replica set or sharded cluster.');
+    }
     if (config.mongooseAutoIndex) await createDeclaredIndexes();
-    const storage = config.azureAccountUrl && config.azureContainer ? new AzureBlobStorage(config.azureAccountUrl, config.azureContainer, config.azureAccountAlias, config.storageNamespace) : undefined;
-    const registry = new StorageRegistry(storage ? new Map([['azure:' + config.azureAccountAlias, storage]]) : new Map());
+    const hasStorage = Boolean(config.cloudinaryCloudName && config.cloudinaryApiKey && config.cloudinaryApiSecret);
+    if (hasStorage) configureCloudinary(config);
+    const storage = hasStorage ? new CloudinaryImageStorage(getCloudinaryClient(), config.cloudinaryAccountAlias, config.storageNamespace, config.maxImageUploadMb, config.cloudinaryTimeoutMs) : undefined;
+    const registry = new StorageRegistry(storage ? new Map([['cloudinary:' + config.cloudinaryAccountAlias, storage]]) : new Map());
     const generations = storage ? new GenerationService(new CloudflareProvider(config.cloudflareAccountId ?? '', config.cloudflareApiToken ?? ''), storage,
       { userLimit: config.dailyUserLimit, appLimit: config.dailyAppLimit, cooldownMs: 15000, checkpointDir: config.imageStorageDir }, registry, config.generationEnabled) : undefined;
-    const server = createApp(config, { generations: config.generationEnabled ? generations : undefined, registry, userLimit: config.dailyUserLimit, appLimit: config.dailyAppLimit }).listen(config.port);
+    const server = createApp(config, { generations: config.generationEnabled ? generations : undefined, registry, userLimit: config.dailyUserLimit, appLimit: config.dailyAppLimit }).listen(config.port, '0.0.0.0');
     if (generations) { workers.set(server, generations); generations.start(); }
     await once(server, 'listening');
     console.info(`Backend listening on port ${config.port}.`);

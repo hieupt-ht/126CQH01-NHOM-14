@@ -335,6 +335,7 @@ export class GenerationService {
         "generations/" + String(job._id) + "/original." + meta.format,
         bytes,
         "image/" + meta.format,
+        String(job.userId),
       );
       await mongoose.connection.transaction(async (session) => {
         const owned = await GenerationModel.findOne({

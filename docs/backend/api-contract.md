@@ -4,7 +4,7 @@
 
 # REST API Contract — bản thiết kế đề xuất
 
-**Trạng thái:** thiết kế tài liệu, chưa triển khai. API prefix `/api/v1`, opaque server-side session, Gemini provider qua official `@google/genai`, model environment-configured và local filesystem cho giai đoạn demo/local-first là **CONFIRMED** theo quyết định chủ dự án. PRD và contract cũ có endpoint `/api/...` và FLUX/Cloudflare; API coordination contract được đồng bộ sang `/api/v1`, còn PRD giữ nguyên làm nguồn nghiệp vụ lịch sử. Không gọi provider hay kết nối dịch vụ trong task này.
+**Trạng thái:** thiết kế tài liệu, chưa triển khai nghiệp vụ. API prefix `/api/v1`, opaque server-side session, Gemini provider qua official `@google/genai`, model environment-configured và Cloudinary authenticated image storage là **CONFIRMED** theo quyết định chủ dự án. PRD và contract cũ có endpoint `/api/...` và FLUX/Cloudflare; API coordination contract được đồng bộ sang `/api/v1`, còn PRD giữ nguyên làm nguồn nghiệp vụ lịch sử. Không gọi provider hay kết nối dịch vụ trong task này.
 
 ## 1. Quy ước chung
 
@@ -68,12 +68,12 @@ Acceptance must atomically coordinate idempotency resolution, daily quota reserv
 
 `PATCH isFavorite` bị hoãn P1, dù dùng chung resource endpoint. Private image bytes and downloads are streamed from API only after ownership check; no public static directory, public URL, signed URL, storage credential, or client-selected path. `GET /images/:id/content` formalizes private inline delivery required by Library and Detail. A hard delete only follows successful or reconciled file cleanup; history remains.
 
-### Gemini provider and local storage boundary
+### Gemini provider and Cloudinary storage boundary
 
 - Server only uses official Google Gen AI JavaScript SDK (`@google/genai`); provider key remains server environment (`GEMINI_API_KEY`) and model is selected by `GEMINI_IMAGE_MODEL`. One prompt produces one image. No frontend provider call and no user-provided model/settings.
 - Google documentation currently demonstrates JavaScript image output using `@google/genai`; its model reference marks `gemini-3-pro-image` as supporting image generation. This verifies that a Gemini image-generation model exists, not that this project has access or that this exact model is selected. Keep `GEMINI_IMAGE_MODEL` unset/explicitly configured until access and terms are confirmed. No free tier, price, quota, output format or dimensions are assumed. Billing must not be enabled by this contract, and implementation must not issue a paid API call without separate authorization. Sources: [Gemini image generation](https://ai.google.dev/gemini-api/docs/image-generation), [Gemini 3 Pro image model capability](https://ai.google.dev/gemini-api/docs/models/gemini-3-pro-image).
 - Save provider output to server temp storage, validate decoded bytes against configured size limit, allowed image MIME signatures, and readable dimensions; then move to opaque random filename under `IMAGE_STORAGE_DIR` (`backend/data/images` local default). DB stores a relative key only. Exact maximum bytes/dimensions remain OPEN QUESTION.
-- Filesystem storage is local-demo/single-instance only. It is not assumed durable across deploy/restart or shared across replicas. Deployment needs a persistent volume and backup/reconciliation policy or a separately approved private storage service.
+- Cloudinary credentials remain server-only. Upload to authenticated delivery with opaque public IDs and dynamic `asset_folder`; store Cloudinary identifiers in image metadata. The configured Cloudinary account must use dynamic folders before upload. Authenticated content/download delivery remains owner-scoped behind the application API.
 - Provider failure cleans temporary files. Uncertain provider result is `needs_review`, never automatic re-generation. Metadata failure after file write is recoverable/reconciled without a second provider inference. Image deletion is soft-delete first, then retryable physical cleanup tracked in `storageDeletionStatus`.
 
 ## 3. P1 endpoints sau khi P0 ổn định
@@ -108,6 +108,6 @@ Các error code theo contract hiện có cần giữ nhất quán: `INVALID_PROM
 
 ## 5. Còn cần chốt trước implementation
 
-- **CONFIRMED:** `/api/v1`; opaque server-side HttpOnly session, no JWT; Google AI Studio/Gemini through official Node SDK; model via environment; local filesystem for local demo; private API delivery; five collections; one prompt → one image and all PRD lifecycle/idempotency/quota/ownership/history invariants.
+- **CONFIRMED:** `/api/v1`; opaque server-side HttpOnly session, no JWT; Google AI Studio/Gemini through official Node SDK; model via environment; Cloudinary authenticated storage; private API delivery; five collections; one prompt → one image and all PRD lifecycle/idempotency/quota/ownership/history invariants.
 - **PROPOSAL:** `SameSite=Lax`, Secure under HTTPS, exact-origin CORS, origin checks plus synchronizer CSRF token; `GET /auth/csrf`; `IMAGE_STORAGE_DIR` local default; `GET /images/:id/content`; default cursor limit 20/max 50.
 - **OPEN QUESTION:** concrete session lifetime, password hash library, exact cookie/CORS/CSRF bootstrap details by deployment topology; exact Gemini model ID/access/availability and verified response MIME/dimensions; quota values, prompt/title constraints, file size/dimension ceiling; persistent production storage/backup and retention/purge policy. Do not add guessed values or enable billing while unanswered.
