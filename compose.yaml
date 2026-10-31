@@ -33,13 +33,16 @@ services:
       MONGODB_SERVER_SELECTION_TIMEOUT_MS: ${MONGODB_SERVER_SELECTION_TIMEOUT_MS:-5000}
       MONGOOSE_AUTO_INDEX: ${MONGOOSE_AUTO_INDEX:-true}
       FRONTEND_ORIGIN: ${FRONTEND_ORIGIN:-http://localhost:5173}
-      IMAGE_STORAGE_DIR: /app/data/images
+      CLOUDINARY_CLOUD_NAME: ${CLOUDINARY_CLOUD_NAME:?Set CLOUDINARY_CLOUD_NAME in .env}
+      CLOUDINARY_API_KEY: ${CLOUDINARY_API_KEY:?Set CLOUDINARY_API_KEY in .env}
+      CLOUDINARY_API_SECRET: ${CLOUDINARY_API_SECRET:?Set CLOUDINARY_API_SECRET in .env}
+      CLOUDINARY_TIMEOUT_MS: ${CLOUDINARY_TIMEOUT_MS:-30000}
+      MAX_IMAGE_UPLOAD_MB: ${MAX_IMAGE_UPLOAD_MB:-10}
     ports:
       - "3000:3000"
     volumes:
       - ./backend/src:/app/src
       - /app/node_modules
-      - backend_image_data:/app/data/images
     depends_on:
       mongodb:
         condition: service_healthy
@@ -77,4 +80,3 @@ services:
 
 volumes:
   mongodb_data:
-  backend_image_data:

@@ -1,5 +1,5 @@
 import 'dotenv/config';
-import { resolve } from 'node:path';
+import { DEFAULT_MAX_IMAGE_UPLOAD_MB, MAX_IMAGE_UPLOAD_MB } from './image-upload.js';
 
 export type NodeEnvironment = 'development' | 'test' | 'production';
 export type SameSitePolicy = 'lax' | 'strict' | 'none';
@@ -20,7 +20,11 @@ export interface AppConfig {
   sessionCookieSecure: boolean;
   geminiApiKey?: string;
   geminiImageModel?: string;
-  imageStorageDir: string;
+  cloudinaryCloudName: string;
+  cloudinaryApiKey: string;
+  cloudinaryApiSecret: string;
+  cloudinaryTimeoutMs: number;
+  maxImageUploadMb: number;
 }
 
 export class EnvironmentValidationError extends Error {
@@ -51,6 +55,12 @@ function readBoolean(source: EnvSource, key: string, fallback: boolean): boolean
   if (raw === 'true') return true;
   if (raw === 'false') return false;
   throw new EnvironmentValidationError(`${key} must be true or false.`);
+}
+
+function readRequiredValue(source: EnvSource, key: string): string {
+  const value = source[key]?.trim();
+  if (!value) throw new EnvironmentValidationError(`${key} is required.`);
+  return value;
 }
 
 function readOrigin(source: EnvSource): string {
@@ -111,6 +121,10 @@ export function validateEnv(source: EnvSource = process.env): AppConfig {
     sessionCookieSecure,
     geminiApiKey: source.GEMINI_API_KEY?.trim() || undefined,
     geminiImageModel: source.GEMINI_IMAGE_MODEL?.trim() || undefined,
-    imageStorageDir: resolve(source.IMAGE_STORAGE_DIR?.trim() || 'data/images'),
+    cloudinaryCloudName: readRequiredValue(source, 'CLOUDINARY_CLOUD_NAME'),
+    cloudinaryApiKey: readRequiredValue(source, 'CLOUDINARY_API_KEY'),
+    cloudinaryApiSecret: readRequiredValue(source, 'CLOUDINARY_API_SECRET'),
+    cloudinaryTimeoutMs: readInteger(source, 'CLOUDINARY_TIMEOUT_MS', 30000, 1000, 120000),
+    maxImageUploadMb: readInteger(source, 'MAX_IMAGE_UPLOAD_MB', DEFAULT_MAX_IMAGE_UPLOAD_MB, 1, MAX_IMAGE_UPLOAD_MB),
   };
 }
