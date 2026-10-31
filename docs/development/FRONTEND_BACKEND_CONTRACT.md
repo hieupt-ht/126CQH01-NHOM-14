@@ -1,3 +1,7 @@
+> **Implementation30/10:** Endpoint/DTO/cookie/schema thực thi mới được ghi tại [08-IMPLEMENTATION-STATUS](../technical-baseline/08-IMPLEMENTATION-STATUS.md). Đọc08 trước các proposal/lịch sử bên dưới.
+
+> **Cập nhật 30/10/2026:** Đọc [baseline kỹ thuật mới](../technical-baseline/README.md) trước. Các lựa chọn Gemini/local làm storage cuối trong nội dung bên dưới là lịch sử và đã được thay bởi hướng FLUX/cloud. API/schema tương thích vẫn được giữ; Azure Blob private đã chốt, có adapter/migration để đổi Cloudinary theo baseline07. Không dùng đề xuất cũ để tự bật dịch vụ hoặc sửa code.
+
 # Frontend/Backend Contract
 
 This is the frontend/backend coordination contract for implementation. The project owner confirmed `/api/v1`, opaque server-side sessions with HttpOnly cookies (no JWT), Google AI Studio/Gemini through the official Node.js SDK, and local filesystem storage for local demo. Older `/api` paths and FLUX/Cloudflare details in Issue #1/`PRD.md` are legacy source requirements; implementation follows this confirmed backend decision while preserving the product invariants below. Gemini model ID and access/limits remain integration-time OPEN QUESTION.

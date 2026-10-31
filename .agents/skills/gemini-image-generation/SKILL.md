@@ -3,6 +3,8 @@ name: gemini-image-generation
 description: Integrate the official Google Gen AI Node.js SDK for approved server-side image generation with FLUX STUDIO lifecycle, quota and recovery invariants.
 ---
 
+> HISTORICAL: project target is now FLUX/Cloudflare. Do not invoke this Gemini workflow for current generation work. Read docs/technical-baseline/README.md.
+
 # Gemini Image Generation
 
 ## Use when

@@ -1,0 +1,108 @@
+{
+  "generatedAt": "2026-10-30T15:49:33.684Z",
+  "dataset": "10000 synthetic metadata, no AI/cloud calls",
+  "mongodbVersion": "8.2.6",
+  "before": {
+    "nReturned": 20,
+    "totalDocsExamined": 10000,
+    "totalKeysExamined": 0,
+    "executionTimeMillis": 15,
+    "winningPlan": {
+      "isCached": false,
+      "stage": "SORT",
+      "sortPattern": {
+        "createdAt": -1,
+        "_id": -1
+      },
+      "memLimit": 104857600,
+      "limitAmount": 20,
+      "type": "simple",
+      "inputStage": {
+        "stage": "COLLSCAN",
+        "filter": {
+          "$and": [
+            {
+              "deletedAt": {
+                "$eq": null
+              }
+            },
+            {
+              "userId": {
+                "$eq": "6ae4bc8d33d7ae822b69fcb1"
+              }
+            }
+          ]
+        },
+        "direction": "forward"
+      }
+    }
+  },
+  "after": {
+    "nReturned": 20,
+    "totalDocsExamined": 20,
+    "totalKeysExamined": 20,
+    "executionTimeMillis": 4,
+    "winningPlan": {
+      "isCached": false,
+      "stage": "LIMIT",
+      "limitAmount": 20,
+      "inputStage": {
+        "stage": "FETCH",
+        "filter": {
+          "deletedAt": {
+            "$eq": null
+          }
+        },
+        "inputStage": {
+          "stage": "IXSCAN",
+          "keyPattern": {
+            "userId": 1,
+            "deletedAt": 1,
+            "createdAt": -1,
+            "_id": -1
+          },
+          "indexName": "course_user_library",
+          "isMultiKey": false,
+          "multiKeyPaths": {
+            "userId": [],
+            "deletedAt": [],
+            "createdAt": [],
+            "_id": []
+          },
+          "isUnique": false,
+          "isSparse": false,
+          "isPartial": false,
+          "indexVersion": 2,
+          "direction": "forward",
+          "indexBounds": {
+            "userId": [
+              "[ObjectId('6ae4bc8d33d7ae822b69fcb1'), ObjectId('6ae4bc8d33d7ae822b69fcb1')]"
+            ],
+            "deletedAt": [
+              "[null, null]"
+            ],
+            "createdAt": [
+              "[MaxKey, MinKey]"
+            ],
+            "_id": [
+              "[MaxKey, MinKey]"
+            ]
+          }
+        }
+      }
+    }
+  },
+  "aggregation": [
+    {
+      "_id": "failed",
+      "count": 143,
+      "averageDurationMs": 3487.4825174825173
+    },
+    {
+      "_id": "succeeded",
+      "count": 857,
+      "averageDurationMs": 3496.2543757292883
+    }
+  ],
+  "validationRejected": true
+}

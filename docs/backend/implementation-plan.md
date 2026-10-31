@@ -1,3 +1,5 @@
+> **Cập nhật 30/10/2026:** Đọc [baseline kỹ thuật mới](../technical-baseline/README.md) trước. Các lựa chọn Gemini/local làm storage cuối trong nội dung bên dưới là lịch sử và đã được thay bởi hướng FLUX/cloud. API/schema tương thích vẫn được giữ; Azure Blob private đã chốt, có adapter/migration để đổi Cloudinary theo baseline07. Không dùng đề xuất cũ để tự bật dịch vụ hoặc sửa code.
+
 # Kế hoạch triển khai Backend theo phase
 
 **Trạng thái:** kế hoạch tài liệu, backend chưa triển khai nghiệp vụ. Scaffold hiện tại có Express, TypeScript strict, ES Modules, `express.json()` và `GET /api/health`; chưa có MongoDB, auth, provider, worker hoặc storage. Các phase dưới đây giữ toàn bộ invariant PRD: một prompt/một ảnh; lifecycle `queued → processing → saving → succeeded` hoặc `failed`/`needs_review`; idempotency; daily quota; tối đa một generation active/user; image ownership/private delivery; history khác library; lỗi an toàn.
