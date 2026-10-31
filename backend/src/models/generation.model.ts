@@ -40,6 +40,7 @@ export interface Generation {
   model: string;
   settings: Record<string, unknown>;
   status: GenerationStatus;
+  savingAttempts: number;
   imageId: Types.ObjectId | null;
   lease: GenerationLease | null;
   checkpoint: GenerationCheckpoint | null;
@@ -100,6 +101,7 @@ const generationSchema = new Schema<Generation>(
     provider: { type: String, required: true },
     model: { type: String, required: true },
     settings: { type: Schema.Types.Mixed, required: true, default: () => ({}) },
+    savingAttempts: { type: Number, default: 0, min: 0 },
     status: { type: String, enum: GENERATION_STATUSES, default: 'queued', required: true },
     imageId: { type: Schema.Types.ObjectId, ref: 'Image', default: null },
     lease: { type: leaseSchema, default: null },
@@ -117,4 +119,4 @@ generationSchema.index({ userId: 1, requestKey: 1 }, { unique: true, name: 'gene
 generationSchema.index({ userId: 1, createdAt: -1, _id: -1 }, { name: 'generations_user_history' });
 generationSchema.index({ status: 1, createdAt: 1 }, { name: 'generations_worker_scan' });
 
-export const GenerationModel = mongoose.models.Generation ?? mongoose.model<Generation>('Generation', generationSchema);
+export const GenerationModel: mongoose.Model<Generation> = (mongoose.models.Generation as mongoose.Model<Generation> | undefined) ?? mongoose.model<Generation>('Generation', generationSchema);
