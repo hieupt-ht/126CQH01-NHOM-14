@@ -140,3 +140,5 @@
   .artwork-dialog__body h2 { font-size: 20px; }
 }
 @media (hover: none) { .creation-card__view { opacity: 1; transform: none; } }
+
+.dashboard-live-thumb { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: var(--radius-lg); }

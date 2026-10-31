@@ -72,3 +72,5 @@
 @media (max-width: 900px) { .detail-layout { grid-template-columns: minmax(0, 1.35fr) minmax(280px, .9fr); gap: 15px; } .detail-art-panel, .detail-info-panel { padding: 16px; } }
 @media (max-width: 767px) { .detail-page { gap: 14px; } .detail-demo-banner { align-items: flex-start; } .detail-layout { grid-template-columns: 1fr; gap: 14px; } .detail-art-panel { order: 1; } .detail-info-panel { order: 2; } .detail-panel-heading h1 { font-size: 17px; } .detail-art-caption { font-size: 8px; } .detail-dialog { padding: 17px; } .detail-dialog--lightbox { padding: 8px; } .detail-toast { right: 16px; bottom: 16px; } }
 @media (prefers-reduced-motion: reduce) { .detail-page, .detail-toast { animation: none; } }
+
+.detail-live-art { display: block; width: 100%; max-height: 75svh; object-fit: contain; border-radius: var(--radius-lg); }
