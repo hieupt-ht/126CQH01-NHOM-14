@@ -1,3 +1,6 @@
+import { GenerationService } from './modules/generations/service.js';
+import { CloudflareProvider } from './providers/cloudflare.js';
+import { AzureBlobStorage, StorageRegistry } from './storage/storage.js';
 import { once } from 'node:events';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -7,6 +10,8 @@ import { AppConfig, validateEnv } from './config/env.js';
 import { connectMongo, disconnectMongo } from './config/database.js';
 import { createDeclaredIndexes } from './models/index.js';
 
+const workers = new WeakMap<Server, GenerationService>();
+
 export async function startServer(config: AppConfig = validateEnv()): Promise<Server> {
   await connectMongo(config.mongodbUri, {
     serverSelectionTimeoutMS: config.mongodbServerSelectionTimeoutMs,
@@ -14,7 +19,12 @@ export async function startServer(config: AppConfig = validateEnv()): Promise<Se
 
   try {
     if (config.mongooseAutoIndex) await createDeclaredIndexes();
-    const server = createApp(config).listen(config.port);
+    const storage = config.azureAccountUrl && config.azureContainer ? new AzureBlobStorage(config.azureAccountUrl, config.azureContainer, config.azureAccountAlias, config.storageNamespace) : undefined;
+    const registry = new StorageRegistry(storage ? new Map([['azure:' + config.azureAccountAlias, storage]]) : new Map());
+    const generations = storage ? new GenerationService(new CloudflareProvider(config.cloudflareAccountId ?? '', config.cloudflareApiToken ?? ''), storage,
+      { userLimit: config.dailyUserLimit, appLimit: config.dailyAppLimit, cooldownMs: 15000, checkpointDir: config.imageStorageDir }, registry, config.generationEnabled) : undefined;
+    const server = createApp(config, { generations: config.generationEnabled ? generations : undefined, registry, userLimit: config.dailyUserLimit, appLimit: config.dailyAppLimit }).listen(config.port);
+    if (generations) { workers.set(server, generations); generations.start(); }
     await once(server, 'listening');
     console.info(`Backend listening on port ${config.port}.`);
     return server;
@@ -25,6 +35,7 @@ export async function startServer(config: AppConfig = validateEnv()): Promise<Se
 }
 
 export async function shutdown(server: Server): Promise<void> {
+  await workers.get(server)?.stop();
   await new Promise<void>((resolveClose, rejectClose) => {
     server.close((error) => (error ? rejectClose(error) : resolveClose()));
   });
