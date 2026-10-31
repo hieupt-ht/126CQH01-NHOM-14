@@ -108,7 +108,7 @@ export function createCloudinaryService(
     validateImage(input.bytes, maxImageBytes);
 
     const publicId = makePublicId();
-    if (!/^[a-f\d-]{36}$/i.test(publicId)) throw new Error('Cloudinary asset ID generator returned an invalid ID.');
+    if (!/^[a-zA-Z0-9_-]+(?:\/[a-zA-Z0-9_-]+)*$/.test(publicId)) throw new Error('Cloudinary asset ID generator returned an invalid ID.');
     const options: UploadApiOptions = {
       asset_folder: `ai-image-studio/users/${input.userId}/${category}`,
       public_id: publicId,
@@ -146,6 +146,7 @@ export function createCloudinaryService(
       throw new CloudinaryStorageError('CLOUDINARY_RESULT_UNCERTAIN', 'unknown');
     }
 
+    if (result.public_id !== publicId) throw new CloudinaryStorageError('CLOUDINARY_RESULT_UNCERTAIN', 'unknown');
     return {
       imageUrl: result.secure_url,
       publicId: result.public_id,
@@ -170,7 +171,7 @@ export function createCloudinaryService(
       return upload(input, 'avatars');
     },
     async deleteImage(publicId: string): Promise<'deleted' | 'already_deleted'> {
-      if (!/^[a-f\d-]{36}$/i.test(publicId)) throw new TypeError('A valid Cloudinary image ID is required.');
+      if (!/^[a-zA-Z0-9_-]+(?:\/[a-zA-Z0-9_-]+)*$/.test(publicId)) throw new TypeError('A valid Cloudinary image ID is required.');
       try {
         const result = await client.uploader.destroy(publicId, {
           resource_type: 'image',

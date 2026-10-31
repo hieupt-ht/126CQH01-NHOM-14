@@ -7,7 +7,7 @@ interface BodyParserError extends Error {
 }
 
 export const errorHandler: ErrorRequestHandler = (error: unknown, _request, response, _next) => {
-  if (response.headersSent) return;
+  if (response.headersSent) { _next(error); return; }
 
   if (error instanceof AppError) {
     response.status(error.statusCode).json({

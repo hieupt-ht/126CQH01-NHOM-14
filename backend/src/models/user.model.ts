@@ -50,4 +50,4 @@ const userSchema = new Schema<User>(
 
 userSchema.index({ email: 1 }, { unique: true, name: 'users_email_unique' });
 
-export const UserModel = mongoose.models.User ?? mongoose.model<User>('User', userSchema);
+export const UserModel: mongoose.Model<User> = (mongoose.models.User as mongoose.Model<User> | undefined) ?? mongoose.model<User>('User', userSchema);

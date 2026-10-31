@@ -1,3 +1,5 @@
+import { createAuthRouter, type AuthConfig } from './modules/auth/auth.js';
+import { createProductRouter, type ProductDependencies } from './modules/product/routes.js';
 import cors from 'cors';
 import express, { type Express } from 'express';
 import helmet from 'helmet';
@@ -5,7 +7,7 @@ import { AppConfig } from './config/env.js';
 import { AppError } from './errors/app-error.js';
 import { errorHandler } from './middlewares/error-handler.js';
 
-export function createApp(config: Pick<AppConfig, 'frontendOrigin'>): Express {
+export function createApp(config: Pick<AppConfig, 'frontendOrigin'> & Partial<AuthConfig>, dependencies: ProductDependencies = {}): Express {
   const app = express();
 
   app.disable('x-powered-by');
@@ -35,6 +37,10 @@ export function createApp(config: Pick<AppConfig, 'frontendOrigin'>): Express {
   app.get('/api/health', (_request, response) => {
     response.json({ status: 'ok' });
   });
+
+  const authConfig: AuthConfig = { sessionCookieName: 'flux_session', sessionTtlDays: 7, sessionCookieSameSite: 'lax', sessionCookieSecure: false, ...config };
+  app.use('/api/v1/auth', createAuthRouter(authConfig));
+  app.use('/api/v1', createProductRouter(authConfig, dependencies));
 
   app.use((_request, _response, next) => {
     next(new AppError(404, 'NOT_FOUND', 'The requested resource was not found.'));

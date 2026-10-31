@@ -1,5 +1,24 @@
 # FLUX STUDIO — Project Rules
 
+## Baseline mới nhất — 01/11/2026
+
+CONFIRMED mới nhất: chủ dự án chọn **Cloudinary Free làm storage chính cho MVP**, thay Azure trước đó.
+Đọc `docs/technical-baseline/09-CLOUDINARY-DECISION.md` trước các quyết định storage cũ.
+Giữ FLUX/Cloudflare, session HttpOnly/Argon2id, MongoDB replica set và private delivery.
+Cải tiến sau đề tài bị HOÃN: `docs/project/POST_COMPLETION_IMPROVEMENTS.md`; chỉ mở sau khi nghiệm thu TẤT CẢ phạm vi gốc và được chủ dự án cho phép.
+Không commit/push/hoàn tất merge nếu chưa được yêu cầu; không gửi secret hoặc gọi cloud thật trong test.
+
+## Lịch sử baseline — 30/10/2026
+
+Đọc `docs/technical-baseline/README.md` và sổ quyết định trước các tài liệu cũ bên dưới.
+Yêu cầu mới của chủ dự án: FLUX.1 Schnell qua Cloudflare, cloud lưu ảnh, MongoDB local replica set, FE/BE chạy máy nhóm, ngân sách dịch vụ 0 đồng trong hạn mức.
+Azure Blob private đã chốt, dùng Azure for Students hiện có. Đọc `docs/technical-baseline/07-STORAGE-PORTABILITY.md`: tách adapter, registry theo từng record, giữ private/ID/ownership khi chuyển Cloudinary. Không triển khai cả hai provider ở MVP; không đổi cloud chỉ bằng replace URL.
+Các câu CONFIRMED về Gemini/local-final-storage phía dưới giữ như lịch sử, không còn là chỉ dẫn triển khai. Local checkpoint tạm vẫn có thể dùng cho recovery.
+Không áp dụng skill `gemini-image-generation` cho FLUX; không cài `@google/genai` theo tài liệu cũ. Phần không xung đột (API prefix, session, 5 collections, UI, security, lifecycle) giữ nguyên.
+Bộ baseline là tài liệu, không phải bằng chứng runtime đã đổi; các PROPOSAL về package/limits/auth policy cần duyệt khi triển khai.
+
+Đã có task tích hợp: đọc `docs/technical-baseline/08-IMPLEMENTATION-STATUS.md` cho contract cụ thể, dependency được chọn và giới hạn test; hướng dẫn máy mới tại `docs/development/LOCAL_RUN.md`. Không coi phần hiện trạng cũ phía dưới là endpoint hiện tại.
+
 ## 1. Project context
 
 - Product: FLUX STUDIO, website tạo và quản lý ảnh từ mô tả tự do.

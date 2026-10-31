@@ -1,3 +1,9 @@
+> **Chốt01/11:** Cloudinary authenticated là storage MVP, không bắt buộc credential khi generation tắt và chưa cấu hình cloud. [Quyết định hiện hành](../technical-baseline/09-CLOUDINARY-DECISION.md) thay các lựa chọn provider cũ bên dưới.
+
+> **Implementation30/10:** Endpoint/DTO/cookie/schema thực thi mới được ghi tại [08-IMPLEMENTATION-STATUS](../technical-baseline/08-IMPLEMENTATION-STATUS.md). Đọc08 trước các proposal/lịch sử bên dưới.
+
+> **Cập nhật 30/10/2026:** Đọc [baseline kỹ thuật mới](../technical-baseline/README.md) trước. Các lựa chọn Gemini/local làm storage cuối trong nội dung bên dưới là lịch sử và đã được thay bởi hướng FLUX/cloud. API/schema tương thích vẫn được giữ; Azure Blob private đã chốt, có adapter/migration để đổi Cloudinary theo baseline07. Không dùng đề xuất cũ để tự bật dịch vụ hoặc sửa code.
+
 # REST API Contract — bản thiết kế đề xuất
 
 **Trạng thái:** thiết kế tài liệu, chưa triển khai nghiệp vụ. API prefix `/api/v1`, opaque server-side session, Gemini provider qua official `@google/genai`, model environment-configured và Cloudinary authenticated image storage là **CONFIRMED** theo quyết định chủ dự án. PRD và contract cũ có endpoint `/api/...` và FLUX/Cloudflare; API coordination contract được đồng bộ sang `/api/v1`, còn PRD giữ nguyên làm nguồn nghiệp vụ lịch sử. Không gọi provider hay kết nối dịch vụ trong task này.

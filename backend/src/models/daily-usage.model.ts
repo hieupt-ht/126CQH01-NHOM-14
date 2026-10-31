@@ -30,4 +30,4 @@ dailyUsageSchema.index(
   { unique: true, name: 'daily_usage_scope_date_unique' },
 );
 
-export const DailyUsageModel = mongoose.models.DailyUsage ?? mongoose.model<DailyUsage>('DailyUsage', dailyUsageSchema);
+export const DailyUsageModel: mongoose.Model<DailyUsage> = (mongoose.models.DailyUsage as mongoose.Model<DailyUsage> | undefined) ?? mongoose.model<DailyUsage>('DailyUsage', dailyUsageSchema);
