@@ -1,106 +1,74 @@
-# Local Development with Docker Compose
+# Docker local — MongoDB replica set và Cloudinary
 
-This setup runs the existing Vite frontend, Express/TypeScript backend and authenticated MongoDB in containers. It is for local development; do not reuse the example credentials or development configuration in a deployed environment.
+Cập nhật01/11/2026. Chỉ dành local demo/development, không phải cấu hình production.
+Giữ hạ tầng Docker của Hiếu và tích hợp worker/session của nhóm. Nguồn storage: [09](../technical-baseline/09-CLOUDINARY-DECISION.md).
 
-## Requirements
+## Chuẩn bị
+Docker Desktop/Engine đang chạy, Compose plugin mới, các cổng5173/3000/27017 không bị chiếm.
+Nếu chỉ xem UI: không cần Docker/backend/DB; chạy frontend npm run dev theo [LOCAL_RUN](LOCAL_RUN.md).
+Docker dùng official mongo:8.0.32-noble và Node24. Không xóa volume dữ liệu hiện có.
 
-- Docker Desktop (or Docker Engine with the Compose plugin) with the daemon running.
-- A recent Docker Compose plugin.
-- Node.js 24 is used by the frontend and backend images. The repository lockfiles use npm; each Dockerfile runs `npm ci`.
-- Ports 5173, 3000 and 27017 available on the host. MongoDB is published only on `127.0.0.1` for local Compass access.
+Tạo file `.env` riêng ở repo root bằng editor. Không gửi lên Git hoặc chat:
 
-The MongoDB service uses the official `mongo:8.0.32-noble` image. Compose keeps database files in the `mongodb_data` named volume and local image files in the separate `backend_image_data` named volume.
+~~~env
+MONGO_INITDB_ROOT_USERNAME=flux_dev
+MONGO_INITDB_ROOT_PASSWORD=REPLACE_WITH_YOUR_OWN_LOCAL_PASSWORD
+MONGO_DATABASE=flux_studio
+MONGODB_HOST_PORT=27017
+FRONTEND_ORIGIN=http://localhost:5173
+VITE_UI_PREVIEW=true
+GENERATION_ENABLED=false
+~~~
 
-## Configure environment
+Các giá trị trên là tên/placeholder, không phải credential dùng chung. Không giữ password placeholder.
+Compose truyền MongoDB password tách URI. Chưa cần Cloudinary khi chỉ demo tài khoản/DB.
+Để dùng auth/API thật, đổi VITE_UI_PREVIEW=false trong root .env rồi recreate frontend.
+frontend/.env.local áp dụng khi chạy Vite ngoài Docker; Compose truyền env riêng trong container.
+Khi bật tạo ảnh, thêm biến Cloudflare/Cloudinary theo LOCAL_RUN rồi đặt GENERATION_ENABLED=true.
+Không đưa provider key vào bất kỳ biến VITE_* nào.
 
-From the repository root, create the ignored local environment file:
+## Khởi động
 
-```powershell
-Copy-Item .env.example .env
-```
-
-Replace `MONGO_INITDB_ROOT_PASSWORD` in `.env` with a unique local random value. `.env` is ignored by Git. Compose passes the database URI and credentials only to the backend; Mongoose receives credentials separately from the URI, so URI-reserved password characters do not need manual encoding. No database credentials are passed to the frontend.
-
-The root `.env.example` configures:
-
-| Variable | Purpose | Default |
-|---|---|---|
-| `MONGO_INITDB_ROOT_USERNAME` | MongoDB development administrator | `flux_dev` |
-| `MONGO_INITDB_ROOT_PASSWORD` | Local MongoDB password; replace before starting | Placeholder |
-| `MONGO_DATABASE` | Database name used by the backend URI | `flux_studio` |
-| `MONGODB_HOST_PORT` | Host-only MongoDB port for Compass | `27017` |
-| `MONGODB_SERVER_SELECTION_TIMEOUT_MS` | Backend connection timeout | `5000` |
-| `MONGOOSE_AUTO_INDEX` | Apply declared model indexes on backend startup in development | `true` |
-| `FRONTEND_ORIGIN` | Exact browser origin allowed by the backend | `http://localhost:5173` |
-
-The backend also has existing optional session, image storage and Gemini variables documented in `backend/.env.example`. Compose does not pass `GEMINI_API_KEY` or `GEMINI_IMAGE_MODEL`, and this setup never calls Gemini.
-
-## Start and inspect services
-
-```powershell
-docker compose config
+~~~cmd
+docker compose config --quiet
 docker compose up --build
-```
+~~~
 
-Open the frontend at <http://localhost:5173>. The backend health endpoint is <http://localhost:3000/api/health>. Vite proxies `/api` requests to the backend service over the Compose network. Source directories are bind mounted for live reload; dependency directories stay in container volumes. Vite polling is enabled to support Docker Desktop file sharing.
+Không xuất nguyên docker compose config ra chat vì nội dung có thể gồm secret đã nội suy.
+Services:
+- mongodb-key: tạo keyfile một lần trong mongodb_key, quyền400, không in key.
+- mongodb: auth + rs0, volume mongodb_data giữ nguyên.
+- mongodb-init: xác thực, khởi tạo rs0 nếu chưa có, đợi PRIMARY; chạy lại không reset DB.
+- backend: đợi init thành công, giữ checkpoint ở backend_checkpoints, port3000.
+- frontend: Vite dev/proxy backend, port5173, preview mặc định true.
 
-In another terminal:
+Nếu volume cũ đã có dữ liệu: backup trước thay đổi; password phải khớp user đã tạo trong DB.
+MONGO_INITDB_* không đổi password của database đã tồn tại. Không sửa bằng cách xóa volume.
+Nếu rs0 đã có cấu hình hostname khác, kiểm tra cấu hình với người phụ trách; script không tự reconfig.
+MongoDB healthcheck ping không đủ chứng minh transaction; mongodb-init mới kiểm tra PRIMARY.
 
-```powershell
+## Kiểm tra và dừng
+
+~~~cmd
 docker compose ps
-docker compose logs -f frontend backend mongodb
-docker compose logs -f backend
-docker compose restart backend
-docker compose restart frontend
-docker compose restart mongodb
-```
-
-MongoDB has an authenticated `mongosh` healthcheck. Backend starts only after MongoDB reports healthy, connects before opening port 3000, and closes the HTTP listener and Mongoose connection on container shutdown. Backend health is checked at `/api/health`.
-
-## MongoDB Compass
-
-Connect to `mongodb://localhost:27017/` with:
-
-- Authentication method: Username / Password
-- Username and password: `MONGO_INITDB_ROOT_USERNAME` and `MONGO_INITDB_ROOT_PASSWORD` from `.env`
-- Authentication database: `admin`
-- Database: `MONGO_DATABASE` from `.env` (`flux_studio` by default)
-
-The backend connects over the internal Compose network using hostname `mongodb`; do not use `localhost` in the backend container URI.
-
-## Build and test
-
-The existing npm scripts run in their respective containers:
-
-```powershell
+docker compose logs mongodb-init
 docker compose exec backend npm run build
 docker compose exec frontend npm run build
 docker compose exec backend npm test
-```
-
-The optional database integration tests only write records when `MONGODB_TEST_URI` is explicitly configured to a dedicated test database. Do not point it at a shared, production or development database. To check health manually:
-
-```powershell
-Invoke-RestMethod http://localhost:3000/api/health
-docker compose exec mongodb mongosh --quiet --username $env:MONGO_INITDB_ROOT_USERNAME --password $env:MONGO_INITDB_ROOT_PASSWORD --authenticationDatabase admin --eval "db.adminCommand('ping')"
-```
-
-To run a service outside Compose, install from its lockfile with `npm ci` in `frontend/` or `backend/`. Start the backend with its `backend/.env.example` values adjusted to use the host URI `mongodb://<username>:<password>@127.0.0.1:27017/flux_studio?authSource=admin`; start the frontend with `npm run dev -- --host 0.0.0.0` in `frontend/`. Set `BACKEND_PROXY_TARGET=http://localhost:3000` if running Vite with a different proxy target.
-
-## Stop without deleting data
-
-```powershell
 docker compose down
-```
+~~~
 
-This stops and removes containers and the Compose network while preserving both named volumes. `docker compose up` reuses the data. **Do not use `docker compose down -v` unless you intentionally want to delete the MongoDB database and local image files.**
+Không chạy down -v: xóa cả DB/keyfile/checkpoint là mất dữ liệu.
+Không chạy dev:local bên trong Docker: lệnh đó dành MongoDB dev riêng ngoài Docker.
+Khi manifest/lockfile đổi phải rebuild và bảo đảm node_modules container được cập nhật;
+không xóa các named volume dữ liệu để cập nhật dependency.
 
-## Troubleshooting
+Compass từ Windows: mongodb://127.0.0.1:27017/?directConnection=true&replicaSet=rs0&authSource=admin,
+nhập username/password qua form Compass. Backend trong Docker dùng hostname mongodb:27017.
+Không mở MongoDB ra Internet; port host chỉ bind127.0.0.1. Backend/frontend là cấu hình dev,
+chỉ chạy trên mạng tin cậy; không dùng Compose này làm production.
 
-- **Cannot connect to Docker daemon:** start Docker Desktop/Engine, then retry `docker compose config` and `docker compose up --build`.
-- **Compose reports a missing environment value:** copy `.env.example` to `.env` at the repository root and replace the password placeholder.
-- **MongoDB healthcheck stays unhealthy:** inspect `docker compose logs mongodb`; verify the credentials in `.env`, and ensure port 27017 is free. Existing named-volume initialization credentials are not changed by editing `.env`; use the original credentials for that volume.
-- **Backend cannot select a MongoDB server:** check MongoDB health and the backend logs. The container URI must use hostname `mongodb` and `authSource=admin`.
-- **Port is already allocated:** change `MONGODB_HOST_PORT` for MongoDB; change host port mappings in `compose.yaml` for frontend/backend while retaining their container ports.
-- **Changes do not reload on Windows:** ensure `VITE_USE_POLLING=true` remains set for the frontend, then restart the affected service. Backend uses the existing `tsx watch` script.
-- **Unique index creation fails:** inspect duplicate records and reconcile through an approved database procedure. Do not drop collections or use `syncIndexes()` to force startup.
+## Trạng thái kiểm chứng
+Docker Engine chưa sẵn sàng ở phiên triển khai nên chưa test container build/khởi tạo/transaction Docker.
+Kiểm tra Compose --quiet không xác nhận Docker startup thành công. Replica set integration ngoài Docker
+đã có test tạm riêng; cloud calls vẫn giả lập. Cần smoke Docker có PRIMARY và transaction trước nghiệm thu.

@@ -1,5 +1,5 @@
 # Chạy FLUX STUDIO local từ máy mới
-Cập nhật31/10/2026. Node24.x, npm11.x; không cần mua VPS/domain.
+Cập nhật01/11/2026. Node24.x, npm11.x; không cần mua VPS/domain.
 
 ## 0. Xem giao diện trước, chưa cần DB/cloud (31/10/2026)
 
@@ -88,21 +88,24 @@ Tự điền secret trong backend/.env, không gửi vào chat hoặc Git.
 GENERATION_ENABLED=false
 CLOUDFLARE_ACCOUNT_ID=
 CLOUDFLARE_API_TOKEN=
-AZURE_STORAGE_ACCOUNT_URL=https://YOURACCOUNT.blob.core.windows.net
-AZURE_STORAGE_CONTAINER=generated-images
-AZURE_STORAGE_ACCOUNT_ALIAS=demo-primary
+CLOUDINARY_CLOUD_NAME=
+CLOUDINARY_API_KEY=
+CLOUDINARY_API_SECRET=
+CLOUDINARY_ACCOUNT_ALIAS=demo-primary
+CLOUDINARY_TIMEOUT_MS=30000
+MAX_IMAGE_UPLOAD_MB=10
 IMAGE_STORAGE_NAMESPACE=flux-studio/your-machine
 DAILY_USER_LIMIT=5
 DAILY_APP_LIMIT=20
 ~~~
-Azure: container đã tồn tại và private; backend không tự tạo resource/mua gói.
-Dùng Azure CLI đăng nhập đúng tenant/subscription hoặc credential Entra hợp lệ cho DefaultAzureCredential; cấp quyền data upload/read/delete cho phạm vi thích hợp.
-Xác minh spending limit,76USD còn lại và ngày hết hạn; không chuyển Pay-As-You-Go. Không cần Azure VM/CDN/private endpoint.
-Cloudflare: Workers Free, token Workers AI và model FLUX.1 Schnell được phép dùng.
-Mỗi máy/môi trường có IMAGE_STORAGE_NAMESPACE riêng nếu dùng chung cloud, tránh xóa ảnh dùng chung.
-Sau khi tự kiểm tra đủ, đặt GENERATION_ENABLED=true và restart backend.
-Một lượt smoke thật phải xác nhận: job→ảnh cloud→metadata→mở lại→download→xóa, usage trên dashboard provider.
-Chưa có smoke live trong lần triển khai này; không tuyên bố Azure/Cloudflare account đã hoạt động.
+Cloudinary: lấy credential trong dashboard rồi điền riêng vào backend/.env; không gửi secret vào chat/Git.
+Upload type authenticated, xem/tải qua backend kiểm tra session và ownership.
+FLUX qua Cloudflare; không gọi Gemini hoặc dịch vụ AI Cloudinary.
+Cloudinary và Cloudflare có hạn mức riêng; không tự nâng gói hoặc bật billing.
+GENERATION_ENABLED=true chỉ khi cả hai dịch vụ đã cấu hình và sẵn sàng.
+Mỗi máy có IMAGE_STORAGE_NAMESPACE riêng khi dùng chung tài khoản.
+Chưa có kiểm thử cloud live; adapter test dùng SDK/fetch giả lập.
+Với Docker, xem [DOCKER_SETUP](DOCKER_SETUP.md); cần replica set PRIMARY và giữ keyfile/volume.
 
 ## 5. Kiểm thử và báo cáo
 ~~~cmd
@@ -129,3 +132,10 @@ Kiểm thử trực quan desktop/mobile và smoke cloud vẫn cần thực hiệ
 -needs_review: không tự gọi lại inference; cần đối soát checkpoint/log lỗi an toàn.
 -503 chưa cấu hình: hoàn thiện .env/identity/cloud; request chưa được nhận.
 
+
+## 7. Quyết định hiện tại và giới hạn
+Cloudinary là storage duy nhất được cấu hình ở runtime MVP; Azure SDK đã bỏ khỏi dependency.
+Không có ảnh Azure thật được chuyển; record provider cũ không tự đổi thành Cloudinary.
+.env.example từ nhánh cũ/stash có thể còn tên biến lịch sử; dùng bảng cấu hình ở mục4/09,
+không áp lại stash toàn bộ lên code mới. Không sửa hoặc đưa credential thật lên Git.
+Cải tiến sau đề tài: [chỉ ghi nhớ, chưa triển khai](../project/POST_COMPLETION_IMPROVEMENTS.md).

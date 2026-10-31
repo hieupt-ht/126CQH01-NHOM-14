@@ -1,6 +1,14 @@
 # FLUX STUDIO — Project Rules
 
-## Baseline mới nhất — 30/10/2026
+## Baseline mới nhất — 01/11/2026
+
+CONFIRMED mới nhất: chủ dự án chọn **Cloudinary Free làm storage chính cho MVP**, thay Azure trước đó.
+Đọc `docs/technical-baseline/09-CLOUDINARY-DECISION.md` trước các quyết định storage cũ.
+Giữ FLUX/Cloudflare, session HttpOnly/Argon2id, MongoDB replica set và private delivery.
+Cải tiến sau đề tài bị HOÃN: `docs/project/POST_COMPLETION_IMPROVEMENTS.md`; chỉ mở sau khi nghiệm thu TẤT CẢ phạm vi gốc và được chủ dự án cho phép.
+Không commit/push/hoàn tất merge nếu chưa được yêu cầu; không gửi secret hoặc gọi cloud thật trong test.
+
+## Lịch sử baseline — 30/10/2026
 
 Đọc `docs/technical-baseline/README.md` và sổ quyết định trước các tài liệu cũ bên dưới.
 Yêu cầu mới của chủ dự án: FLUX.1 Schnell qua Cloudflare, cloud lưu ảnh, MongoDB local replica set, FE/BE chạy máy nhóm, ngân sách dịch vụ 0 đồng trong hạn mức.

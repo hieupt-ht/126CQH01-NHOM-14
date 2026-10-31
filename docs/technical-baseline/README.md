@@ -1,3 +1,5 @@
+> **Hiện hành01/11:** đọc [quyết định09](09-CLOUDINARY-DECISION.md) trước. Cloudinary thay Azure ở MVP; migration thực tế chưa có. [Cải tiến](../project/POST_COMPLETION_IMPROVEMENTS.md) bị hoãn đến khi nghiệm thu đề tài gốc.
+
 # FLUX STUDIO — Bộ tài liệu kỹ thuật thống nhất
 Cập nhật: 31/10/2026. Baseline v1.2. Phân biệt thiết kế, code đã có và kiểm chứng live.
 
@@ -11,6 +13,7 @@ Cập nhật: 31/10/2026. Baseline v1.2. Phân biệt thiết kế, code đã c�
 7. [Storage adapter và chuyển cloud an toàn](07-STORAGE-PORTABILITY.md).
 
 8. [Contract triển khai và bằng chứng kiểm thử](08-IMPLEMENTATION-STATUS.md).
+9. [Cloudinary hiện hành và tích hợp develop](09-CLOUDINARY-DECISION.md).
 
 ## Trạng thái quyết định
 - CONFIRMED: chủ dự án đã chọn, nhóm triển khai theo.
@@ -29,16 +32,16 @@ Hướng dẫn chạy duy nhất cho máy nhóm là [LOCAL_RUN](../development/L
 
 - Development mặc định xem UI: không cần backend/DB/cloud, login mô phỏng và danh sách rỗng.
 - API thật: đặt frontend/.env.local `VITE_UI_PREVIEW=false`, restart Vite và chạy backend/MongoDB.
-- Backend có auth, generation worker, CRUD ảnh/history/stats, Cloudflare provider và Azure adapter.
+- Backend có auth, generation worker, CRUD ảnh/history/stats, Cloudflare provider và Cloudinary adapter.
 - Unit/integration dùng MongoDB tạm và provider/storage stub đã chạy; chưa kiểm chứng cloud live.
 - Production build luôn dùng xác thực/API thật; không có chế độ bỏ xác thực production.
 - Các mục PROPOSAL trong01–07 là thiết kế ban đầu nếu08 đã ghi quyết định triển khai mới hơn.
 - Tài liệu cũ có banner lịch sử; không dùng Gemini/local-final-storage làm quyết định hiện hành.
 
 ## Giới hạn bộ tài liệu
-CONFIRMED: Azure Blob private trước; chủ dự án đã có Azure for Students và báo còn76USD credit.
-CONFIRMED: phải đổi được sang Cloudinary sau này qua adapter và migration, giữ quyền riêng tư. Chỉ xây Azure ở MVP; xem07 trước mọi storage task.
-Delivery qua backend stream và Azure SDK đã có code; quyền Azure và cloud live chưa được kiểm chứng.
+CONFIRMED01/11: Cloudinary Free authenticated là storage MVP; credit Azure không còn là cấu hình bắt buộc.
+CONFIRMED: giữ adapter/registry để có thể đổi provider sau này. Chỉ Cloudinary hoạt động ở MVP; không chuyển file hoặc đổi descriptor cũ tự động.
+Delivery qua backend stream và Cloudinary SDK đã có code; cloud live chưa kiểm chứng.
 Import/export được mô tả cho công cụ nhóm; chưa duyệt nút import/export cho người dùng.
 
 ## Quản lý thay đổi

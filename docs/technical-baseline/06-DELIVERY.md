@@ -1,3 +1,5 @@
+> **Cập nhật01/11/2026:** [09-CLOUDINARY-DECISION](09-CLOUDINARY-DECISION.md) thay quyết định Azure-first bằng Cloudinary authenticated. Các mô tả Azure/chưa có Cloudinary dưới đây là lịch sử hoặc thiết kế mở rộng nếu mâu thuẫn09. Xem [LOCAL_RUN](../development/LOCAL_RUN.md) để chạy hiện tại.
+
 # 06 — Môi trường, backlog và nghiệm thu
 
 Cập nhật31/10/2026. Hướng dẫn chạy chi tiết ở [LOCAL_RUN](../development/LOCAL_RUN.md).

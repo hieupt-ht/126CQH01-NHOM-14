@@ -1,3 +1,5 @@
+> **Cập nhật01/11/2026:** [09-CLOUDINARY-DECISION](09-CLOUDINARY-DECISION.md) thay quyết định Azure-first bằng Cloudinary authenticated. Các mô tả Azure/chưa có Cloudinary dưới đây là lịch sử hoặc thiết kế mở rộng nếu mâu thuẫn09. Xem [LOCAL_RUN](../development/LOCAL_RUN.md) để chạy hiện tại.
+
 # 07 — Lưu trữ độc lập nhà cung cấp và chuyển cloud
 Ngày: 30/10/2026. Decision ST-18. Quy định thiết kế đã được chủ dự án yêu cầu; chưa triển khai adapter hoặc chuyển dữ liệu thật.
 

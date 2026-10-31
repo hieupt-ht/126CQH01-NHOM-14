@@ -1,6 +1,6 @@
 # FLUX STUDIO —126CQH01-NHOM-14
 
-Ứng dụng tạo và quản lý ảnh: React/TypeScript, Node.js/Express, MongoDB replica set, FLUX qua Cloudflare và Azure Blob private.
+Ứng dụng tạo và quản lý ảnh: React/TypeScript, Node.js/Express, MongoDB replica set, FLUX qua Cloudflare và Cloudinary authenticated.
 
 ## 1. Xem giao diện — chưa cần DB/cloud (mặc định development)
 
@@ -47,12 +47,15 @@ Khi muốn quay lại xem UI, đặt `VITE_UI_PREVIEW=true` rồi restart Vite.
 
 ## 3. Tạo ảnh thật — cần cấu hình riêng
 
-API thật không tự bật dịch vụ AI/cloud. Cần Cloudflare token, Azure identity và container private;
-làm theo [LOCAL_RUN](docs/development/LOCAL_RUN.md). Chưa kiểm thử live Cloudflare/Azure.
+API thật không tự bật dịch vụ AI/cloud. Cần Cloudflare token, Cloudinary credential và authenticated delivery;
+làm theo [LOCAL_RUN](docs/development/LOCAL_RUN.md). Chưa kiểm thử live Cloudflare/Cloudinary.
 Production build (`npm run build`/`npm run preview`) luôn tắt UI preview và cần backend/API thật.
 Khi triển khai bản build lên hosting cần reverse proxy `/api` tới backend.
 
 ## Tài liệu
+
+- [Quyết định Cloudinary hiện hành](docs/technical-baseline/09-CLOUDINARY-DECISION.md).
+- [Cải tiến sau hoàn thành — chưa được triển khai](docs/project/POST_COMPLETION_IMPROVEMENTS.md).
 
 - [Hướng dẫn chạy và cấu hình cloud](docs/development/LOCAL_RUN.md).
 - [Baseline kỹ thuật](docs/technical-baseline/README.md).
@@ -60,11 +63,11 @@ Khi triển khai bản build lên hosting cần reverse proxy `/api` tới backe
 - [Đổi nhà cung cấp storage](docs/technical-baseline/07-STORAGE-PORTABILITY.md).
 - [Báo cáo thực nghiệm metadata synthetic](docs/evidence/2026-10-30-course-report.json).
 
-Azure/Cloudflare chưa được kiểm thử live vì chưa có credential/identity. Không commit .env, token hoặc dữ liệu runtime.
+Cloudinary/Cloudflare chưa được kiểm thử live vì chưa có credential/identity. Không commit .env, token hoặc dữ liệu runtime.
 
 ## Kiểm tra
 
 Tại backend: npm run build, npm test, npm run test:integration, npm run course:report.
 Tại frontend: npm run build.
 Integration dùng MongoDB test tạm và provider/storage stub; không tiêu hao neurons hoặc Azure credit.
-Health: GET /api/health. Product APIs: /api/v1. Chưa có Cloudinary adapter/migration runner hoặc UI import/export.
+Health: GET /api/health. Product APIs: /api/v1. Đã có Cloudinary adapter; chưa có migration runner hoặc UI import/export.

@@ -1,3 +1,5 @@
+> **Chốt01/11:** Cloudinary authenticated là storage MVP, không bắt buộc credential khi generation tắt và chưa cấu hình cloud. [Quyết định hiện hành](../technical-baseline/09-CLOUDINARY-DECISION.md) thay các lựa chọn provider cũ bên dưới.
+
 > **Implementation30/10:** Endpoint/DTO/cookie/schema thực thi mới được ghi tại [08-IMPLEMENTATION-STATUS](../technical-baseline/08-IMPLEMENTATION-STATUS.md). Đọc08 trước các proposal/lịch sử bên dưới.
 
 > **Cập nhật 30/10/2026:** Đọc [baseline kỹ thuật mới](../technical-baseline/README.md) trước. Các lựa chọn Gemini/local làm storage cuối trong nội dung bên dưới là lịch sử và đã được thay bởi hướng FLUX/cloud. API/schema tương thích vẫn được giữ; Azure Blob private đã chốt, có adapter/migration để đổi Cloudinary theo baseline07. Không dùng đề xuất cũ để tự bật dịch vụ hoặc sửa code.
