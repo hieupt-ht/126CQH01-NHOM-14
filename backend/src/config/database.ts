@@ -10,11 +10,14 @@ export class DatabaseConnectionError extends Error {
 
 export async function connectMongo(
   uri: string,
-  options: Pick<ConnectOptions, 'serverSelectionTimeoutMS'> = {},
+  options: Pick<ConnectOptions, 'serverSelectionTimeoutMS' | 'auth' | 'authSource'> = {},
 ): Promise<typeof mongoose> {
   try {
     mongoose.set('autoIndex', false);
-    await mongoose.connect(uri, { serverSelectionTimeoutMS: options.serverSelectionTimeoutMS ?? 5000 });
+    await mongoose.connect(uri, {
+      ...options,
+      serverSelectionTimeoutMS: options.serverSelectionTimeoutMS ?? 5000,
+    });
     return mongoose;
   } catch {
     throw new DatabaseConnectionError();

@@ -1,5 +1,5 @@
 import 'dotenv/config';
-import { resolve } from 'node:path';
+import { DEFAULT_MAX_IMAGE_UPLOAD_MB, MAX_IMAGE_UPLOAD_MB } from './image-upload.js';
 
 export type NodeEnvironment = 'development' | 'test' | 'production';
 export type SameSitePolicy = 'lax' | 'strict' | 'none';
@@ -8,6 +8,9 @@ export interface AppConfig {
   nodeEnv: NodeEnvironment;
   port: number;
   mongodbUri: string;
+  mongodbUsername?: string;
+  mongodbPassword?: string;
+  mongodbAuthSource: string;
   mongodbServerSelectionTimeoutMs: number;
   frontendOrigin: string;
   mongooseAutoIndex: boolean;
@@ -17,7 +20,11 @@ export interface AppConfig {
   sessionCookieSecure: boolean;
   geminiApiKey?: string;
   geminiImageModel?: string;
-  imageStorageDir: string;
+  cloudinaryCloudName: string;
+  cloudinaryApiKey: string;
+  cloudinaryApiSecret: string;
+  cloudinaryTimeoutMs: number;
+  maxImageUploadMb: number;
 }
 
 export class EnvironmentValidationError extends Error {
@@ -50,6 +57,12 @@ function readBoolean(source: EnvSource, key: string, fallback: boolean): boolean
   throw new EnvironmentValidationError(`${key} must be true or false.`);
 }
 
+function readRequiredValue(source: EnvSource, key: string): string {
+  const value = source[key]?.trim();
+  if (!value) throw new EnvironmentValidationError(`${key} is required.`);
+  return value;
+}
+
 function readOrigin(source: EnvSource): string {
   const value = source.FRONTEND_ORIGIN?.trim() || 'http://localhost:5173';
   let parsed: URL;
@@ -77,6 +90,12 @@ export function validateEnv(source: EnvSource = process.env): AppConfig {
     throw new EnvironmentValidationError('MONGODB_URI must use the mongodb:// or mongodb+srv:// scheme.');
   }
 
+  const mongodbUsername = source.MONGODB_USERNAME?.trim() || undefined;
+  const mongodbPassword = source.MONGODB_PASSWORD;
+  if ((mongodbUsername === undefined) !== (mongodbPassword === undefined) || mongodbPassword === '') {
+    throw new EnvironmentValidationError('MONGODB_USERNAME and MONGODB_PASSWORD must be set together.');
+  }
+
   const sameSiteRaw = source.SESSION_COOKIE_SAME_SITE?.trim().toLowerCase() || 'lax';
   if (!['lax', 'strict', 'none'].includes(sameSiteRaw)) {
     throw new EnvironmentValidationError('SESSION_COOKIE_SAME_SITE must be lax, strict, or none.');
@@ -90,6 +109,9 @@ export function validateEnv(source: EnvSource = process.env): AppConfig {
     nodeEnv,
     port: readInteger(source, 'PORT', 3000, 1, 65535),
     mongodbUri,
+    mongodbUsername,
+    mongodbPassword,
+    mongodbAuthSource: source.MONGODB_AUTH_SOURCE?.trim() || 'admin',
     mongodbServerSelectionTimeoutMs: readInteger(source, 'MONGODB_SERVER_SELECTION_TIMEOUT_MS', 5000, 100, 120000),
     frontendOrigin: readOrigin(source),
     mongooseAutoIndex: readBoolean(source, 'MONGOOSE_AUTO_INDEX', nodeEnv !== 'production'),
@@ -99,6 +121,10 @@ export function validateEnv(source: EnvSource = process.env): AppConfig {
     sessionCookieSecure,
     geminiApiKey: source.GEMINI_API_KEY?.trim() || undefined,
     geminiImageModel: source.GEMINI_IMAGE_MODEL?.trim() || undefined,
-    imageStorageDir: resolve(source.IMAGE_STORAGE_DIR?.trim() || 'data/images'),
+    cloudinaryCloudName: readRequiredValue(source, 'CLOUDINARY_CLOUD_NAME'),
+    cloudinaryApiKey: readRequiredValue(source, 'CLOUDINARY_API_KEY'),
+    cloudinaryApiSecret: readRequiredValue(source, 'CLOUDINARY_API_SECRET'),
+    cloudinaryTimeoutMs: readInteger(source, 'CLOUDINARY_TIMEOUT_MS', 30000, 1000, 120000),
+    maxImageUploadMb: readInteger(source, 'MAX_IMAGE_UPLOAD_MB', DEFAULT_MAX_IMAGE_UPLOAD_MB, 1, MAX_IMAGE_UPLOAD_MB),
   };
 }

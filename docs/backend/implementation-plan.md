@@ -30,25 +30,25 @@
 
 **Mục tiêu:** nhận job async, đảm bảo quota/idempotency/active-job invariant, gọi Gemini ở server và lưu đúng một private image.
 
-- **Files/modules dự kiến:** `backend/src/modules/generations/`, `backend/src/modules/usage/`, `backend/src/providers/google-genai/`, `backend/src/storage/local-filesystem/`, `backend/src/workers/generation-worker.ts`, `backend/src/config/{provider,storage}.ts`; generation/dailyUsage schema/indexes; reconciliation task/command nếu đã có runner được duyệt.
+- **Files/modules dự kiến:** `backend/src/modules/generations/`, `backend/src/modules/usage/`, `backend/src/providers/google-genai/`, `backend/src/services/cloudinary.service.ts`, `backend/src/workers/generation-worker.ts`, `backend/src/config/{provider,cloudinary}.ts`; generation/dailyUsage schema/indexes; reconciliation task/command nếu đã có runner được duyệt.
 - **Dependencies:** Mongoose; official Google Gen AI SDK `@google/genai`; password/session packages từ Phase 2. Không thêm queue broker nếu chưa được duyệt; nếu worker chạy trong process thì ghi rõ single-process/local-demo boundary. Không cài dependency trong task tài liệu này.
 - **APIs:** `POST /api/v1/generations` (`Idempotency-Key`, prompt only); `GET /api/v1/generations/:id`; `GET /api/v1/usage/me`. Provider/model chỉ server config: `GEMINI_API_KEY`, `GEMINI_IMAGE_MODEL`. Không API request tới provider khi chưa được cho phép hoặc khi billing/quota chưa xác minh.
 - **Collections:** `generations`, `dailyUsage`, `users.activeGenerationId`; tạo `images` record chỉ trong saving khi có file. Unique `(userId, requestKey)`, history/worker indexes, unique usage scope/date và unique image generation.
-- **Acceptance:** canonical fingerprint giải quyết duplicate trước reserve; cùng key/body trả cùng job và không trừ quota lần hai; key khác body conflict; atomic quota + one-active-job; state transition hợp lệ; một prompt tạo tối đa một image; `succeeded` sau file và metadata; timeout/outcome uncertain thành `needs_review`, không gọi lại; lỗi file/DB không tạo ảnh giả; file temp/orphan được dọn hoặc reconciliation-track.
-- **Kiểm thử:** prompt invalid không tạo job/provider call; replay idempotency; key collision body mismatch; đồng thời quota/active-generation; state transition/lease recovery; provider success, rejection, timeout/uncertainty; MIME/signature/size/dimension validation; disk full/write/rename/DB metadata failure; restart và orphan reconciliation. Mock provider chỉ trong test, đánh dấu rõ.
-- **Rủi ro:** provider model access/pricing/quota thay đổi; không giả định free tier; billing/API cost; provider response không rõ; MongoDB transaction support; disk capacity/lost files; in-process worker chết cùng app; memory spike khi giữ base64/ảnh lớn.
+- **Acceptance:** canonical fingerprint giải quyết duplicate trước reserve; cùng key/body trả cùng job và không trừ quota lần hai; key khác body conflict; atomic quota + one-active-job; state transition hợp lệ; một prompt tạo tối đa một image; `succeeded` sau Cloudinary upload và metadata; timeout/outcome uncertain thành `needs_review`, không gọi lại; lỗi provider/DB không tạo ảnh giả; orphan asset được reconciliation-track.
+- **Kiểm thử:** prompt invalid không tạo job/provider call; replay idempotency; key collision body mismatch; đồng thời quota/active-generation; state transition/lease recovery; provider success, rejection, timeout/uncertainty; MIME/signature/size validation; Cloudinary/DB metadata failure; restart và orphan reconciliation. Mock provider chỉ trong test, đánh dấu rõ.
+- **Rủi ro:** provider model access/pricing/quota thay đổi; không giả định free tier; billing/API cost; provider response không rõ; Cloudinary folder mode/account quota and authenticated delivery; MongoDB transaction support; in-process worker chết cùng app; memory spike khi giữ base64/ảnh lớn.
 
 ## Phase 4 — Library + Image Detail + History
 
 **Mục tiêu:** đọc và quản lý resource đã persist, phân quyền mọi thao tác, giữ semantics riêng giữa ảnh và generation.
 
-- **Files/modules dự kiến:** mở rộng `backend/src/modules/images/`, `generations/`, `storage/local-filesystem/`; cursor codec/validation dùng chung nếu thực sự cần; cleanup/reconciliation service. Không tạo một API/domain layer mới nếu module hiện có đáp ứng.
+- **Files/modules dự kiến:** mở rộng `backend/src/modules/images/`, `generations/` và Cloudinary adapter; cursor codec/validation dùng chung nếu thực sự cần; cleanup/reconciliation service. Không tạo một API/domain layer mới nếu module hiện có đáp ứng.
 - **Dependencies:** Phase 2 session/ownership middleware và Phase 3 image metadata/private storage. Không cần gọi Gemini trong phase này.
 - **APIs:** `GET /api/v1/images`; `GET /api/v1/images/:id`; `GET /api/v1/images/:id/content`; `GET /api/v1/images/:id/download`; `PATCH /api/v1/images/:id` rename; `DELETE /api/v1/images/:id`; `GET /api/v1/generations` history. Search/favorite/date filtering là P1.
 - **Collections:** `images` và owner-scoped `generations`; deletion fields/status trên images; không xóa generation history khi ảnh bị xóa.
 - **Acceptance:** library chỉ ảnh đã persist và chưa soft-delete; history gồm queued/processing/saving/succeeded/failed/needs_review và vẫn hiển thị job khi ảnh bị xóa; all queries filter theo session user; missing/not-owned trả cùng 404; content/download stream private sau ownership check; delete ẩn ngay khỏi library, file deletion retryable; mở thư viện/detail/download không gọi AI.
 - **Kiểm thử:** cross-user read/rename/delete/content/download IDOR; cursor ordering/invalid cursor; soft-delete/history retention; filename/content headers/nosniff; missing file; storage unavailable; cleanup retry idempotency; zero provider calls cho read endpoints.
-- **Rủi ro:** local path traversal/symlink, MIME sniffing, browser caching/private cache headers, download filename injection, cleanup race với concurrent read và filesystem không chia sẻ giữa instances.
+- **Rủi ro:** authenticated media access/signing, MIME sniffing, browser caching/private cache headers, download filename injection, cleanup retries và Cloudinary account policy.
 
 ## Phase 5 — Frontend integration + P1 features
 
@@ -60,7 +60,7 @@
 - **Collections:** `users`, `images`, `generations`, `dailyUsage`; không tạo `user_settings` cho displayName; indexes P1 chỉ sau đo truy vấn.
 - **Acceptance:** frontend hiển thị trạng thái server-authoritative, không coi mock là dữ liệu thật; loading/error/empty/queued/processing/saving/succeeded/failed/needs_review; retry chỉ theo idempotency policy; P1 không thay đổi quota/ownership/lifecycle P0.
 - **Kiểm thử:** contract tests frontend/backend; cookie + CSRF + CORS ở browser; end-to-end auth → generate → library/detail/history/download/delete; P1 scoping/filter/stats; accessibility/responsive checks do frontend task owner thực hiện.
-- **Rủi ro:** credentialed CORS deployment mismatch, stale demo fixtures, polling quá mức, P1 query/index ảnh hưởng performance và deploy chưa có persistent filesystem.
+- **Rủi ro:** credentialed CORS deployment mismatch, stale demo fixtures, polling quá mức, P1 query/index ảnh hưởng performance và Cloudinary account availability/limits.
 
 ## Invariants áp dụng xuyên suốt
 
@@ -74,8 +74,8 @@
 
 ## Decisions và trạng thái
 
-- **CONFIRMED:** Node.js + Express + TypeScript; MongoDB + Mongoose; `/api/v1`; opaque server-side session/HttpOnly cookie, no JWT; Google AI Studio/Gemini API via official `@google/genai`; model via environment; local filesystem local-first; five collections; no `user_settings` without a real need.
-- **PROPOSAL:** cookie `SameSite=Lax`, Secure on production HTTPS, origin allowlist + CSRF synchronizer token, local path `backend/data/images`, private API content stream, default cursor `20`/max `50`.
-- **OPEN QUESTION:** exact session TTL/hash package/CSRF bootstrap for deployment origins; exact Gemini model ID/access/pricing/quotas and verified output; numeric daily quotas and prompt/title/file/dimension limits; local dev MongoDB replica-set setup; production durable storage/backup and file retention policy.
+- **CONFIRMED:** Node.js + Express + TypeScript; MongoDB + Mongoose; `/api/v1`; opaque server-side session/HttpOnly cookie, no JWT; Google AI Studio/Gemini API via official `@google/genai`; model via environment; Cloudinary authenticated image storage; five collections; no `user_settings` without a real need.
+- **CONFIRMED:** Cloudinary upload limit defaults to `MAX_IMAGE_UPLOAD_MB=10` (10 MiB); dynamic `asset_folder` paths are required. **PROPOSAL:** cookie `SameSite=Lax`, Secure on production HTTPS, origin allowlist + CSRF synchronizer token, private API content stream, default cursor `20`/max `50`.
+- **OPEN QUESTION:** exact session TTL/hash package/CSRF bootstrap for deployment origins; exact Gemini model ID/access/pricing/quotas and verified output; Cloudinary account folder mode and policy/limits; numeric daily quotas and prompt/title/file/dimension limits; local dev MongoDB replica-set setup; private media delivery and retention policy.
 
 Phase ordering does not authorize starting any implementation, installing dependencies, connecting a database, creating credentials, or calling Gemini; each requires an implementation task within the confirmed scope.

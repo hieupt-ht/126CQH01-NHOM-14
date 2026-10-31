@@ -6,6 +6,7 @@ import mongoose from 'mongoose';
 import { createApp } from '../src/app.js';
 import { connectMongo, DatabaseConnectionError, disconnectMongo } from '../src/config/database.js';
 import { EnvironmentValidationError, validateEnv } from '../src/config/env.js';
+import { imageUploadLimitBytes } from '../src/config/image-upload.js';
 import { AppError } from '../src/errors/app-error.js';
 import { asyncHandler } from '../src/middlewares/async-handler.js';
 import { errorHandler } from '../src/middlewares/error-handler.js';
@@ -21,6 +22,9 @@ const validEnvironment = {
   NODE_ENV: 'test',
   MONGODB_URI: 'mongodb://127.0.0.1:27017/flux-test',
   FRONTEND_ORIGIN: 'http://localhost:5173',
+  CLOUDINARY_CLOUD_NAME: 'test-cloud',
+  CLOUDINARY_API_KEY: 'test-api-key',
+  CLOUDINARY_API_SECRET: 'test-api-secret',
 };
 
 after(async () => {
@@ -30,10 +34,31 @@ after(async () => {
 test('environment validation accepts valid configuration and applies safe defaults', () => {
   const config = validateEnv(validEnvironment);
   assert.equal(config.port, 3000);
+  assert.equal(config.mongodbUsername, undefined);
+  assert.equal(config.mongodbPassword, undefined);
+  assert.equal(config.mongodbAuthSource, 'admin');
   assert.equal(config.frontendOrigin, 'http://localhost:5173');
   assert.equal(config.sessionCookieName, 'flux_session');
   assert.equal(config.sessionCookieSecure, false);
   assert.equal(config.mongooseAutoIndex, true);
+});
+
+test('environment validation keeps MongoDB credentials separate from the URI', () => {
+  const password = 'p@ss:/?#% with spaces';
+  const config = validateEnv({
+    ...validEnvironment,
+    MONGODB_USERNAME: 'flux_dev',
+    MONGODB_PASSWORD: password,
+    MONGODB_AUTH_SOURCE: 'admin',
+  });
+
+  assert.equal(config.mongodbUri, validEnvironment.MONGODB_URI);
+  assert.equal(config.mongodbUsername, 'flux_dev');
+  assert.equal(config.mongodbPassword, password);
+  assert.throws(
+    () => validateEnv({ ...validEnvironment, MONGODB_USERNAME: 'flux_dev' }),
+    /MONGODB_USERNAME and MONGODB_PASSWORD must be set together/,
+  );
 });
 
 test('environment validation rejects invalid values without echoing secrets', () => {
@@ -51,6 +76,22 @@ test('environment validation rejects invalid values without echoing secrets', ()
     () => validateEnv({ ...validEnvironment, SESSION_COOKIE_SAME_SITE: 'none' }),
     /SESSION_COOKIE_SECURE/,
   );
+  assert.throws(
+    () => validateEnv({ ...validEnvironment, CLOUDINARY_API_SECRET: '' }),
+    (error: unknown) => error instanceof EnvironmentValidationError && /CLOUDINARY_API_SECRET/.test(error.message),
+  );
+  const configured = validateEnv(validEnvironment);
+  assert.equal(configured.cloudinaryTimeoutMs, 30000);
+  assert.equal(configured.maxImageUploadMb, 10);
+  assert.equal(imageUploadLimitBytes(configured.maxImageUploadMb), 10 * 1024 * 1024);
+  assert.equal(validateEnv({ ...validEnvironment, MAX_IMAGE_UPLOAD_MB: '5' }).maxImageUploadMb, 5);
+  assert.equal(validateEnv({ ...validEnvironment, MAX_IMAGE_UPLOAD_MB: '' }).maxImageUploadMb, 10);
+  for (const invalidLimit of ['0', '96', '1.5', '-1', 'abc']) {
+    assert.throws(
+      () => validateEnv({ ...validEnvironment, MAX_IMAGE_UPLOAD_MB: invalidLimit }),
+      (error: unknown) => error instanceof EnvironmentValidationError && /MAX_IMAGE_UPLOAD_MB/.test(error.message),
+    );
+  }
 });
 
 test('MongoDB connection errors are wrapped in a safe message', async () => {

@@ -3,18 +3,26 @@ import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import type { Server } from 'node:http';
 import { createApp } from './app.js';
+import { configureCloudinary } from './config/cloudinary.js';
 import { AppConfig, validateEnv } from './config/env.js';
 import { connectMongo, disconnectMongo } from './config/database.js';
 import { createDeclaredIndexes } from './models/index.js';
 
 export async function startServer(config: AppConfig = validateEnv()): Promise<Server> {
+  configureCloudinary(config);
   await connectMongo(config.mongodbUri, {
     serverSelectionTimeoutMS: config.mongodbServerSelectionTimeoutMs,
+    ...(config.mongodbUsername !== undefined && config.mongodbPassword !== undefined
+      ? {
+          auth: { username: config.mongodbUsername, password: config.mongodbPassword },
+          authSource: config.mongodbAuthSource,
+        }
+      : {}),
   });
 
   try {
     if (config.mongooseAutoIndex) await createDeclaredIndexes();
-    const server = createApp(config).listen(config.port);
+    const server = createApp(config).listen(config.port, '0.0.0.0');
     await once(server, 'listening');
     console.info(`Backend listening on port ${config.port}.`);
     return server;
