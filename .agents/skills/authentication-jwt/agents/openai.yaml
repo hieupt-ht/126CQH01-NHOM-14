@@ -1,0 +1,3 @@
+interface:
+  display_name: "Authentication JWT"
+  short_description: "Build secure JWT cookie authentication"

@@ -7,7 +7,7 @@ import { AppConfig } from './config/env.js';
 import { AppError } from './errors/app-error.js';
 import { errorHandler } from './middlewares/error-handler.js';
 
-export function createApp(config: Pick<AppConfig, 'frontendOrigin'> & Partial<AuthConfig>, dependencies: ProductDependencies = {}): Express {
+export function createApp(config: Pick<AppConfig, 'frontendOrigin' | 'jwtSecret'> & Partial<AuthConfig>, dependencies: ProductDependencies = {}): Express {
   const app = express();
 
   app.disable('x-powered-by');

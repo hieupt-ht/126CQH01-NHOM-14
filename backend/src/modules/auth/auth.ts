@@ -11,6 +11,7 @@ import {
   type Response,
 } from "express";
 import argon2 from "argon2";
+import { SignJWT, jwtVerify } from "jose";
 import { z } from "zod";
 import type { SessionDocument } from "../../models/session.model.js";
 import type { UserDocument } from "../../models/user.model.js";
@@ -27,6 +28,7 @@ export function principal(response: Response): AuthPrincipal {
 export type AuthConfig = Pick<
   AppConfig,
   | "frontendOrigin"
+  | "jwtSecret"
   | "sessionCookieName"
   | "sessionTtlDays"
   | "sessionCookieSameSite"
@@ -34,9 +36,51 @@ export type AuthConfig = Pick<
 >;
 const hash = (value: string) =>
   createHash("sha256").update(value).digest("hex");
-export const hashSessionToken = hash;
+export const hashJwtId = hash;
 const csrfFor = (token: string) =>
   createHmac("sha256", token).update("flux-studio-csrf-v1").digest("hex");
+const JWT_ISSUER = "flux-studio-api";
+const JWT_AUDIENCE = "flux-studio-web";
+
+export async function issueAccessToken(
+  config: Pick<AppConfig, "jwtSecret">,
+  userId: string,
+  tokenId: string,
+  expiresAt: Date,
+): Promise<string> {
+  return new SignJWT({})
+    .setProtectedHeader({ alg: "HS256", typ: "JWT" })
+    .setIssuer(JWT_ISSUER)
+    .setAudience(JWT_AUDIENCE)
+    .setSubject(userId)
+    .setJti(tokenId)
+    .setIssuedAt()
+    .setExpirationTime(Math.floor(expiresAt.getTime() / 1000))
+    .sign(Buffer.from(config.jwtSecret, "utf8"));
+}
+
+export async function verifyAccessToken(
+  config: Pick<AppConfig, "jwtSecret">,
+  token: string,
+): Promise<{ userId: string; tokenId: string }> {
+  const { payload, protectedHeader } = await jwtVerify(
+    token,
+    Buffer.from(config.jwtSecret, "utf8"),
+    { algorithms: ["HS256"], issuer: JWT_ISSUER, audience: JWT_AUDIENCE },
+  );
+  if (
+    protectedHeader.typ !== "JWT" ||
+    typeof payload.sub !== "string" ||
+    typeof payload.jti !== "string" ||
+    typeof payload.iat !== "number" ||
+    typeof payload.exp !== "number" ||
+    payload.exp <= payload.iat ||
+    payload.iat > Math.floor(Date.now() / 1000) + 60
+  ) {
+    throw new Error("Invalid authentication token claims.");
+  }
+  return { userId: payload.sub, tokenId: payload.jti };
+}
 const credentials = z
   .object({
     email: z.string().trim().toLowerCase().email().max(254),
@@ -63,7 +107,9 @@ function tokenFrom(request: Request, config: AuthConfig): string | null {
   const value = parts
     .find((part) => part.startsWith(config.sessionCookieName + "="))
     ?.slice(config.sessionCookieName.length + 1);
-  return value && /^[a-f0-9]{64}$/.test(value) ? value : null;
+  return value && value.length <= 8192 && value.split(".").length === 3
+    ? value
+    : null;
 }
 function cookieOptions(config: AuthConfig) {
   return {
@@ -79,8 +125,15 @@ export function requireSession(config: AuthConfig): RequestHandler {
       const token = tokenFrom(request, config);
       if (!token)
         throw new AppError(401, "UNAUTHENTICATED", "Vui lòng đăng nhập.");
+      let claims: { userId: string; tokenId: string };
+      try {
+        claims = await verifyAccessToken(config, token);
+      } catch {
+        throw new AppError(401, "UNAUTHENTICATED", "Vui lòng đăng nhập.");
+      }
       const session = await SessionModel.findOne({
-        tokenHash: hash(token),
+        tokenHash: hash(claims.tokenId),
+        userId: claims.userId,
         expiresAt: { $gt: new Date() },
       }).select("+csrfTokenHash");
       const user =
@@ -229,17 +282,30 @@ export function createAuthRouter(config: AuthConfig): Router {
         "INVALID_CREDENTIALS",
         "Email hoặc mật khẩu chưa đúng.",
       );
-    const token = randomBytes(32).toString("hex");
-    const csrfToken = csrfFor(token);
     const expiresAt = new Date(Date.now() + config.sessionTtlDays * 86400000);
+    const tokenId = randomBytes(32).toString("hex");
+    const token = await issueAccessToken(
+      config,
+      String(user._id),
+      tokenId,
+      expiresAt,
+    );
+    const csrfToken = csrfFor(token);
     await SessionModel.create({
       userId: user._id,
-      tokenHash: hash(token),
+      tokenHash: hash(tokenId),
       csrfTokenHash: hash(csrfToken),
       expiresAt,
     });
     const previous = tokenFrom(request, config);
-    if (previous) await SessionModel.deleteOne({ tokenHash: hash(previous) });
+    if (previous) {
+      try {
+        const claims = await verifyAccessToken(config, previous);
+        await SessionModel.deleteOne({ tokenHash: hash(claims.tokenId) });
+      } catch {
+        // Ignore an invalid or expired cookie while completing a valid login.
+      }
+    }
     response.cookie(config.sessionCookieName, token, {
       ...cookieOptions(config),
       expires: expiresAt,

@@ -20,7 +20,7 @@ Use when implementing an approved backend HTTP endpoint or Express middleware. P
 1. Confirm method, path, auth requirement, request/response shape, error codes and status codes from the contract.
 2. Follow the installed Express version and existing module conventions; keep routes declarative, controllers HTTP-focused, services responsible for use-case orchestration, and persistence/provider work behind existing boundaries.
 3. Validate headers, params, query and JSON body at the edge. Convert to a narrow DTO; never forward `req.body`, `req.query` or `req.params` wholesale into MongoDB.
-4. Derive user identity from authenticated session middleware, never from a submitted `userId`. Apply ownership in service/repository filters.
+4. Derive user identity from verified JWT/session middleware, never from a submitted `userId`. Apply ownership in service/repository filters.
 5. Use the existing async/error handling conventions; map known errors centrally to the documented safe envelope. Avoid duplicate ad-hoc try/catch handlers.
 6. Add focused route/service tests for success, validation, auth, ownership, conflict and failure paths relevant to the endpoint.
 

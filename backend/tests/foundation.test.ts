@@ -22,6 +22,7 @@ const validEnvironment = {
   NODE_ENV: 'test',
   MONGODB_URI: 'mongodb://127.0.0.1:27017/flux-test',
   FRONTEND_ORIGIN: 'http://localhost:5173',
+  JWT_SECRET: 'test-only-secret-do-not-use-outside-tests-0123456789',
   CLOUDINARY_CLOUD_NAME: 'test-cloud',
   CLOUDINARY_API_KEY: 'test-api-key',
   CLOUDINARY_API_SECRET: 'test-api-secret',
@@ -31,13 +32,14 @@ after(async () => {
   await disconnectMongo().catch(() => undefined);
 });
 
-test('environment validation accepts valid configuration and applies safe defaults', () => {
+test('environment validation accepts valid JWT configuration and applies safe defaults', () => {
   const config = validateEnv(validEnvironment);
   assert.equal(config.port, 3000);
   assert.equal(config.mongodbUsername, undefined);
   assert.equal(config.mongodbPassword, undefined);
   assert.equal(config.mongodbAuthSource, 'admin');
   assert.equal(config.frontendOrigin, 'http://localhost:5173');
+  assert.equal(config.jwtSecret, validEnvironment.JWT_SECRET);
   assert.equal(config.sessionCookieName, 'flux_session');
   assert.equal(config.sessionCookieSecure, false);
   assert.equal(config.mongooseAutoIndex, true);
@@ -63,6 +65,7 @@ test('environment validation keeps MongoDB credentials separate from the URI', (
 
 test('environment validation rejects invalid values without echoing secrets', () => {
   assert.throws(() => validateEnv({ NODE_ENV: 'test' }), /MONGODB_URI is required/);
+  assert.throws(() => validateEnv({ ...validEnvironment, JWT_SECRET: 'too-short' }), /JWT_SECRET/);
   assert.throws(() => validateEnv({ ...validEnvironment, MONGODB_URI: 'https://db.example.test' }), /mongodb:\/\//);
   assert.throws(
     () => validateEnv({ ...validEnvironment, PORT: '70000' }),
@@ -195,7 +198,7 @@ test('all model schemas disable implicit index changes', () => {
 });
 
 test('health endpoint preserves the response and security headers', async () => {
-  const server = createApp({ frontendOrigin: 'http://localhost:5173' }).listen(0);
+  const server = createApp({ frontendOrigin: 'http://localhost:5173', jwtSecret: validEnvironment.JWT_SECRET }).listen(0);
   await once(server, 'listening');
   const address = server.address();
   assert.ok(address && typeof address !== 'string');
@@ -222,7 +225,7 @@ test('health endpoint preserves the response and security headers', async () => 
 });
 
 test('graceful shutdown closes the HTTP server and database connection', async () => {
-  const server = createApp({ frontendOrigin: 'http://localhost:5173' }).listen(0);
+  const server = createApp({ frontendOrigin: 'http://localhost:5173', jwtSecret: validEnvironment.JWT_SECRET }).listen(0);
   await once(server, 'listening');
   await shutdown(server);
   assert.equal(server.listening, false);

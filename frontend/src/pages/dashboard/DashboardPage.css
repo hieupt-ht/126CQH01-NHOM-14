@@ -142,3 +142,8 @@
 @media (hover: none) { .creation-card__view { opacity: 1; transform: none; } }
 
 .dashboard-live-thumb { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: var(--radius-lg); }
+
+.dashboard-thumb-error { display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 8px; width: 100%; aspect-ratio: 4 / 3; border: 1px dashed var(--border-primary); border-radius: var(--radius-lg); background: var(--surface-input); color: var(--text-secondary); font-size: 12px; text-align: center; }
+.dashboard-thumb-error small { color: var(--text-muted); font-size: 10px; }
+.dashboard-image-size { margin: 7px 0 0; color: var(--text-secondary); font-size: 10px; }
+.creation-card__meta { flex-wrap: wrap; gap: 6px; }

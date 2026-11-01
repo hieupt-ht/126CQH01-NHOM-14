@@ -1,141 +1,82 @@
-# Chạy FLUX STUDIO local từ máy mới
-Cập nhật01/11/2026. Node24.x, npm11.x; không cần mua VPS/domain.
+# Chạy FLUX STUDIO trên máy mới
 
-## 0. Xem giao diện trước, chưa cần DB/cloud (31/10/2026)
+Cập nhật01/11/2026. Cách đơn giản nhất để chạy toàn bộ ứng dụng là Docker Compose. Hướng dẫn này dành cho môi trường local development, không phải production.
 
-CONFIRMED theo yêu cầu chủ dự án: ưu tiên đồng bộ UI và điều hướng trước.
-Chỉ chạy frontend:
+## Cần chuẩn bị
 
-~~~cmd
+- Git để clone repository.
+- Docker Desktop đang chạy trên Windows/macOS, hoặc Docker Engine và Compose plugin trên Linux.
+- Các cổng `5173`, `3000` và `27017` chưa được chương trình khác sử dụng.
+
+> **Chỉ muốn xem giao diện:** có thể chạy riêng frontend bằng Node.js 24 và npm 11. Xem mục [Chỉ chạy frontend](#chỉ-chạy-frontend).
+
+## 1. Lấy mã nguồn và tạo cấu hình local
+
+Clone repository bằng URL GitHub của nhóm, rồi mở terminal tại thư mục gốc, nơi có `compose.yaml`:
+
+```powershell
+Copy-Item .env.example .env
+```
+
+Mở `.env` và thay `MONGO_INITDB_ROOT_PASSWORD` bằng mật khẩu riêng cho MongoDB local. Đặt một giá trị bí mật riêng cho `JWT_SECRET`, dài ít nhất 32 byte. Có thể tạo giá trị ngẫu nhiên bằng PowerShell:
+
+```powershell
+$bytes = New-Object byte[] 32
+$rng = [System.Security.Cryptography.RandomNumberGenerator]::Create()
+$rng.GetBytes($bytes)
+[Convert]::ToBase64String($bytes)
+$rng.Dispose()
+```
+
+Chép chuỗi vừa tạo vào `JWT_SECRET` trong `.env`. Không gửi file này qua chat hoặc commit lên Git. `.env` đã được Git bỏ qua.
+
+Các biến Cloudflare và Cloudinary có thể để trống cho lần chạy đầu. `GENERATION_ENABLED=false` giữ tạo ảnh tắt; team không cần gửi API request tới dịch vụ AI/storage để khởi động ứng dụng. Compose mặc định bật UI preview, nên đăng nhập lúc này chỉ chuyển trang để xem giao diện, không xác thực tài khoản.
+
+## 2. Chạy toàn bộ ứng dụng bằng Docker
+
+Tại thư mục gốc repository:
+
+```powershell
+docker compose up --build
+```
+
+Lần đầu Docker cần tải image và cài dependencies nên có thể mất vài phút. Khi các container khởi động xong, mở <http://localhost:5173>. Backend chạy ở cổng `3000`; MongoDB chạy replica set local ở cổng `27017`.
+
+Docker Compose khởi động frontend, backend và MongoDB; tự tạo MongoDB keyfile trong named volume và khởi tạo replica set. Dữ liệu database và checkpoint được giữ qua lần dừng/chạy lại.
+
+Để chạy nền, dùng `docker compose up --build -d`; xem trạng thái bằng `docker compose ps` và log bằng `docker compose logs -f`. Dừng bằng `docker compose down` hoặc nhấn `Ctrl+C` trong terminal đang chạy Compose. **Không dùng `docker compose down -v`** nếu muốn giữ dữ liệu local.
+
+## 3. Bật đăng nhập và API thật (tùy chọn)
+
+UI preview không gọi backend cho luồng đăng nhập. Để dùng đăng ký/đăng nhập và dữ liệu MongoDB thật:
+
+1. Thêm `VITE_UI_PREVIEW=false` vào `.env` ở thư mục gốc.
+2. Khởi động lại frontend để nhận cấu hình: `docker compose up --build -d frontend`.
+3. Mở lại <http://localhost:5173/register>, tạo tài khoản local rồi đăng nhập.
+
+Tạo ảnh vẫn bị tắt khi `GENERATION_ENABLED=false`; yêu cầu tạo ảnh sẽ không tạo job hoặc trừ quota. Bật generation cần cấu hình đủ Cloudflare Workers AI và Cloudinary trong `.env`, kiểm tra giới hạn dịch vụ, rồi mới đặt `GENERATION_ENABLED=true`. Xem [quyết định Cloudinary](../technical-baseline/09-CLOUDINARY-DECISION.md) và [hướng dẫn Docker chi tiết](DOCKER_SETUP.md).
+
+## Chỉ chạy frontend
+
+Nếu chỉ cần xem giao diện preview, không cần Docker, backend hay database. Cài Node.js 24.x và npm 11.x, sau đó chạy:
+
+```powershell
 cd frontend
 npm ci
 npm run dev
-~~~
+```
 
-Mở http://localhost:5173/login. Nhập email đúng định dạng và mật khẩu bất kỳ
-(không dùng mật khẩu thật), bấm Đăng nhập để vào Dashboard.
-Đây là mô phỏng điều hướng, không xác minh hay lưu tài khoản/mật khẩu.
-Các route /app mở trực tiếp được. Đăng xuất quay về /login.
-Thư viện/lịch sử hiển thị trạng thái rỗng; hồ sơ là khách xem thử;
-tạo ảnh, đăng ký và lưu thay đổi không gửi API hoặc ghi DB/cloud.
-Nhãn XEM THỬ UI được hiển thị trong layout chung.
-Không hiển thị đoạn thông báo dài trên mọi trang theo yêu cầu chủ dự án.
-Nhấn Tạo ảnh với prompt hợp lệ chỉ báo “Chức năng tạo ảnh sẽ được kết nối sau.”
-trong khu vực kết quả, không tạo mã yêu cầu hoặc lưu trạng thái chờ.
-Trạng thái chờ cũ của riêng hồ sơ ui-preview được dọn khi mở trang tạo ảnh;
-không dọn yêu cầu chưa xác định của tài khoản thật.
-Preview chưa có ảnh trong thư viện để nghiệm thu nội dung trang chi tiết.
+Mở <http://localhost:5173/login>. Đăng nhập ở chế độ preview chỉ mô phỏng điều hướng; tài khoản và mật khẩu không được xác minh hay lưu. Tạo ảnh, đăng ký và lưu thay đổi chưa gửi API hoặc ghi database trong chế độ này.
 
-Khi bắt đầu tích hợp DB, tạo frontend/.env.local với:
+## Gặp lỗi thường thấy
 
-~~~env
-VITE_UI_PREVIEW=false
-~~~
+- **Docker báo thiếu biến trong `.env`:** kiểm tra đã copy `.env.example` thành `.env` và điền MongoDB username/password cùng `JWT_SECRET`.
+- **Cổng đang được sử dụng:** dừng ứng dụng đang dùng cổng `5173`, `3000` hoặc `27017`, rồi chạy lại Compose.
+- **Container chưa sẵn sàng:** xem `docker compose ps` và `docker compose logs -f mongodb-init backend`.
+- **Đăng nhập không gọi backend:** kiểm tra `VITE_UI_PREVIEW=false` trong `.env`, rồi recreate frontend.
+- **Lỗi Origin:** dùng đúng URL `http://localhost:5173`, không đổi sang `127.0.0.1` khi chưa đổi `FRONTEND_ORIGIN`.
+- **MongoDB đã có dữ liệu:** giá trị `MONGO_INITDB_ROOT_*` không đổi mật khẩu của database đã khởi tạo. Không xóa volume để chữa lỗi; xem [Docker local](DOCKER_SETUP.md) và hỏi người phụ trách dữ liệu trước khi xử lý.
 
-Khởi động lại Vite. Khi đó bắt buộc session và tài khoản thật; làm theo các mục dưới.
-Không xóa SessionGate hoặc sửa backend để bỏ kiểm tra tài khoản.
-Production build luôn tắt preview, kể cả đặt VITE_UI_PREVIEW=true.
-`npm run preview` phục vụ bản production đã build, không phải chế độ UI preview.
-Bản build khi triển khai hosting cần reverse proxy /api về backend.
-Backend giữ nguyên hash Argon2id và session HttpOnly; frontend không tự hash mật khẩu.
+## Trạng thái và giới hạn
 
-## 1. Hai terminal (chế độ API thật, VITE_UI_PREVIEW=false)
-Từ thư mục repo126CQH01-NHOM-14:
-
-Terminal backend:
-~~~cmd
-cd backend
-npm ci
-npm run dev:local
-~~~
-Lệnh này dùng MongoDB thật chạy thành single-node replica set, bind127.0.0.1, port27027.
-Dữ liệu lưu backend/data/mongo, không commit. Không xóa thư mục này khi muốn giữ tài khoản.
-Lần đầu thư viện tải MongoDB binary từ nguồn MongoDB (bản đã kiểm tra8.2.6 ~781MB trên Windows), cần Internet và dung lượng đĩa.
-Nếu port27027/3000 bận, dừng instance của chính dự án hoặc dùng cấu hình MongoDB cài riêng; không kill/xóa dịch vụ không rõ nguồn.
-Đây là tiện ích dev/test, không phải database public/production; không expose port ra mạng.
-Dùng Ctrl+C để dừng backend. Windows/terminal có thể kết thúc tiến trình đột ngột; local data đã được kiểm tra giữ lại sau restart.
-Không chạy hai dev:local đồng thời cùng data directory.
-
-Terminal frontend:
-~~~cmd
-cd frontend
-npm ci
-npm run dev
-~~~
-Mở http://localhost:5173/register, tạo tài khoản, sau đó/login.
-Dùng đúng localhost:5173 theo FRONTEND_ORIGIN, không đổi sang127.0.0.1 khi submit form nếu chưa đổi allowed origin.
-
-## 2. API thật khi chưa có cloud
-Cần frontend/.env.local VITE_UI_PREVIEW=false như mục1.
-Không cần backend/.env để chạy dev:local với cấu hình mặc định.
-Đăng ký/login/logout, thư viện rỗng, lịch sử, hồ sơ và thống kê hoạt động với MongoDB.
-GENERATION_ENABLED mặc định false. Tạo ảnh trả503 GENERATION_NOT_CONFIGURED, không tạo job/trừ lượt.
-Không có ảnh mẫu giả làm kết quả; gallery cảm hứng ở dashboard là ảnh tham chiếu có nhãn riêng.
-
-## 3. MongoDB đã cài sẵn
-Tạo backend/.env từ backend/.env.example, đặt MONGODB_URI trỏ replica set của nhóm rồi:
-~~~cmd
-cd backend
-npm run dev
-~~~
-Không dùng dev:local để kết nối server MongoDB có sẵn; lệnh đó tự tạo instance riêng27027.
-Kiểm tra rs healthy/primary và transaction support trước bật job.
-MONGOOSE_AUTO_INDEX=true chỉ dành dev; script db:indexes sau build để tạo declared indexes có chủ đích.
-
-## 4. Bật tạo ảnh thật — chỉ khi đã có tài khoản
-Tự điền secret trong backend/.env, không gửi vào chat hoặc Git.
-~~~env
-GENERATION_ENABLED=false
-CLOUDFLARE_ACCOUNT_ID=
-CLOUDFLARE_API_TOKEN=
-CLOUDINARY_CLOUD_NAME=
-CLOUDINARY_API_KEY=
-CLOUDINARY_API_SECRET=
-CLOUDINARY_ACCOUNT_ALIAS=demo-primary
-CLOUDINARY_TIMEOUT_MS=30000
-MAX_IMAGE_UPLOAD_MB=10
-IMAGE_STORAGE_NAMESPACE=flux-studio/your-machine
-DAILY_USER_LIMIT=5
-DAILY_APP_LIMIT=20
-~~~
-Cloudinary: lấy credential trong dashboard rồi điền riêng vào backend/.env; không gửi secret vào chat/Git.
-Upload type authenticated, xem/tải qua backend kiểm tra session và ownership.
-FLUX qua Cloudflare; không gọi Gemini hoặc dịch vụ AI Cloudinary.
-Cloudinary và Cloudflare có hạn mức riêng; không tự nâng gói hoặc bật billing.
-GENERATION_ENABLED=true chỉ khi cả hai dịch vụ đã cấu hình và sẵn sàng.
-Mỗi máy có IMAGE_STORAGE_NAMESPACE riêng khi dùng chung tài khoản.
-Chưa có kiểm thử cloud live; adapter test dùng SDK/fetch giả lập.
-Với Docker, xem [DOCKER_SETUP](DOCKER_SETUP.md); cần replica set PRIMARY và giữ keyfile/volume.
-
-## 5. Kiểm thử và báo cáo
-~~~cmd
-cd backend
-npm run build
-npm test
-npm run test:integration
-npm run course:report
-~~~
-test:integration tạo MongoDB replica set tạm, AI/storage là stub trong test có nhãn; không dùng .env DB/cloud để tạo ảnh thật.
-npm test có1 test index theo MONGODB_TEST_URI được skip nếu không cấu hình; integration riêng đã kiểm tra unique/transaction.
-course:report tạo10.000 metadata synthetic trong DB tạm, không gọi AI; JSON ở backend/data/course-report.
-Frontend: npm run build tại frontend.
-Kiểm thử trực quan desktop/mobile và smoke cloud vẫn cần thực hiện.
-
-## 6. Cách kiểm tra khi lỗi
-- Mã job sai/không tồn tại (404): trang báo không tìm thấy, chọn Về trang tạo ảnh để bỏ mã job.
-- Lỗi mạng khi đọc job: giữ mã job, chỉ tải lại trạng thái; không tự gửi yêu cầu tạo mới.
-- Không login được: kiểm tra backend3000 và Mongo27027 đang chạy; không dùng preview5174 thay5173.
--403 Origin: URL frontend phải trùng FRONTEND_ORIGIN.
--403 CSRF: tải lại trang rồi gửi lại; không tự lặp tác vụ có side effect.
--401: đăng nhập lại, session cookie không được thay bằng JWT/localStorage.
--409 đang tạo/quá nhanh: xem history, không spam nút.
--needs_review: không tự gọi lại inference; cần đối soát checkpoint/log lỗi an toàn.
--503 chưa cấu hình: hoàn thiện .env/identity/cloud; request chưa được nhận.
-
-
-## 7. Quyết định hiện tại và giới hạn
-Cloudinary là storage duy nhất được cấu hình ở runtime MVP; Azure SDK đã bỏ khỏi dependency.
-Không có ảnh Azure thật được chuyển; record provider cũ không tự đổi thành Cloudinary.
-.env.example từ nhánh cũ/stash có thể còn tên biến lịch sử; dùng bảng cấu hình ở mục4/09,
-không áp lại stash toàn bộ lên code mới. Không sửa hoặc đưa credential thật lên Git.
-Cải tiến sau đề tài: [chỉ ghi nhớ, chưa triển khai](../project/POST_COMPLETION_IMPROVEMENTS.md).
+Docker local dùng một MongoDB replica set node, phù hợp phát triển/demo, không phải high availability hay production. Generation/cloud live chưa được xác minh trong hướng dẫn này. Không có thao tác nào ở đây yêu cầu commit `.env` hoặc gửi credential ra ngoài.

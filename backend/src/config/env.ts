@@ -14,6 +14,7 @@ export interface AppConfig {
   mongodbAuthSource: string;
   mongodbServerSelectionTimeoutMs: number;
   frontendOrigin: string;
+  jwtSecret: string;
   mongooseAutoIndex: boolean;
   sessionCookieName: string;
   sessionTtlDays: number;
@@ -91,6 +92,11 @@ export function validateEnv(source: EnvSource = process.env): AppConfig {
     throw new EnvironmentValidationError('MONGODB_URI must use the mongodb:// or mongodb+srv:// scheme.');
   }
 
+  const jwtSecret = source.JWT_SECRET;
+  if (!jwtSecret || Buffer.byteLength(jwtSecret, 'utf8') < 32) {
+    throw new EnvironmentValidationError('JWT_SECRET must contain at least 32 bytes.');
+  }
+
   const sameSiteRaw = source.SESSION_COOKIE_SAME_SITE?.trim().toLowerCase() || 'lax';
   if (!['lax', 'strict', 'none'].includes(sameSiteRaw)) {
     throw new EnvironmentValidationError('SESSION_COOKIE_SAME_SITE must be lax, strict, or none.');
@@ -132,6 +138,7 @@ export function validateEnv(source: EnvSource = process.env): AppConfig {
     mongodbAuthSource: source.MONGODB_AUTH_SOURCE?.trim() || 'admin',
     mongodbServerSelectionTimeoutMs: readInteger(source, 'MONGODB_SERVER_SELECTION_TIMEOUT_MS', 5000, 100, 120000),
     frontendOrigin: readOrigin(source),
+    jwtSecret,
     mongooseAutoIndex: readBoolean(source, 'MONGOOSE_AUTO_INDEX', nodeEnv !== 'production'),
     sessionCookieName: cookieName,
     sessionTtlDays: readInteger(source, 'SESSION_TTL_DAYS', 7, 1, 365),

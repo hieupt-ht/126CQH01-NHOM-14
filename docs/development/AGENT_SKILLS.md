@@ -55,7 +55,8 @@ Read `docs/development/BACKEND_RULES.md` for every backend task, then select the
 | `backend-api` (existing) | Confirmed API contract, ownership, quota, idempotency, safe errors | Any business endpoint work |
 | `express-api-development` (new) | Express routes, controllers, middleware and HTTP boundary | `backend-api` for domain behavior |
 | `mongodb-mongoose` (new) | Mongoose schemas, indexes, queries and persistence tests | `backend-api` when enforcing business invariants |
-| `authentication-session` (new) | Opaque server-side sessions, cookies, CSRF and auth flows | `backend-api`; resolve deployment open questions first |
+| `authentication-jwt` | JWT HttpOnly cookie, MongoDB revocation, CSRF and auth flows | `backend-api`; resolve deployment open questions first |
+| `authentication-session` (legacy) | Historical opaque session design only | Do not use for current implementation |
 | `gemini-image-generation` (new) | Official Google Gen AI SDK integration and generation recovery | `backend-api`; explicit provider authorization required for live calls |
 | `backend-testing` (new) | Backend unit/API/database/security/lifecycle tests | Relevant implementation skill |
 

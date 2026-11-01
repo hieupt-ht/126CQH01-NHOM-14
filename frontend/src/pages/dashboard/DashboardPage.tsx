@@ -7,6 +7,7 @@ import CreationGallery from "../../components/dashboard/CreationGallery";
 import ReferenceArtwork from "../../components/dashboard/ReferenceArtwork";
 import Icon from "../../components/ui/Icon";
 import { demoArtworks, type DemoArtwork } from "./dashboardData";
+import { UI_PREVIEW } from "../../services/uiPreview";
 import { validatePrompt } from "../../domain/prompt";
 import "./DashboardPage.css";
 import {
@@ -15,6 +16,28 @@ import {
   type Page,
   type StatsRecord,
 } from "../../services/resources";
+
+function RecentImage({ image }: { image: ImageRecord }) {
+  const [broken, setBroken] = useState(false);
+  const metadata = useResource<ImageRecord>("/images/" + encodeURIComponent(image.id));
+  const model = image.model || metadata.data?.model;
+  const date = new Date(image.createdAt);
+  let a = image.width, b = image.height;
+  while (b) { const remainder = a % b; a = b; b = remainder; }
+  const ratio = a > 0 ? `${image.width / a}:${image.height / a}` : "";
+  return <article className="creation-card">
+    <a href={"/app/images/" + image.id} aria-label={`Xem ảnh: ${image.title}`}>
+      {broken ? <div className="dashboard-thumb-error"><Icon name="image" size={26} /><span>Không tải được ảnh</span><small>Mở chi tiết để thử lại</small></div> :
+        <img className="dashboard-live-thumb" src={image.contentUrl} alt={image.title} loading="lazy" onError={() => setBroken(true)} />}
+    </a>
+    <a className="creation-card__title" href={"/app/images/" + image.id}>{image.title}</a>
+    <div className="creation-card__meta">
+      {Number.isFinite(date.getTime()) ? <time dateTime={date.toISOString()}>{date.toLocaleString("vi-VN", {day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"})}</time> : <span>Chưa có thời gian</span>}
+      <span className="creation-card__tag">{model?.replace("@cf/black-forest-labs/", "") || (metadata.loading ? "Đang tải model…" : "Chưa tải được model")}</span>
+    </div>
+    <p className="dashboard-image-size">{image.width} × {image.height} px{ratio && ` · ${ratio}`}</p>
+  </article>;
+}
 
 export default function DashboardPage() {
   const recent = useResource<Page<ImageRecord>>("/images?limit=4");
@@ -129,7 +152,7 @@ export default function DashboardPage() {
           <h2 id="recent-live-title">Ảnh đã lưu gần đây</h2>
           <a href="/app/library">Xem thư viện</a>
         </header>
-        {stats.data && (
+        {stats.data && !UI_PREVIEW && (
           <p className="creation-gallery__description">
             {stats.data.totals.savedImages} ảnh đã lưu ·{" "}
             {(stats.data.totals.bytes / 1024 / 1024).toFixed(1)} MB
@@ -149,24 +172,7 @@ export default function DashboardPage() {
           <p>Chưa có ảnh đã lưu. Bắt đầu từ một mô tả của bạn.</p>
         ) : (
           <div className="creation-grid">
-            {recent.data.items.map((image) => (
-              <article className="creation-card" key={image.id}>
-                <a href={"/app/images/" + image.id}>
-                  <img
-                    className="dashboard-live-thumb"
-                    src={image.contentUrl}
-                    alt={image.title}
-                    loading="lazy"
-                  />
-                </a>
-                <a
-                  className="creation-card__title"
-                  href={"/app/images/" + image.id}
-                >
-                  {image.title}
-                </a>
-              </article>
-            ))}
+            {recent.data.items.map((image) => <RecentImage key={image.id} image={image} />)}
           </div>
         )}
       </section>

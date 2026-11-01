@@ -76,7 +76,7 @@ test(
         { userLimit: 5, appLimit: 20, cooldownMs: 0, checkpointDir: temp },
       );
       server = createApp(
-        { frontendOrigin: "http://localhost:5173" },
+        { frontendOrigin: "http://localhost:5173", jwtSecret: "integration-test-secret-do-not-use-outside-tests-0123456789" },
         {
           generations: service,
           registry: new StorageRegistry(new Map([["test:isolated", storage]])),

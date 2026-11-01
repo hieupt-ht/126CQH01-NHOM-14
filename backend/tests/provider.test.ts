@@ -61,7 +61,7 @@ test("Cloudflare quota, server errors and network uncertainty never retry infere
   assert.equal(calls, 1);
 });
 test("generation disabled by default and config rejects insecure or incomplete setup", () => {
-  const base = { MONGODB_URI: "mongodb://127.0.0.1:27027/flux_config_test" };
+  const base = { MONGODB_URI: "mongodb://127.0.0.1:27027/flux_config_test", JWT_SECRET: "test-only-secret-do-not-use-outside-tests-0123456789" };
   assert.equal(validateEnv(base).generationEnabled, false);
   assert.throws(
     () => validateEnv({ ...base, GENERATION_ENABLED: "true" }),

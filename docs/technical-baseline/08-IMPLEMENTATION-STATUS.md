@@ -3,12 +3,16 @@
 # 08 — Contract triển khai và trạng thái kiểm chứng
 Ngày30/10/2026. Task hiện tại đã được user yêu cầu thực thi theo thứ tự review. Không phải đã nghiệm thu live.
 
+## Điều chỉnh authentication — 01/11/2026 (CONFIRMED)
+Chủ dự án đổi quyết định từ opaque session token sang JWT. Backend ký HS256 JWT với `JWT_SECRET`, claims cố định `iss`/`aud` cùng `sub`, random `jti`, `iat`, `exp`; JWT nằm trong HttpOnly cookie, không gửi token trong JSON hay lưu ở frontend. Collection `sessions` vẫn được giữ để lưu hash `jti`, CSRF hash và expiry; mọi request verify chữ ký/claims và active session để logout/revoke có hiệu lực ngay. Cookie, Origin, CSRF, Argon2id và các product invariants còn lại giữ nguyên. Đây là JWT có revocation stateful phía server, không phải xác thực stateless.
+Cookie opaque cũ sẽ không còn hợp lệ; người dùng đăng nhập lại. Session records cũ để TTL dọn theo expiry. Không chạy migration hoặc xóa dữ liệu trong thay đổi này.
+
 ## Điều chỉnh phạm vi UI — 31/10/2026 (CONFIRMED)
 Chủ dự án yêu cầu tạm mở chặn đăng nhập để xem UI trước khi có DB/cloud.
 Development mặc định UI preview, không gọi API: login chỉ điều hướng sau validation,
 không xác minh tài khoản; profile khách, danh sách rỗng và nhãn xem thử rõ ràng.
 Đăng ký/lưu/tạo ảnh không ghi dữ liệu. Backend xác thực không thay đổi.
-Đặt frontend/.env.local VITE_UI_PREVIEW=false rồi restart để bật API/session thật.
+Đặt frontend/.env.local VITE_UI_PREVIEW=false rồi restart để bật API/JWT cookie thật.
 Production build luôn bắt buộc xác thực thật. Hướng dẫn tại LOCAL_RUN.md.
 Đoạn thông báo dài trong layout đã bỏ theo yêu cầu; giữ badge XEM THỬ UI.
 Create preview validate prompt rồi chỉ hiện thông báo tại kết quả, không tạo key/pending/API.
@@ -19,9 +23,9 @@ preview/not_found/status_error là trạng thái hiển thị frontend, không t
 
 ## Quyết định được cụ thể hóa trong task
 - Auth: Argon2id (memory19456KiB,time2,parallelism1); Zod boundary validation.
-- Local session7ngày, HttpOnly, SameSite=Lax; Secure khi HTTPS/production.
+- JWT/session7ngày, HttpOnly, SameSite=Lax; Secure khi HTTPS/production; JWT secret tối thiểu32 bytes qua `JWT_SECRET`.
 - Origin đúng localhost5173 cho unsafe methods. Register/login dùng origin+rate limit10attempts/IP/15phút, process-local cho demo; reset khi server restart.
-- Login rotate session bearer; DB chỉ tokenHash và csrfTokenHash. CSRF token ổn định theo session để nhiều tab không vô hiệu nhau.
+- Login rotate JWT bearer; DB chỉ lưu hash(jti) và csrfTokenHash. CSRF token ổn định theo session để nhiều tab không vô hiệu nhau.
 - GET /api/v1/auth/csrf yêu cầu session, trả csrfToken; POST logout/mutation yêu cầu X-CSRF-Token.
 - Token CSRF không là cookie đăng nhập, không log hoặc export. Session cũ thiếu csrfTokenHash phải bootstrap lại.
 - Các storage schema fields mới: accountAlias/container/storageRevision/integrity.sha256/storageCleanupAttempts/storageCleanupNextAt; generation thêm savingAttempts.
@@ -42,7 +46,7 @@ POST /api/v1/generations; GET /api/v1/generations và/:id.
 GET /api/v1/images và/:id; PATCH/DELETE /api/v1/images/:id.
 GET /api/v1/images/:id/content và/download.
 GET /api/v1/usage/me; PATCH /api/v1/users/me; GET /api/v1/stats/me.
-Các private APIs require session; mutation require Origin+CSRF.
+Các private APIs require JWT + active DB session; mutation require Origin+CSRF.
 
 DTO:
 - register201 {success:true,data:{user}}; không tự login.
@@ -61,7 +65,7 @@ DTO:
 ## Frontend đã nối (khi VITE_UI_PREVIEW=false hoặc production build)
 Login/Register gọi API, SessionGate bảo vệ / và/app/*, menu logout/profile thật.
 Create gửi idempotency key, snapshot prompt, poll theo jobID trong URL, dừng terminal/unmount, status-read retry tách create.
-Pending request chưa xác định giữ key+prompt trong sessionStorage theo user và tab để explicit retry sau reload; không lưu auth token/password.
+Pending request chưa xác định giữ key+prompt trong sessionStorage theo user và tab để explicit retry sau reload; không lưu JWT/password.
 History giữ bảng desktop/card mobile và drawer chi tiết; job có imageDeleted phân biệt ảnh đã xóa.
 Library/detail/history/settings dùng API, không dùng fixture làm bản ghi tài khoản; pagination cursor, download qua API, rename/delete persist.
 Dashboard thống kê và ảnh gần đây thật; gallery cảm hứng vẫn demo có nhãn, yêu thích của gallery chỉ là cục bộ.

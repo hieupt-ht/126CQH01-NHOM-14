@@ -84,7 +84,7 @@ test("adapter rejects untrusted descriptors, missing owner and failed private ve
   await assert.rejects(failed.put(key,png,"image/png",owner));
 });
 test("no cloud is required for account/UI mode; partial secrets and enabled generation fail closed",()=>{
-  const base={MONGODB_URI:"mongodb://127.0.0.1:27027/config_test"};
+  const base={MONGODB_URI:"mongodb://127.0.0.1:27027/config_test",JWT_SECRET:"test-only-secret-do-not-use-outside-tests-0123456789"};
   assert.equal(validateEnv(base).cloudinaryApiSecret,undefined);
   assert.throws(()=>validateEnv({...base,CLOUDINARY_API_KEY:"placeholder"}));
   const ready={...base,GENERATION_ENABLED:"true",CLOUDFLARE_ACCOUNT_ID:"a".repeat(32),CLOUDFLARE_API_TOKEN:"placeholder",CLOUDINARY_CLOUD_NAME:"test",CLOUDINARY_API_KEY:"placeholder",CLOUDINARY_API_SECRET:"placeholder"};

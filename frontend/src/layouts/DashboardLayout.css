@@ -93,3 +93,14 @@
   .studio-search input { font-size: 10px; }
   .account-menu__panel { right: -2px; width: 260px; }
 }
+
+.usage-card__metrics { display: grid; gap: 9px; margin: 14px 0 0; }
+.usage-card__metrics > div { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px; font-size: 10px; }
+.usage-card__metrics dt { color: var(--text-secondary); }
+.usage-card__metrics dd { margin: 0; color: var(--text-primary); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.usage-card__progress, .usage-card__progress-placeholder { display: block; width: 100%; height: 6px; margin-top: 11px; border: 0; border-radius: var(--radius-full); overflow: hidden; background: var(--surface-secondary); }
+.usage-card__progress { appearance: none; }
+.usage-card__progress::-webkit-progress-bar { background: var(--surface-secondary); }
+.usage-card__progress::-webkit-progress-value { background: var(--gradient-neon); border-radius: var(--radius-full); }
+.usage-card__progress::-moz-progress-bar { background: var(--gradient-neon); border-radius: var(--radius-full); }
+.usage-card__storage { margin-top: 17px; padding-top: 15px; border-top: 1px solid var(--border-subtle); }

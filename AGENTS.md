@@ -4,7 +4,7 @@
 
 CONFIRMED mới nhất: chủ dự án chọn **Cloudinary Free làm storage chính cho MVP**, thay Azure trước đó.
 Đọc `docs/technical-baseline/09-CLOUDINARY-DECISION.md` trước các quyết định storage cũ.
-Giữ FLUX/Cloudflare, session HttpOnly/Argon2id, MongoDB replica set và private delivery.
+Giữ FLUX/Cloudflare, JWT trong HttpOnly cookie với session revocation phía server/Argon2id, MongoDB replica set và private delivery.
 Cải tiến sau đề tài bị HOÃN: `docs/project/POST_COMPLETION_IMPROVEMENTS.md`; chỉ mở sau khi nghiệm thu TẤT CẢ phạm vi gốc và được chủ dự án cho phép.
 Không commit/push/hoàn tất merge nếu chưa được yêu cầu; không gửi secret hoặc gọi cloud thật trong test.
 
@@ -24,7 +24,7 @@ Bộ baseline là tài liệu, không phải bằng chứng runtime đã đổi;
 - Product: FLUX STUDIO, website tạo và quản lý ảnh từ mô tả tự do.
 - Verified local stack: React + Vite + Tailwind CSS + TypeScript ở `frontend/`; Node.js + Express + TypeScript + ES Modules ở `backend/`.
 - Backend foundation đã có scaffold cho Node.js + Express + TypeScript, Mongoose, cấu hình môi trường, kết nối MongoDB, health/error handling và 5 model. Điều này không chứng minh MongoDB đã kết nối thành công hoặc các luồng nghiệp vụ đã hoạt động.
-- Kiến trúc backend đã xác nhận: MongoDB + Mongoose, Google Gemini API qua official `@google/genai`, local filesystem cho demo và `/api/v1`. Authentication, provider calls, generation workflow và image delivery vẫn cần được triển khai theo phase đã duyệt.
+- Kiến trúc backend hiện hành: MongoDB + Mongoose, `/api/v1`, JWT trong HttpOnly cookie với MongoDB revocation, FLUX/Cloudflare và Cloudinary authenticated theo technical baseline mới nhất. Phần mô tả Gemini/local ở dưới là lịch sử nếu có xung đột.
 - Canonical product requirements: GitHub Issue #1 và `PRD.md` trong repository.
 - Canonical visual requirements: `writing-block.md`, Rule `FLUX-UI-001`, theme `Midnight Aurora`.
 
@@ -51,7 +51,7 @@ Phân loại mọi quyết định trong báo cáo là `CONFIRMED`, `PROPOSAL` h
 - Mỗi lần tạo chỉ tạo một ảnh; chỉ CTA “Tạo ảnh” được khởi tạo generation.
 - Tái sử dụng layout, component và token chung; tránh abstraction khi chưa có nhu cầu lặp lại.
 - Frontend không được tự quyết định quyền, quota, model, secret hoặc trạng thái thành công.
-- Backend lấy user từ session đã xác thực, kiểm tra ownership và quota trên mọi API.
+- Backend xác minh JWT trong HttpOnly cookie và session revocation phía server, sau đó kiểm tra ownership và quota trên mọi API.
 - Thống nhất API contract trong `docs/development/FRONTEND_BACKEND_CONTRACT.md` trước khi chia task.
 
 ## 4. Code quality and maintainability
@@ -94,7 +94,7 @@ Phân loại mọi quyết định trong báo cáo là `CONFIRMED`, `PROPOSAL` h
 ## 6. Security and user data
 
 - Secret API key, session secret, database URL và storage credential chỉ ở server/environment; không commit secret thật.
-- Mật khẩu phải hash bằng thư viện uy tín; session cookie phải HttpOnly và cấu hình Secure khi chạy HTTPS.
+- Mật khẩu hash bằng Argon2id; JWT cookie phải HttpOnly và cấu hình Secure khi chạy HTTPS.
 - Kiểm tra authentication, authorization và ownership ở backend; ObjectId không thay thế authorization.
 - Không log mật khẩu, token, API key, Base64 ảnh hoặc prompt ngoài nơi thực sự cần.
 - Không để frontend truyền `userId` tùy ý để quyết định phạm vi truy vấn.
@@ -114,7 +114,7 @@ Phân loại mọi quyết định trong báo cáo là `CONFIRMED`, `PROPOSAL` h
 Skills trong `.agents/skills/` là workflow chuyên biệt; `AGENTS.md` là quy tắc nền. Skill không được nới scope, lặp lại toàn bộ PRD hoặc ghi đè rule này.
 
 - Mọi backend task phải đọc `docs/development/BACKEND_RULES.md` và tài liệu domain/API được trỏ từ đó.
-- Chọn skill theo phần việc: `express-api-development`, `mongodb-mongoose`, `authentication-session`, `gemini-image-generation`, `backend-testing`. Dùng `backend-api` để giữ contract nghiệp vụ, ownership, quota, idempotency và safe errors; skill Express không thay thế các quy tắc đó.
+- Chọn skill theo phần việc: `express-api-development`, `mongodb-mongoose`, `authentication-jwt`, `backend-testing`. Dùng `backend-api` để giữ contract nghiệp vụ, ownership, quota, idempotency và safe errors; skill Express không thay thế các quy tắc đó.
 
 - `frontend-design`: thiết kế theo token và ảnh tham chiếu.
 - `create-page`: xây page đã có route/nghiệp vụ xác nhận.
@@ -122,7 +122,7 @@ Skills trong `.agents/skills/` là workflow chuyên biệt; `AGENTS.md` là quy 
 - `backend-api`: phát triển API an toàn, không bịa endpoint/schema.
 - `express-api-development`: route/controller/service và HTTP boundary đã được contract xác nhận.
 - `mongodb-mongoose`: schema, index, query và persistence theo database design.
-- `authentication-session`: auth/session cookie và CSRF khi chi tiết deployment đã được chốt.
+- `authentication-jwt`: JWT trong HttpOnly cookie, session revocation và CSRF theo contract hiện hành.
 - `gemini-image-generation`: tích hợp Gemini server-side theo model, quyền truy cập và chi phí đã xác minh.
 - `backend-testing`: kiểm thử backend an toàn, cô lập database/provider và đúng invariant.
 - `api-integration`: nối frontend/backend theo contract và trạng thái job.

@@ -2,7 +2,8 @@ import { useEffect, useRef, type ReactNode } from "react";
 import { useState } from "react";
 import { api, type UserProfile } from "../services/api";
 import { UI_PREVIEW } from "../services/uiPreview";
-import { useResource, type UsageRecord } from "../services/resources";
+import { useResource, type UsageRecord, type StatsRecord } from "../services/resources";
+import UsageCard from "../components/dashboard/UsageCard";
 import Brand from "../components/dashboard/Brand";
 import Icon from "../components/ui/Icon";
 import "./DashboardLayout.css";
@@ -20,7 +21,7 @@ type Props = {
 type SidebarProps = Pick<
   Props,
   "favoritesOnly" | "onFavorites" | "onCompose" | "activeItem"
-> & { onNavigate?: () => void; usage: UsageRecord | null; usageError: string };
+> & { onNavigate?: () => void; usage: UsageRecord | null; usageError: string; usageLoading: boolean; stats: StatsRecord | null; statsError: string; statsLoading: boolean };
 
 function SidebarContent({
   favoritesOnly,
@@ -29,7 +30,7 @@ function SidebarContent({
   activeItem = "home",
   onNavigate,
   usage,
-  usageError,
+  usageError, usageLoading, stats, statsError, statsLoading,
 }: SidebarProps) {
   return (
     <>
@@ -131,22 +132,8 @@ function SidebarContent({
             <Icon name="arrow" size={17} />
           </button>
         </div>
-        <div className="usage-card">
-          <div className="usage-card__heading">
-            <span>Lượt sử dụng</span>
-            <span>Hôm nay</span>
-          </div>
-          <div className="usage-card__status">
-            <span className="status-dot" />
-            Lượt còn: {usage?.remainingToday ?? "Đang tải…"}
-          </div>
-          <p>
-            {usageError ||
-              (usage?.configured
-                ? "Đặt lại lúc 07:00 sáng giờ Việt Nam."
-                : "Chưa bật dịch vụ tạo ảnh.")}
-          </p>
-        </div>
+        <UsageCard usage={usage} usageError={usageError} usageLoading={usageLoading}
+          stats={stats} statsError={statsError} statsLoading={statsLoading} />
         <div className="studio-sidebar__footer">
           <span className="status-dot" />
           FLUX STUDIO<span>v0.1</span>
@@ -167,6 +154,7 @@ export default function DashboardLayout({
   showSearch = true,
 }: Props) {
   const usage = useResource<UsageRecord>("/usage/me");
+  const stats = useResource<StatsRecord>("/stats/me");
   const [user, setUser] = useState<UserProfile | null>(null);
   const [accountError, setAccountError] = useState("");
   const [loggingOut, setLoggingOut] = useState(false);
@@ -214,6 +202,8 @@ export default function DashboardLayout({
     activeItem,
     usage: usage.data,
     usageError: usage.error,
+    usageLoading: usage.loading,
+    stats: stats.data, statsError: stats.error, statsLoading: stats.loading,
   };
   return (
     <div className="studio-shell" id="home">

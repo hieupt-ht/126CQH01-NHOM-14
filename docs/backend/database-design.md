@@ -14,7 +14,7 @@
 - Phân quyền bằng `userId` lấy từ phiên backend. Mọi truy vấn ảnh/job người dùng đều scope theo `userId`; ObjectId không thay thế authorization.
 - `generations` là lịch sử của mọi lần yêu cầu; `images` chỉ có bản ghi kết quả đã lưu thành công và chưa bị ẩn. Generation thành công có thể còn trong history sau khi ảnh bị xóa.
 - Đề xuất 5 collections: `users`, `sessions`, `generations`, `images`, `dailyUsage`. Không tạo `user_settings` riêng ở MVP: dữ liệu P1 đã biết chỉ là display name, có thể để trong `users`; chưa có preference settings đã xác nhận.
-- **CONFIRMED:** dùng opaque server-side session qua HttpOnly cookie; không dùng JWT. Collection `sessions` lưu hash token, không lưu token cookie thô. Chi tiết `SameSite`, origins/CORS, CSRF và thời hạn session phụ thuộc topology deploy và vẫn là OPEN QUESTION.
+- **CONFIRMED (01/11/2026):** JWT HS256 trong HttpOnly cookie; `sessions` giữ hash JWT `jti` để logout/revoke có hiệu lực ngay. Không lưu JWT thô. Chi tiết `SameSite`, origins/CORS, CSRF, token lifetime và signing-key rotation phụ thuộc topology deploy và vẫn là OPEN QUESTION.
 - **CONFIRMED:** image assets lưu trên Cloudinary bằng authenticated delivery; backend chỉ gọi provider với credential server-side. Ảnh chỉ được phục vụ qua endpoint có authentication và ownership check; không expose authenticated Cloudinary URL trực tiếp cho client.
 - **CONFIRMED:** provider là Google AI Studio / Gemini API qua official Node.js SDK `@google/genai`; model lấy từ `GEMINI_IMAGE_MODEL`. Không gọi API trực tiếp từ frontend. Tên model triển khai cụ thể và khả năng/tier/quota của project phải được xác minh trước khi bật.
 
@@ -57,20 +57,20 @@
 
 ### 2.2 `sessions`
 
-**Mục đích:** phiên đăng nhập server-side nếu nhóm chốt session-cookie. Không phải thiết kế JWT đã được xác nhận.
+**Mục đích:** trạng thái server-side cho JWT-authenticated sessions, gồm revocation/logout immediacy, CSRF binding và expiry cleanup.
 
 | Field | Type | Required | Default/constraint |
 |---|---|---:|---|
 | `_id` | ObjectId | Có | MongoDB generated |
 | `userId` | ObjectId | Có | Ref `users._id` |
-| `tokenHash` | string | Có | Hash opaque token; raw token chỉ nằm trong cookie client |
+| `tokenHash` | string | Có | SHA-256 hash của JWT `jti`; JWT chỉ nằm trong HttpOnly cookie client |
 | `createdAt` | Date | Có | Thời điểm tạo |
 | `expiresAt` | Date | Có | TTL expiration |
 | `lastSeenAt` | Date | Có | Cập nhật có throttle |
 
 **Indexes:** unique `{ tokenHash: 1 }`; `{ userId: 1, expiresAt: 1 }`; TTL `{ expiresAt: 1 }` với `expireAfterSeconds: 0`. TTL cleanup không thay thế kiểm tra `expiresAt` trên mỗi request.
 
-**Validation/bảo mật:** random token cryptographically secure đủ entropy; chỉ lưu hash; cookie `HttpOnly`, `Secure` ở production HTTPS, `SameSite=Lax` là baseline đề xuất; rotate khi login; logout revoke session. Dùng origin allowlist, CORS credentials chỉ cho origin đã cấu hình và synchronizer CSRF token (`X-CSRF-Token`) cho unsafe methods; endpoint/kiểu cấp token và policy chính xác cần chốt cùng deployment origins.
+**Validation/bảo mật:** JWT ký HS256 bằng `JWT_SECRET` server-only tối thiểu 32 bytes; claims gồm `iss`, `aud`, `sub`, `jti`, `iat`, `exp`; chỉ chấp nhận HS256 với issuer/audience cố định. Hash `jti` bằng SHA-256 trong DB; kiểm tra chữ ký/claims, session còn hiệu lực và user active trên mỗi request. Cookie `HttpOnly`, `Secure` trên HTTPS, `SameSite=Lax`; logout revoke DB session và expire cookie. Dùng origin allowlist, credentialed CORS và synchronizer CSRF token (`X-CSRF-Token`) cho unsafe methods.
 
 **Document mẫu:**
 
@@ -78,7 +78,7 @@
 {
   "_id": "671000000000000000000002",
   "userId": "671000000000000000000001",
-  "tokenHash": "<sha256-or-keyed-hash-of-random-token>",
+  "tokenHash": "<sha256-of-jwt-jti>",
   "createdAt": "2026-10-29T03:10:00.000Z",
   "expiresAt": "2026-11-05T03:10:00.000Z",
   "lastSeenAt": "2026-10-29T03:10:00.000Z"
@@ -231,11 +231,11 @@ users 1 ── N dailyUsage (mỗi ngày một document cho scope user)
 
 ## 4. Quyết định chưa chốt
 
-**CONFIRMED:** opaque server-side session, HttpOnly cookie, không JWT; Gemini API qua official `@google/genai`, model cấu hình bằng env; Cloudinary authenticated image storage; prefix `/api/v1`; 5 collections hiện tại; không tạo `user_settings`.
+**CONFIRMED (01/11/2026):** JWT HS256 trong HttpOnly cookie với MongoDB `sessions` revocation; Cloudinary authenticated image storage; prefix `/api/v1`; 5 collections hiện tại; không tạo `user_settings`.
 
-**PROPOSAL:** session cookie `SameSite=Lax`, Secure ở production HTTPS; origin allowlist + CSRF synchronizer token/header cho unsafe methods; private content/download proxy qua API.
+**PROPOSAL:** cookie `SameSite=Lax`, Secure ở production HTTPS; origin allowlist + CSRF synchronizer token/header cho unsafe methods; private content/download proxy qua API.
 
-**OPEN QUESTION:** deployment origin/topology và chính sách CORS/CSRF chi tiết; session lifetime và password-hashing package; Gemini model ID cụ thể, model access/billing/quota và output MIME/dimensions; mức quota; prompt/title limits; max file size; policy retention/purge file; production hosting có filesystem bền vững và backup hay không.
+**OPEN QUESTION:** deployment origin/topology và chính sách CORS/CSRF chi tiết; JWT/session lifetime và signing-key rotation; mức quota; prompt/title limits; max file size; policy retention/purge file; production hosting có filesystem bền vững và backup hay không.
 
 ### 5. Cloudinary image storage design
 

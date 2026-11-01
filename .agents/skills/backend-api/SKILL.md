@@ -20,7 +20,7 @@ Use for a backend endpoint, controller, service, middleware or contract change t
 
 1. Confirm method, path, priority, request, response, status codes and ownership scope.
 2. Validate and normalize only allowed fields; reject invalid prompt, oversized input and unknown mutation fields.
-3. Authenticate from the server-side session and enforce ownership on every read, update, delete and download.
+3. Authenticate from the verified JWT plus active MongoDB session and enforce ownership on every read, update, delete and download.
 4. For generation, resolve an existing `Idempotency-Key` before quota reservation; reserve quota and active-job state atomically where supported.
 5. Keep provider/storage calls outside database transactions. Use job state, lease, checkpoint and idempotent upsert for recovery.
 6. Return safe error codes/messages. Do not expose API keys, passwords, Base64, provider stack traces or another user's existence.
