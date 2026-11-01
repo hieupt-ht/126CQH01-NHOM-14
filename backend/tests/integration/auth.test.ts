@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { once } from "node:events";
 import mongoose from "mongoose";
+import { jwtVerify } from "jose";
 import { MongoMemoryReplSet } from "mongodb-memory-server";
 import { createApp } from "../../src/app.js";
 import {
@@ -9,7 +10,7 @@ import {
   SessionModel,
   UserModel,
 } from "../../src/models/index.js";
-import { hashSessionToken } from "../../src/modules/auth/auth.js";
+import { hashJwtId } from "../../src/modules/auth/auth.js";
 
 test(
   "real isolated MongoDB: auth, csrf, expiry, ownership boundary and logout",
@@ -25,7 +26,8 @@ test(
     try {
       await mongoose.connect(repl.getUri("flux_auth_test"));
       await createDeclaredIndexes();
-      server = createApp({ frontendOrigin: origin }).listen(0, "127.0.0.1");
+      const jwtSecret = "integration-test-secret-do-not-use-outside-tests-0123456789";
+      server = createApp({ frontendOrigin: origin, jwtSecret }).listen(0, "127.0.0.1");
       await once(server, "listening");
       const address = server.address();
       assert.ok(address && typeof address !== "string");
@@ -91,15 +93,30 @@ test(
       assert.match(setCookie, /SameSite=Lax/);
       const cookie = setCookie.split(";")[0],
         rawToken = cookie.split("=")[1];
+      const { payload, protectedHeader } = await jwtVerify(rawToken, Buffer.from(jwtSecret), {
+        algorithms: ["HS256"],
+        issuer: "flux-studio-api",
+        audience: "flux-studio-web",
+      });
+      assert.equal(protectedHeader.typ, "JWT");
+      assert.equal(typeof payload.sub, "string");
+      assert.equal(typeof payload.jti, "string");
       const loggedIn = (await login.json()) as { data: { csrfToken: string } };
+      assert.equal(JSON.stringify(loggedIn).includes(rawToken), false);
       const stored = await SessionModel.findOne({ userId: user._id }).select(
         "+tokenHash +csrfTokenHash",
       );
-      assert.equal(stored!.tokenHash, hashSessionToken(rawToken));
+      assert.equal(stored!.tokenHash, hashJwtId(String(payload.jti)));
       assert.notEqual(stored!.csrfTokenHash, loggedIn.data.csrfToken);
       assert.equal(
         (await request("/auth/me", "GET", undefined, cookie)).status,
         200,
+      );
+      const [header, payloadSegment] = rawToken.split(".");
+      const tamperedToken = header + "." + payloadSegment + "." + Buffer.alloc(32, 0).toString("base64url");
+      assert.equal(
+        (await request("/auth/me", "GET", undefined, "flux_session=" + tamperedToken)).status,
+        401,
       );
       assert.equal(
         (await request("/auth/logout", "POST", undefined, cookie)).status,

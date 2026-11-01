@@ -8,19 +8,17 @@ Docker Desktop/Engine đang chạy, Compose plugin mới, các cổng5173/3000/2
 Nếu chỉ xem UI: không cần Docker/backend/DB; chạy frontend npm run dev theo [LOCAL_RUN](LOCAL_RUN.md).
 Docker dùng official mongo:8.0.32-noble và Node24. Không xóa volume dữ liệu hiện có.
 
-Tạo file `.env` riêng ở repo root bằng editor. Không gửi lên Git hoặc chat:
+Tại repo root, copy `.env.example` thành `.env` rồi mở `.env` bằng editor. Điền `MONGO_INITDB_ROOT_PASSWORD` bằng mật khẩu riêng cho MongoDB local và đặt `JWT_SECRET` riêng dài tối thiểu 32 byte. Có thể tạo secret bằng PowerShell:
 
-~~~env
-MONGO_INITDB_ROOT_USERNAME=flux_dev
-MONGO_INITDB_ROOT_PASSWORD=REPLACE_WITH_YOUR_OWN_LOCAL_PASSWORD
-MONGO_DATABASE=flux_studio
-MONGODB_HOST_PORT=27017
-FRONTEND_ORIGIN=http://localhost:5173
-VITE_UI_PREVIEW=true
-GENERATION_ENABLED=false
+~~~powershell
+$bytes = New-Object byte[] 32
+$rng = [System.Security.Cryptography.RandomNumberGenerator]::Create()
+$rng.GetBytes($bytes)
+[Convert]::ToBase64String($bytes)
+$rng.Dispose()
 ~~~
 
-Các giá trị trên là tên/placeholder, không phải credential dùng chung. Không giữ password placeholder.
+Chép chuỗi vừa tạo vào `JWT_SECRET`. Không gửi file `.env` lên Git hoặc chat. Git đã bỏ qua file này.
 Compose truyền MongoDB password tách URI. Chưa cần Cloudinary khi chỉ demo tài khoản/DB.
 Để dùng auth/API thật, đổi VITE_UI_PREVIEW=false trong root .env rồi recreate frontend.
 frontend/.env.local áp dụng khi chạy Vite ngoài Docker; Compose truyền env riêng trong container.

@@ -6,13 +6,13 @@
 
 # REST API Contract — bản thiết kế đề xuất
 
-**Trạng thái:** thiết kế tài liệu, chưa triển khai nghiệp vụ. API prefix `/api/v1`, opaque server-side session, Gemini provider qua official `@google/genai`, model environment-configured và Cloudinary authenticated image storage là **CONFIRMED** theo quyết định chủ dự án. PRD và contract cũ có endpoint `/api/...` và FLUX/Cloudflare; API coordination contract được đồng bộ sang `/api/v1`, còn PRD giữ nguyên làm nguồn nghiệp vụ lịch sử. Không gọi provider hay kết nối dịch vụ trong task này.
+**Trạng thái:** tài liệu contract; auth hiện được triển khai. API prefix `/api/v1`, JWT HS256 trong HttpOnly cookie cùng MongoDB session revocation, FLUX/Cloudflare và Cloudinary authenticated image storage là **CONFIRMED** (JWT decision 01/11/2026). PRD cũ giữ lại các yêu cầu nghiệp vụ gốc.
 
 ## 1. Quy ước chung
 
 - Base URL: `/api/v1`. Mọi endpoint trong bảng là relative path dưới prefix này. JSON UTF-8; thời gian ISO-8601 UTC. Không nhận `userId`, provider, model, quota hoặc secret từ client.
-- Auth: opaque server-side session qua HttpOnly cookie; không dùng JWT. `Secure` bật trên HTTPS, `SameSite=Lax` là baseline đề xuất. Mọi route cá nhân cần session hợp lệ trừ register/login. CORS allowlist credentials và CSRF protection cần tuân theo deployment origin; cấu hình chi tiết còn OPEN QUESTION.
-- Session-authenticated unsafe methods yêu cầu origin validation và synchronizer CSRF token qua `X-CSRF-Token` (lấy token từ session-bound API bootstrap). Cả register/login cũng giới hạn Origin và rate limit. **PROPOSAL:** expose `GET /auth/csrf` cùng API để cấp token; chốt triển khai gắn với origin topology và frontend contract.
+- Auth: JWT HS256 đặt trong HttpOnly cookie; `JWT_SECRET` server-side, cookie `Secure` trên HTTPS, `SameSite=Lax` theo cấu hình hiện hành. Mỗi request kiểm tra chữ ký, issuer, audience, expiry, `sub`/`jti` và active `sessions` record. Mọi route cá nhân cần JWT + session hợp lệ trừ register/login.
+- Cookie-authenticated unsafe methods yêu cầu origin validation và synchronizer CSRF token qua `X-CSRF-Token`; `GET /auth/csrf` cấp token gắn với JWT cookie. Register/login cũng kiểm tra Origin và rate limit. Exact deployment origin và key-rotation policy còn OPEN QUESTION.
 - Phân trang cursor ổn định theo `(createdAt, _id)`; `limit` mặc định 20, tối đa 50. Không nhận Mongo filter/sort tùy ý. Search/date filters/favorite chỉ P1.
 - Thành công generation là async: `POST` trả `202 Accepted`, không phải xác nhận ảnh đã tạo. Chỉ `succeeded` sau khi file và metadata lưu được.
 - Tất cả resource read/update/delete/download kiểm tra ownership server-side. Missing và not-owned có cùng `404` response để tránh enumeration.
@@ -40,7 +40,7 @@ Không trả stack trace, hash mật khẩu, provider secret, storage credential
 | `POST /auth/logout` | Session | Không body | `204`; revoke session và expire cookie | `401 UNAUTHENTICATED` | App shell / logout |
 | `GET /auth/me` | Session | — | `200` `{ user: { id, displayName, email, createdAt } }` | `401 UNAUTHENTICATED` | Layout, Settings |
 
-`passwordHash` is never returned/logged; hash with a reputable password-hashing library. Registration does not implicitly sign in. The specific hashing package and cookie lifetime are OPEN QUESTION until dependency and deployment review.
+`passwordHash` is never returned/logged; passwords use Argon2id. Registration does not implicitly sign in. JWT lifetime currently follows the configured 7-day session lifetime; production key rotation policy remains OPEN QUESTION.
 
 Register/login validation phải cùng chuẩn email/password đã chốt; password hash ở server. Không có change-password hoặc email-verification endpoint trong scope đã xác nhận.
 
@@ -110,6 +110,6 @@ Các error code theo contract hiện có cần giữ nhất quán: `INVALID_PROM
 
 ## 5. Còn cần chốt trước implementation
 
-- **CONFIRMED:** `/api/v1`; opaque server-side HttpOnly session, no JWT; Google AI Studio/Gemini through official Node SDK; model via environment; Cloudinary authenticated storage; private API delivery; five collections; one prompt → one image and all PRD lifecycle/idempotency/quota/ownership/history invariants.
-- **PROPOSAL:** `SameSite=Lax`, Secure under HTTPS, exact-origin CORS, origin checks plus synchronizer CSRF token; `GET /auth/csrf`; `IMAGE_STORAGE_DIR` local default; `GET /images/:id/content`; default cursor limit 20/max 50.
-- **OPEN QUESTION:** concrete session lifetime, password hash library, exact cookie/CORS/CSRF bootstrap details by deployment topology; exact Gemini model ID/access/availability and verified response MIME/dimensions; quota values, prompt/title constraints, file size/dimension ceiling; persistent production storage/backup and retention/purge policy. Do not add guessed values or enable billing while unanswered.
+- **CONFIRMED (01/11/2026):** `/api/v1`; HS256 JWT in HttpOnly cookie with MongoDB session revocation; FLUX/Cloudflare; Cloudinary authenticated storage; private API delivery; five collections; one prompt → one image and all PRD lifecycle/idempotency/quota/ownership/history invariants.
+- **PROPOSAL:** exact-origin CORS, origin checks plus synchronizer CSRF token; production JWT signing-key rotation and key identifiers; `IMAGE_STORAGE_DIR` local default; `GET /images/:id/content`; default cursor limit 20/max 50.
+- **OPEN QUESTION:** exact cookie/CORS/CSRF deployment details and JWT signing-key rotation; quota values, prompt/title constraints, file size/dimension ceiling; persistent production storage/backup and retention/purge policy.

@@ -38,7 +38,7 @@
 |---|---|---|---|
 | Register/login | display name (register), email, password | Session cookie và user an toàn hoặc lỗi có mã | Chuẩn hóa email, giới hạn độ dài, hash mật khẩu, rate limit; không trả passwordHash. |
 | Create generation | prompt và `Idempotency-Key`; không nhận `userId`, model hay provider từ UI | `202` + generation id/status; pollable states; usage mới nhất | Session, prompt length/non-empty, quota atomic, one active job, idempotency per user, server-owned provider/model/settings. |
-| Library/history/detail | cursor/page, limit và filter đã được chốt; resource id trên URL | Chỉ tài liệu user hiện tại; stable pagination | Derive user id từ session; validate ObjectId/cursor/filter; exclude soft-deleted images; không truyền query nguyên trạng sang MongoDB. |
+| Library/history/detail | cursor/page, limit và filter đã được chốt; resource id trên URL | Chỉ tài liệu user hiện tại; stable pagination | Derive user id từ JWT đã verify và active session; validate ObjectId/cursor/filter; exclude soft-deleted images; không truyền query nguyên trạng sang MongoDB. |
 | Rename/favorite/delete | title hoặc `isFavorite`; delete confirmation thuộc UI | Updated resource hoặc accepted deletion state | Ownership trong điều kiện update; whitelist field; giới hạn title; audit storage deletion; favorite chỉ khi P1 được bật. |
 | Download | resource id | File stream hoặc redirect có kiểm soát | Kiểm tra ownership trước khi lấy file; kiểm soát URL/storage key phía server; không dùng URL tùy ý do client gửi. |
 | Profile/usage/stats | tên hiển thị; query range đã giới hạn | profile, quota/reset và thống kê scoped | Session và whitelist; quota không do frontend tự quyết; aggregation có user scope và giới hạn ngày. |
@@ -49,11 +49,11 @@
 
 **CONFIRMED** — Repo route `/` sang Dashboard preview, `/login` sang Login; các route preview còn lại được khai báo thủ công trong `App.tsx`. Đây không phải xác nhận về route bảo vệ hay đích redirect sau login.
 
-**CONFIRMED (quyết định chủ dự án):** API prefix `/api/v1`; authentication bằng opaque server-side session + HttpOnly cookie, không JWT; MongoDB + Mongoose; Gemini API qua official Node.js SDK `@google/genai`, model cấu hình từ environment; local filesystem cho giai đoạn demo/local-first; giữ năm collections hiện có, không thêm `user_settings`.
+**CONFIRMED (cập nhật 01/11/2026):** API prefix `/api/v1`; HS256 JWT trong HttpOnly cookie, MongoDB `sessions` lưu hash(jti) để revoke ngay; MongoDB + Mongoose; FLUX/Cloudflare và Cloudinary theo baseline hiện hành; giữ năm collections, không thêm `user_settings`.
 
 **PROPOSAL** — Backend đọc user từ session/cookie đã xác thực; client không gửi `userId`. Tách generation history khỏi thư viện ảnh đã lưu. Dùng P1 APIs chỉ sau khi P0 ổn định.
 
-**CONFIRMED** — `/api/v1`, opaque server-side sessions, Gemini API và local filesystem đã được chủ dự án chọn; endpoint legacy trong PRD/Issue vẫn là lịch sử yêu cầu, không còn là prefix/provider dùng cho triển khai này. Gemini model ID, project access, pricing/quota và image output format vẫn cần xác minh trước khi bật provider.
+**CONFIRMED (01/11/2026)** — `/api/v1`, JWT HttpOnly cookie có MongoDB revocation, FLUX/Cloudflare và Cloudinary là lựa chọn triển khai hiện hành; endpoint/provider legacy trong PRD/Issue chỉ giữ làm lịch sử nếu mâu thuẫn baseline mới.
 
 **OPEN QUESTION** — Session lifetime, cookie SameSite/CSRF/CORS chi tiết theo deployment topology, password hashing package, quota values, max prompt/title/file limits và local MongoDB transaction topology cần được chốt trước từng phần implementation phụ thuộc.
 

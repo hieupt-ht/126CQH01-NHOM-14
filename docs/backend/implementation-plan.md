@@ -18,17 +18,17 @@
 - **Kiểm thử:** config valid/missing/invalid; app boot/shutdown; health liveness và readiness khi DB available/unavailable bằng test database cô lập; không dùng production URI.
 - **Rủi ro:** local transaction support phụ thuộc MongoDB replica set; nếu phase sau cần transaction phải xác nhận dev/test environment hỗ trợ replica set trước khi chọn thuật toán reservation.
 
-## Phase 2 — Authentication + sessions
+## Phase 2 — Authentication + JWT sessions
 
-**Mục tiêu:** register/login/logout/current user với opaque server-side session, không JWT.
+**Mục tiêu:** register/login/logout/current user với JWT HS256 trong HttpOnly cookie và server-side revocation qua `sessions`.
 
 - **Files/modules dự kiến:** `backend/src/modules/auth/{routes,controller,service,validation}.ts`, `backend/src/modules/users/`, `backend/src/modules/sessions/`, `backend/src/middlewares/{require-session,csrf}.ts`, auth DTOs/errors; session/user schema implementation.
-- **Dependencies:** Mongoose from Phase 1; reputable password hash dependency and any cookie/validation library selected after review. Package selection is still OPEN QUESTION. Do not store raw session token; token generation uses Node cryptographic randomness and DB stores token hash.
-- **APIs:** `POST /api/v1/auth/register`, `POST /api/v1/auth/login`, `POST /api/v1/auth/logout`, `GET /api/v1/auth/me`; CSRF bootstrap endpoint and exact CORS configuration must be confirmed before integration. Login rotates/creates session; logout revokes it; public auth routes are origin-checked and rate-limited.
-- **Collections:** `users`, `sessions`; unique canonical email index, unique session token-hash index, user/expiry and TTL indexes. TTL cleanup does not replace `expiresAt` verification on every request.
-- **Acceptance:** password hash only, no hash/credential in response/log; session cookie `HttpOnly`, `Secure` on HTTPS and SameSite policy per confirmed deployment; authenticated user derives only from session; disabled/expired/revoked session rejected; csrf checks protect unsafe cookie-authenticated actions.
+- **Dependencies:** Mongoose from Phase 1; Argon2id, Zod and `jose` are selected in the implementation. `JWT_SECRET` is server-only and must be at least 32 bytes. Do not store the JWT; MongoDB stores SHA-256 of its random `jti`.
+- **APIs:** `POST /api/v1/auth/register`, `POST /api/v1/auth/login`, `POST /api/v1/auth/logout`, `GET /api/v1/auth/me`, `GET /api/v1/auth/csrf`. JWT cookie is HttpOnly; login creates a `jti`-backed session record; every request checks JWT and active DB session; logout revokes record and expires cookie. Unsafe cookie requests require Origin + CSRF.
+- **Collections:** `users`, `sessions`; unique canonical email index, unique hashed-`jti` index, user/expiry and TTL indexes. TTL cleanup does not replace expiry/revocation verification on every request.
+- **Acceptance:** password hash only; no hash/JWT/key in response or logs; JWT is HS256 with fixed issuer/audience, `sub`, random `jti` and bounded expiry; cookie `HttpOnly`, `Secure` on HTTPS and configured SameSite; invalid/tampered/expired/revoked JWT and disabled users fail closed; ownership derives from verified `sub` plus active session; CSRF protects unsafe cookie-authenticated actions.
 - **Kiểm thử:** registration validation/duplicate email race; credential errors do not enumerate accounts; login/logout/session expiry/revocation; unauthorized route; cookie flags; CSRF and origin rejection; password hash verification.
-- **Rủi ro:** session fixation, CSRF/CORS mismatch across local ports, TTL lag, password-hash dependency/security settings, account enumeration and brute-force rate-limit storage.
+- **Rủi ro:** signing-secret leakage/rotation, CSRF/CORS mismatch across local ports, TTL lag, JWT/session expiry mismatch, account enumeration and process-local brute-force rate-limit storage.
 
 ## Phase 3 — Generations + Gemini provider + image storage
 
@@ -78,7 +78,7 @@
 
 ## Decisions và trạng thái
 
-- **CONFIRMED:** Node.js + Express + TypeScript; MongoDB + Mongoose; `/api/v1`; opaque server-side session/HttpOnly cookie, no JWT; Google AI Studio/Gemini API via official `@google/genai`; model via environment; Cloudinary authenticated image storage; five collections; no `user_settings` without a real need.
+- **CONFIRMED (01/11/2026):** Node.js + Express + TypeScript; MongoDB + Mongoose; `/api/v1`; HS256 JWT in HttpOnly cookie with MongoDB session revocation; FLUX/Cloudflare; Cloudinary authenticated image storage; five collections; no `user_settings` without a real need.
 - **CONFIRMED:** Cloudinary upload limit defaults to `MAX_IMAGE_UPLOAD_MB=10` (10 MiB); dynamic `asset_folder` paths are required. **PROPOSAL:** cookie `SameSite=Lax`, Secure on production HTTPS, origin allowlist + CSRF synchronizer token, private API content stream, default cursor `20`/max `50`.
 - **OPEN QUESTION:** exact session TTL/hash package/CSRF bootstrap for deployment origins; exact Gemini model ID/access/pricing/quotas and verified output; Cloudinary account folder mode and policy/limits; numeric daily quotas and prompt/title/file/dimension limits; local dev MongoDB replica-set setup; private media delivery and retention policy.
 

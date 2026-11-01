@@ -12,8 +12,8 @@ These rules apply to backend design and implementation. `AGENTS.md` remains the 
 
 - Read `AGENTS.md`, `docs/backend/implementation-plan.md`, `docs/backend/database-design.md`, `docs/backend/api-contract.md`, `docs/development/FRONTEND_BACKEND_CONTRACT.md`, and relevant `PRD.md` sections before changing backend behavior.
 - `docs/backend/` and the shared frontend/backend contract hold the detailed schema, endpoint and lifecycle definitions. Preserve their field names, status values and response semantics.
-- The implementation contract confirms Node.js + Express + TypeScript, MongoDB + Mongoose, `/api/v1`, opaque server-side sessions with HttpOnly cookies, Google Gemini through official `@google/genai`, Cloudinary authenticated image storage, and five collections: `users`, `sessions`, `generations`, `images`, `dailyUsage`.
-- Treat deployment details explicitly labelled `PROPOSAL` or `OPEN QUESTION` as unresolved. Do not silently select a model, quota, retention policy, cookie lifetime, SameSite/CSRF bootstrap, production storage, or password-hash package.
+- The current implementation contract confirms Node.js + Express + TypeScript, MongoDB + Mongoose, `/api/v1`, signed JWTs in an HttpOnly cookie with MongoDB session revocation, FLUX through Cloudflare, Cloudinary authenticated image storage, and five collections: `users`, `sessions`, `generations`, `images`, `dailyUsage`.
+- Treat deployment details explicitly labelled `PROPOSAL` or `OPEN QUESTION` as unresolved. Do not silently select a model, quota, retention policy, cookie lifetime, SameSite/CSRF bootstrap, production storage, or JWT key-rotation policy.
 - Older FLUX/Cloudflare and `/api` references in Issue #1 / PRD are legacy where they conflict with the confirmed implementation contract. Preserve the product invariants.
 
 ## Architecture and HTTP boundary
@@ -27,7 +27,7 @@ These rules apply to backend design and implementation. `AGENTS.md` remains the 
 ## MongoDB and domain invariants
 
 - Follow `docs/backend/database-design.md` exactly for collection and field names, required fields, enums, references and declared indexes. Do not add `user_settings` without an approved need.
-- Derive ownership scope only from the authenticated backend session. Scope every image/generation query and mutation by owner; ObjectId is not authorization.
+- Derive ownership scope only from the verified JWT subject plus active backend session record. Scope every image/generation query and mutation by owner; ObjectId is not authorization.
 - Preserve one prompt to at most one image, the lifecycle `queued → processing → saving → succeeded` with `failed` / `needs_review` outcomes, idempotency, UTC daily quota, and at most one active generation per user.
 - Resolve an idempotency replay before reserving quota. Same key and same canonical payload returns the existing job without another reservation/inference; same key with a different payload conflicts. Do not retry an uncertain provider outcome blindly.
 - Keep provider and filesystem work outside MongoDB transactions. Use atomic database operations for reservations and explicit recovery/checkpoints where the approved design requires them. Do not assume a standalone local MongoDB supports transactions.
@@ -35,10 +35,10 @@ These rules apply to backend design and implementation. `AGENTS.md` remains the 
 
 ## Authentication and security
 
-- Authentication uses an opaque server-side session and HttpOnly cookie; JWT is out of scope. Persist a hash of a cryptographically random session token, never the raw token. Hash passwords with an approved reputable package; the exact package remains open until selected.
+- Authentication uses a signed HS256 JWT in an HttpOnly cookie. Persist only a hash of the random JWT `jti` in `sessions`; verify signature, issuer, audience, expiry, `sub`, and matching active session on each request so logout/revocation takes effect immediately. Never persist the raw JWT. Hash passwords with Argon2id as implemented.
 - Set Secure for HTTPS deployments. Final SameSite, cookie lifetime, CSRF bootstrap/header and allowed origins depend on deployment topology and remain open; do not treat a proposal as a confirmed policy.
 - Use exact-origin CORS allowlisting for credentialed requests, appropriate request-size limits and security headers. Protect unsafe cookie-authenticated actions with the agreed CSRF and origin policy before frontend integration.
-- Keep database URLs, session secrets, Gemini keys and storage credentials in server environment configuration. Never commit real secrets, echo them in errors, or log them.
+- Keep database URLs, JWT signing keys, provider keys and storage credentials in server environment configuration. Never commit real secrets, echo them in errors, or log them.
 - Keep private image files outside public/static roots. Deliver them only through authenticated owner-scoped routes with safe content/disposition headers and private cache policy.
 
 ## Gemini and Cloudinary image storage
@@ -61,7 +61,7 @@ These rules apply to backend design and implementation. `AGENTS.md` remains the 
 - `backend-api`: domain/API contract, ownership, quota, idempotency and safe errors.
 - `express-api-development`: Express HTTP structure and boundary validation.
 - `mongodb-mongoose`: exact schemas, indexes and persistence behavior.
-- `authentication-session`: server-side sessions, cookie security and CSRF.
+- `authentication-jwt`: JWT cookie security, MongoDB revocation, and CSRF.
 - `gemini-image-generation`: official provider integration and generation recovery.
 - `backend-testing`: isolated API, schema, security and lifecycle tests.
 - Canonical details: `docs/backend/database-design.md`, `docs/backend/api-contract.md`, `docs/backend/implementation-plan.md`, `docs/development/FRONTEND_BACKEND_CONTRACT.md`, `docs/development/CODING_RULES.md`, and `docs/development/QUALITY_CHECKLIST.md`.

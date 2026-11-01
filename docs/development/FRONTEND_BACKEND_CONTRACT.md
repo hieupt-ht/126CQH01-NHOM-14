@@ -6,7 +6,7 @@
 
 # Frontend/Backend Contract
 
-This is the frontend/backend coordination contract for implementation. The project owner confirmed `/api/v1`, opaque server-side sessions with HttpOnly cookies (no JWT), Google AI Studio/Gemini through the official Node.js SDK, and Cloudinary image storage. Cloudinary uploads use authenticated delivery and dynamic `asset_folder` paths; the account must have dynamic folders enabled. Older `/api` paths and FLUX/Cloudflare details in Issue #1/`PRD.md` remain legacy provider requirements. Gemini model ID and access/limits remain integration-time OPEN QUESTION.
+This is the frontend/backend coordination contract for implementation. The current auth decision (01/11/2026) is HS256 JWT in an HttpOnly cookie with MongoDB session revocation. The frontend continues to use `credentials: include`; it must not store or decode auth tokens. Cloudflare FLUX and Cloudinary authenticated storage remain current providers. Older Gemini/local storage text is historical where it conflicts with the latest baseline.
 
 ## Application endpoint map
 
@@ -18,6 +18,7 @@ The existing endpoints retain Issue #1/PRD semantics under the confirmed `/api/v
 | POST | `/api/v1/auth/login` | P0 |
 | POST | `/api/v1/auth/logout` | P0 |
 | GET | `/api/v1/auth/me` | P0 |
+| GET | `/api/v1/auth/csrf` | P0 cookie-CSRF bootstrap |
 | POST | `/api/v1/generations` | P0; requires `Idempotency-Key` |
 | GET | `/api/v1/generations/:id` | P0 |
 | GET | `/api/v1/generations` | P0 history |
@@ -43,11 +44,11 @@ Frontend renders `queued`, `processing`, `saving`, `succeeded`, `failed` and `ne
 
 ## Ownership and security
 
-Backend derives the user from the authenticated session and applies ownership to every read/write/download. Frontend treats server authorization and quota as authoritative.
+Backend verifies JWT signature/claims and matching active MongoDB session, derives the user from JWT `sub`, and applies ownership to every read/write/download. Frontend treats server authorization and quota as authoritative.
 
 ## Confirmed infrastructure and remaining integration decisions
 
 - Backend may use only the official Google Gen AI Node.js SDK (`@google/genai`); key is server-only and model comes from environment. One prompt produces one image. No free tier or pricing is assumed, billing is not enabled by this contract, and no provider call is authorized by this documentation task.
 - Image assets are stored in Cloudinary as authenticated assets. MongoDB stores provider, opaque public ID, asset/version metadata and `deliveryMode`; do not expose Cloudinary credentials or authenticated asset URLs. Any content/download delivery must remain behind authenticated owner-scoped APIs.
-- Cookie must be HttpOnly and Secure under production HTTPS. **PROPOSAL:** SameSite=Lax, exact-origin CORS allowlist, origin checks and a session-bound CSRF token/header for unsafe requests. Exact CSRF bootstrap and CORS origins depend on deployment topology and must be agreed before frontend integration; use `credentials: include` when the API origin requires it.
+- JWT stays in an HttpOnly cookie, Secure under production HTTPS; no token in localStorage or frontend state. Unsafe requests keep Origin + `X-CSRF-Token` checks. Frontend continues `credentials: include`. Exact deployment origins and signing-key rotation policy remain OPEN QUESTION.
 - Confirmed product invariants remain: atomic idempotency/quota reservation, one active generation/user, UTC daily reset from PRD (quota values remain OPEN QUESTION), async state lifecycle, `succeeded` only after file + metadata persist, history retains failed/needs_review and deleted-image jobs, library shows saved non-deleted images only, and every resource is owner-scoped.
