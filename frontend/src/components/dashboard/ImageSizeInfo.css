@@ -1,0 +1,7 @@
+.image-size-info { margin: 0 0 16px; padding: 13px 11px; border: 1px solid var(--border-secondary); border-radius: var(--radius-md); background: var(--surface-input); }
+.image-size-info__heading { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.image-size-info__heading strong { color: var(--text-primary); font-size: 11px; font-weight: 500; }
+.image-size-info__heading > span:last-child { margin-left: auto; color: var(--accent-cyan); font-size: 9px; }
+.image-size-info__frame { display: inline-block; width: 20px; height: 16px; border: 1px solid var(--accent-primary-hover); border-radius: var(--radius-sm); }
+.image-size-info p { margin: 9px 0 5px; font-size: 10px; color: var(--text-secondary); line-height: 1.6; }
+.image-size-info small { display: block; font-size: 9px; color: var(--text-muted); line-height: 1.6; }

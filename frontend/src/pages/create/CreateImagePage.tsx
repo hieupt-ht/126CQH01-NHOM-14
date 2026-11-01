@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type RefObject } from "react";
+import ImageSizeInfo from "../../components/dashboard/ImageSizeInfo";
 import DashboardLayout from "../../layouts/DashboardLayout";
 import Icon from "../../components/ui/Icon";
 import ReferenceArtwork from "../../components/dashboard/ReferenceArtwork";
@@ -201,6 +202,7 @@ function GenerationPanel({
           </strong>
         </div>
       </div>
+      <ImageSizeInfo />
       <div className="create-generation__note">
         <Icon name="shield" size={17} />
         <p>
