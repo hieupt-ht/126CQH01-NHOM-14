@@ -147,6 +147,19 @@ test(
         400,
       );
       assert.equal(calls, 0);
+      assert.equal(
+        (
+          await request(
+            "/generations",
+            "POST",
+            { prompt: "😀".repeat(1025) },
+            a,
+            "request-utf16-invalid-123",
+          )
+        ).status,
+        400,
+      );
+      assert.equal(calls, 0);
       const [first, second] = await Promise.all([
         request(
           "/generations",
@@ -170,6 +183,9 @@ test(
       assert.equal(await GenerationModel.countDocuments({}), 1);
       const usage = await DailyUsageModel.findOne({ scopeType: "user" });
       assert.equal(usage.reservedRequests, 1);
+      const usageResponse = await request("/usage/me");
+      assert.equal(usageResponse.status, 200);
+      assert.equal(((await usageResponse.json()) as any).data.acceptedToday, 1);
       assert.equal(
         (
           await request(
@@ -188,6 +204,11 @@ test(
       assert.equal(completed.status, "succeeded");
       const image = await ImageModel.findOne({ generationId: job.id });
       assert.ok(image);
+      const storedImageDocument = await ImageModel.collection.findOne({ generationId: image!.generationId });
+      const storedJobDocument = await GenerationModel.collection.findOne({ _id: new Types.ObjectId(job.id) });
+      const persistedJson = JSON.stringify({ image: storedImageDocument, job: storedJobDocument });
+      assert.doesNotMatch(persistedJson, /data:image\/|https:\/\/res\.cloudinary\.com/);
+      assert.equal(storedImageDocument?.storage && typeof storedImageDocument.storage, "object");
       for (const [path, method, body] of [
         ["/images/" + image._id, "GET", undefined],
         ["/images/" + image._id + "/content", "GET", undefined],
@@ -239,13 +260,61 @@ test(
         { _id: nextId },
         { $set: { "lease.expiresAt": new Date(0) } },
       );
-      await service.runOnce();
+      // A new worker ID simulates a backend restart; it must use the durable
+      // checkpoint and never ask the provider for this generation again.
+      const restartedWorker = new GenerationService(
+        {
+          async generate() {
+            throw new Error("restart must not call inference again");
+          },
+        },
+        storage,
+        { userLimit: 5, appLimit: 20, cooldownMs: 0, checkpointDir: temp },
+      );
+      await restartedWorker.runOnce();
       assert.equal(calls, 2);
       assert.equal(
         (await GenerationModel.findById(nextId)).status,
         "succeeded",
       );
       assert.equal(puts, 3);
+
+      // If MongoDB rejects the metadata transaction after Cloudinary accepted
+      // the image, keep the checkpoint and recover via the same storage ID.
+      const dbFailureResponse = await request(
+        "/generations",
+        "POST",
+        { prompt: "Recover after metadata transaction failure" },
+        a,
+        "request-db-failure-123",
+      );
+      const dbFailureId = ((await dbFailureResponse.json()) as any).data.id;
+      const originalTransaction = mongoose.connection.transaction.bind(mongoose.connection);
+      let rejectNextTransaction = true;
+      (mongoose.connection as any).transaction = async (...args: unknown[]) => {
+        if (rejectNextTransaction) {
+          rejectNextTransaction = false;
+          throw new Error("simulated database transaction outage after upload");
+        }
+        return (originalTransaction as (...values: unknown[]) => Promise<unknown>)(...args);
+      };
+      try {
+        await service.runOnce();
+      } finally {
+        (mongoose.connection as any).transaction = originalTransaction;
+      }
+      assert.equal(calls, 3);
+      assert.equal((await GenerationModel.findById(dbFailureId)).status, "saving");
+      assert.equal(await ImageModel.countDocuments({ generationId: dbFailureId }), 0);
+      await GenerationModel.updateOne(
+        { _id: dbFailureId },
+        { $set: { "lease.expiresAt": new Date(0) } },
+      );
+      await restartedWorker.runOnce();
+      assert.equal(calls, 3);
+      assert.equal((await GenerationModel.findById(dbFailureId)).status, "succeeded");
+      assert.equal(await ImageModel.countDocuments({ generationId: dbFailureId }), 1);
+      assert.equal(puts, 5);
 
       // Ambiguous dispatch is never retried, even if runOnce is invoked again.
       const uncertain = new GenerationService(
@@ -265,7 +334,7 @@ test(
       );
       await uncertain.runOnce();
       await uncertain.runOnce();
-      assert.equal(calls, 3);
+      assert.equal(calls, 4);
       assert.equal(
         (await GenerationModel.findById(unknown._id)).status,
         "needs_review",
@@ -361,10 +430,46 @@ test(
         }))!.reservedRequests,
         0,
       );
-      assert.equal(calls, 3);
+      assert.equal(calls, 4);
       const stats = await request("/stats/me");
       assert.equal(stats.status, 200);
       assert.equal((await request("/images?cursor=bad")).status, 400);
+
+      const cooldownUser = await UserModel.create({
+        displayName: "Cooldown",
+        email: "cooldown@example.test",
+        passwordHash: "test-hash",
+      });
+      const cooldownService = new GenerationService(
+        { async generate() { throw new Error("cooldown job must remain queued"); } },
+        storage,
+        { userLimit: 5, appLimit: 20, cooldownMs: 15000, checkpointDir: temp },
+      );
+      await cooldownService.accept(cooldownUser._id, "cooldown-request-key-1", "first");
+      await UserModel.updateOne({ _id: cooldownUser._id }, { $set: { activeGenerationId: null } });
+      await assert.rejects(
+        cooldownService.accept(cooldownUser._id, "cooldown-request-key-2", "second"),
+        (error: unknown) => error instanceof Error && "code" in error && error.code === "GENERATION_IN_PROGRESS",
+      );
+
+      await DailyUsageModel.updateOne(
+        { scopeType: "application", scopeId: "app", dateKey: new Date().toISOString().slice(0, 10) },
+        { $set: { reservedRequests: 0 } },
+      );
+      const appQuotaService = new GenerationService(
+        { async generate() { throw new Error("app quota jobs must remain queued"); } },
+        storage,
+        { userLimit: 5, appLimit: 1, cooldownMs: 0, checkpointDir: temp },
+      );
+      const appUsers = await UserModel.create([
+        { displayName: "App one", email: "app-one@example.test", passwordHash: "test-hash" },
+        { displayName: "App two", email: "app-two@example.test", passwordHash: "test-hash" },
+      ]);
+      await appQuotaService.accept(appUsers[0]._id, "app-quota-request-key-1", "first");
+      await assert.rejects(
+        appQuotaService.accept(appUsers[1]._id, "app-quota-request-key-2", "second"),
+        (error: unknown) => error instanceof Error && "code" in error && error.code === "DAILY_LIMIT_REACHED",
+      );
     } finally {
       if (server)
         await new Promise<void>((resolve) => server!.close(() => resolve()));

@@ -65,13 +65,23 @@ test("Cloudinary adapter uses stable IDs, authenticated delivery, verifies bytes
   assert.equal(f.assets.size,0);
   assert.ok(f.deletes.every(o=>(o as {type:string}).type==="authenticated"));
 });
-test("uncertain upload reuses the same cloud object on saving retry",async()=>{
+test("uncertain upload verifies the existing authenticated object before accepting it",async()=>{
   const f=fakeCloud(), adapter=new CloudinaryImageStorage(f.client,"primary","flux-studio/test",10,1000,f.transport);
-  f.timeout();await assert.rejects(adapter.put(key,png,"image/png",owner));
+  f.timeout();
+  const object=await adapter.put(key,png,"image/png",owner);
   assert.equal(f.assets.size,1);
-  await adapter.put(key,png,"image/png",owner);
+  assert.equal(object.key,"flux-studio/test/"+key.replace(/\.png$/, ""));
   assert.equal(f.assets.size,1);
-  assert.equal(f.uploads[0].public_id,f.uploads[1].public_id);
+  assert.equal(f.uploads.length,1);
+  assert.ok(f.urls.some(o=> (o as {sign_url:boolean}).sign_url));
+});
+test("uncertain upload refuses an existing authenticated object with different bytes",async()=>{
+  const f=fakeCloud(), adapter=new CloudinaryImageStorage(f.client,"primary","flux-studio/test",10,1000,f.transport);
+  f.assets.set("flux-studio/test/"+key.replace(/\.png$/, ""), Buffer.from("different"));
+  f.timeout();
+  await assert.rejects(adapter.put(key,png,"image/png",owner),/nội dung khác/);
+  assert.equal(f.assets.size,1);
+  assert.equal(f.uploads.length,1);
 });
 test("adapter rejects untrusted descriptors, missing owner and failed private verification",async()=>{
   const f=fakeCloud(), adapter=new CloudinaryImageStorage(f.client,"primary","flux-studio/test",10,1000,f.transport);
