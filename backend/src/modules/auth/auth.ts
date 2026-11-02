@@ -71,7 +71,9 @@ export async function verifyAccessToken(
   if (
     protectedHeader.typ !== "JWT" ||
     typeof payload.sub !== "string" ||
+    !/^[a-f\d]{24}$/i.test(payload.sub) ||
     typeof payload.jti !== "string" ||
+    !/^[a-f\d]{64}$/.test(payload.jti) ||
     typeof payload.iat !== "number" ||
     typeof payload.exp !== "number" ||
     payload.exp <= payload.iat ||
@@ -87,7 +89,7 @@ const credentials = z
     password: z.string().min(8).max(128),
   })
   .strict();
-const registration = credentials.extend({
+export const registrationSchema = credentials.extend({
   displayName: z.string().trim().min(1).max(80),
 });
 export function parseInput<T>(schema: z.ZodType<T>, value: unknown): T {
@@ -233,7 +235,7 @@ export function createAuthRouter(config: AuthConfig): Router {
     next();
   });
   router.post("/register", limit, async (request, response) => {
-    const input = parseInput(registration, request.body);
+    const input = parseInput(registrationSchema, request.body);
     const passwordHash = await argon2.hash(input.password, {
       type: argon2.argon2id,
       memoryCost: 19456,

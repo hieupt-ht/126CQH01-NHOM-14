@@ -1,7 +1,12 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { SignJWT } from "jose";
-import { issueAccessToken, verifyAccessToken } from "../src/modules/auth/auth.js";
+import {
+  issueAccessToken,
+  parseInput,
+  registrationSchema,
+  verifyAccessToken,
+} from "../src/modules/auth/auth.js";
 
 const secret = "isolated-unit-test-secret-at-least-32-bytes-long";
 const now = Date.now();
@@ -10,13 +15,13 @@ test("JWT signing and verification enforce HS256 claims and expiry", async () =>
   const expiresAt = new Date(now + 60_000);
   const token = await issueAccessToken(
     { jwtSecret: secret },
-    "user-id-test",
-    "random-jti-test",
+    "507f1f77bcf86cd799439011",
+    "a".repeat(64),
     expiresAt,
   );
   assert.deepEqual(await verifyAccessToken({ jwtSecret: secret }, token), {
-    userId: "user-id-test",
-    tokenId: "random-jti-test",
+    userId: "507f1f77bcf86cd799439011",
+    tokenId: "a".repeat(64),
   });
   await assert.rejects(verifyAccessToken({ jwtSecret: "wrong-key-at-least-32-bytes-long" }, token));
 });
@@ -26,8 +31,8 @@ test("JWT verifier rejects expired, wrong-issuer, wrong-audience and missing-ide
   const signed = (builder: SignJWT) => builder
     .setProtectedHeader({ alg: "HS256", typ: "JWT" })
     .setIssuedAt()
-    .setSubject("user-id-test")
-    .setJti("random-jti-test");
+    .setSubject("507f1f77bcf86cd799439011")
+    .setJti("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
   const make = (builder: SignJWT) => signed(builder);
   const expired = await make(new SignJWT({}))
     .setIssuer("flux-studio-api")
@@ -48,7 +53,7 @@ test("JWT verifier rejects expired, wrong-issuer, wrong-audience and missing-ide
     .setProtectedHeader({ alg: "HS256", typ: "JWT" })
     .setIssuer("flux-studio-api")
     .setAudience("flux-studio-web")
-    .setJti("random-jti-test")
+    .setJti("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
     .setIssuedAt()
     .setExpirationTime("1m")
     .sign(key);
@@ -56,20 +61,71 @@ test("JWT verifier rejects expired, wrong-issuer, wrong-audience and missing-ide
     .setProtectedHeader({ alg: "HS256", typ: "JWT" })
     .setIssuer("flux-studio-api")
     .setAudience("flux-studio-web")
-    .setSubject("user-id-test")
-    .setJti("random-jti-test")
+    .setSubject("507f1f77bcf86cd799439011")
+    .setJti("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
     .setIssuedAt()
     .sign(key);
   const wrongAlgorithm = await new SignJWT({})
     .setProtectedHeader({ alg: "HS384", typ: "JWT" })
     .setIssuer("flux-studio-api")
     .setAudience("flux-studio-web")
-    .setSubject("user-id-test")
-    .setJti("random-jti-test")
+    .setSubject("507f1f77bcf86cd799439011")
+    .setJti("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
     .setIssuedAt()
     .setExpirationTime("1m")
     .sign(key);
   for (const token of [expired, wrongIssuer, wrongAudience, missingSubject, missingExpiry, wrongAlgorithm]) {
     await assert.rejects(verifyAccessToken({ jwtSecret: secret }, token));
   }
+});
+
+test("JWT verifier rejects malformed identity and jti claims", async () => {
+  const key = Buffer.from(secret);
+  const make = (subject: string, tokenId: string) =>
+    new SignJWT({})
+      .setProtectedHeader({ alg: "HS256", typ: "JWT" })
+      .setIssuer("flux-studio-api")
+      .setAudience("flux-studio-web")
+      .setSubject(subject)
+      .setJti(tokenId)
+      .setIssuedAt()
+      .setExpirationTime("1m")
+      .sign(key);
+
+  await assert.rejects(
+    verifyAccessToken({ jwtSecret: secret }, await make("user-id-test", "a".repeat(64))),
+  );
+  await assert.rejects(
+    verifyAccessToken({ jwtSecret: secret }, await make("507f1f77bcf86cd799439011", "not-a-jti")),
+  );
+  const unsignedHeader = Buffer.from(JSON.stringify({ alg: "none", typ: "JWT" })).toString("base64url");
+  const unsignedPayload = Buffer.from(JSON.stringify({
+    iss: "flux-studio-api",
+    aud: "flux-studio-web",
+    sub: "507f1f77bcf86cd799439011",
+    jti: "a".repeat(64),
+    iat: Math.floor(Date.now() / 1000),
+    exp: Math.floor(Date.now() / 1000) + 60,
+  })).toString("base64url");
+  await assert.rejects(
+    verifyAccessToken({ jwtSecret: secret }, `${unsignedHeader}.${unsignedPayload}.`),
+  );
+});
+
+test("registration boundary normalizes email and display name without trimming password", () => {
+  const parsed = parseInput(registrationSchema, {
+    displayName: "  Linh Nguyen  ",
+    email: " Person@Example.test ",
+    password: "  secret-pass  ",
+  });
+  assert.deepEqual(parsed, {
+    displayName: "Linh Nguyen",
+    email: "person@example.test",
+    password: "  secret-pass  ",
+  });
+  assert.throws(() => parseInput(registrationSchema, {
+    displayName: "Linh",
+    email: "person@example.test",
+    password: "short",
+  }));
 });
