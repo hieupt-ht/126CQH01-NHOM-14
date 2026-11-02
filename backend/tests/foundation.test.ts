@@ -97,6 +97,25 @@ test('environment validation rejects invalid values without echoing secrets', ()
   }
 });
 
+test('authentication can run with generation disabled and no cloud credentials', () => {
+  const config = validateEnv({
+    ...validEnvironment,
+    CLOUDINARY_CLOUD_NAME: undefined,
+    CLOUDINARY_API_KEY: undefined,
+    CLOUDINARY_API_SECRET: undefined,
+    CLOUDFLARE_ACCOUNT_ID: undefined,
+    CLOUDFLARE_API_TOKEN: undefined,
+    GENERATION_ENABLED: 'false',
+  });
+  assert.equal(config.generationEnabled, false);
+  assert.equal(config.cloudinaryCloudName, undefined);
+  assert.equal(config.cloudflareApiToken, undefined);
+  assert.throws(
+    () => validateEnv({ ...validEnvironment, GENERATION_ENABLED: 'true' }),
+    /CLOUDFLARE_ACCOUNT_ID is required when GENERATION_ENABLED=true/,
+  );
+});
+
 test('MongoDB connection errors are wrapped in a safe message', async () => {
   await assert.rejects(
     connectMongo('mongodb://127.0.0.1:1/flux-foundation-test', { serverSelectionTimeoutMS: 100 }),

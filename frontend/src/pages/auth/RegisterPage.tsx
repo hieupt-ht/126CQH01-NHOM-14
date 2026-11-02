@@ -116,10 +116,7 @@ export default function RegisterPage() {
           password: values.password,
         }),
       });
-      setValues(initialValues);
-      setTouched({});
-      setSubmitted(false);
-      setFeedback("Đã tạo tài khoản. Bạn có thể đăng nhập để tiếp tục.");
+      window.location.assign("/login");
     } catch (error) {
       setFeedback(
         error instanceof Error ? error.message : "Không thể đăng ký.",
