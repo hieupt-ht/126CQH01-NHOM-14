@@ -1,7 +1,11 @@
 import { createHash } from "node:crypto";
 import { Readable } from "node:stream";
 import { AppError } from "../errors/app-error.js";
-import { createCloudinaryService, type CloudinaryClient } from "../services/cloudinary.service.js";
+import {
+  CloudinaryStorageError,
+  createCloudinaryService,
+  type CloudinaryClient,
+} from "../services/cloudinary.service.js";
 
 export type StoredObject = {
   provider: string;
@@ -72,12 +76,30 @@ export class CloudinaryImageStorage implements ImageStorage {
     const publicId = this.namespace + "/" + key.replace(/\.(png|jpeg|webp)$/, "");
     // Reusing the same public_id with overwrite:false recovers an uncertain upload.
     // Verify downloaded bytes before trusting a reused object; never overwrite a conflict.
-    const service = createCloudinaryService(this.client, this.maxImageMb * 1024 * 1024, () => publicId);
-    const uploaded = await service.uploadGeneratedImage({ userId: ownerId, bytes });
     const object: StoredObject = {
       provider: "cloudinary", accountAlias: this.alias, container: this.namespace,
-      key: publicId, version: uploaded.version, deliveryMode: "private",
+      key: publicId, deliveryMode: "private",
     };
+    const service = createCloudinaryService(this.client, this.maxImageMb * 1024 * 1024, () => publicId);
+    let uploaded: Awaited<ReturnType<typeof service.uploadGeneratedImage>>;
+    try {
+      uploaded = await service.uploadGeneratedImage({ userId: ownerId, bytes });
+    } catch (error) {
+      // A timeout can happen after Cloudinary accepted the upload. Look up only
+      // our deterministic authenticated asset and trust it only after a byte check.
+      if (!(error instanceof CloudinaryStorageError) || error.outcome !== "unknown") throw error;
+      try {
+        const existing = await this.verifiedBytes(object);
+        if (!existing.equals(bytes))
+          throw new AppError(409, "CONTENT_CONFLICT", "File đã tồn tại với nội dung khác.");
+        return object;
+      } catch (verificationError) {
+        if (verificationError instanceof AppError && verificationError.code === "CONTENT_CONFLICT")
+          throw verificationError;
+        throw error;
+      }
+    }
+    object.version = uploaded.version;
     const existing = await this.verifiedBytes(object);
     if (!existing.equals(bytes))
       throw new AppError(409, "CONTENT_CONFLICT", "File đã tồn tại với nội dung khác.");

@@ -141,7 +141,7 @@ export function createProductRouter(
           prompt: z
             .string()
             .min(1)
-            .max(2048)
+            .refine((value) => value.length <= 2048, "Prompt không được vượt quá 2048 UTF-16 code units.")
             .refine((value) => value.trim().length > 0),
         })
         .strict(),
