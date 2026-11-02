@@ -1,64 +1,52 @@
-import { useEffect, useRef, useState } from 'react';
-import Icon from '../ui/Icon';
-import ReferenceArtwork from '../dashboard/ReferenceArtwork';
-import type { LibraryImage } from '../../pages/library/libraryDemoData';
+import { useRef, type MouseEvent } from "react";
+import Icon from "../ui/Icon";
+import type { ImageRecord } from "../../services/resources";
+import { imageDetailHref } from "../../services/listNavigation";
+import PrivateImage from "./PrivateImage";
+import type { ImageAction } from "./ImageActionDialog";
 
-export type ImageCardAction = 'view' | 'download' | 'rename' | 'delete';
-
-type Props = {
-  image: LibraryImage;
-  imageUnavailable?: boolean;
-  onAction: (action: ImageCardAction, image: LibraryImage, trigger: HTMLButtonElement) => void;
-};
-
-export default function ImageCard({ image, imageUnavailable = false, onAction }: Props) {
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [imageLoadFailed, setImageLoadFailed] = useState(false);
-  const triggerRef = useRef<HTMLButtonElement>(null);
-  const menuRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!menuOpen) return;
-    requestAnimationFrame(() => menuRef.current?.querySelector<HTMLButtonElement>('button:not(:disabled)')?.focus());
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        setMenuOpen(false);
-        requestAnimationFrame(() => triggerRef.current?.focus());
-      }
-    };
-    const onPointerDown = (event: PointerEvent) => {
-      if (!menuRef.current?.contains(event.target as Node) && event.target !== triggerRef.current) setMenuOpen(false);
-    };
-    document.addEventListener('keydown', onKeyDown);
-    document.addEventListener('pointerdown', onPointerDown);
-    return () => {
-      document.removeEventListener('keydown', onKeyDown);
-      document.removeEventListener('pointerdown', onPointerDown);
-    };
-  }, [menuOpen]);
-
-  const selectAction = (action: ImageCardAction) => {
-    setMenuOpen(false);
-    onAction(action, image, triggerRef.current as HTMLButtonElement);
+export default function ImageCard({ image, onAction }: {
+  image: ImageRecord;
+  onAction: (action: ImageAction, image: ImageRecord) => void;
+}) {
+  const menu = useRef<HTMLDetailsElement>(null);
+  const openDetail = (event: MouseEvent<HTMLAnchorElement>) => {
+    event.currentTarget.href = imageDetailHref(image.id);
   };
-
-  const showFallback = imageUnavailable || imageLoadFailed;
   return <article className="library-image-card">
     <div className="library-image-card__visual">
-      {showFallback ? <div className="library-image-card__fallback" role="img" aria-label={`Không tải được ảnh minh họa: ${image.title}`}><Icon name="image" size={27} /><strong>Không tải được ảnh minh họa</strong><span>Giữ nguyên khung ảnh</span></div> : <ReferenceArtwork region={image.region} label={`Ảnh minh họa: ${image.title}`} className="library-image-card__art" onError={() => setImageLoadFailed(true)} />}
-      <span className="library-image-card__demo">Ảnh minh họa</span>
-      <button ref={triggerRef} type="button" className="library-image-card__menu-trigger" aria-label={`Mở thao tác cho ${image.title}`} aria-haspopup="menu" aria-expanded={menuOpen} onClick={(event) => { event.stopPropagation(); setMenuOpen((open) => !open); }}><Icon name="more" size={18} /></button>
-      {menuOpen && <div className="library-image-card__menu" ref={menuRef} role="menu" aria-label={`Thao tác cho ${image.title}`}>
-        <button type="button" role="menuitem" onClick={() => selectAction('view')}><Icon name="image" size={15} />Xem chi tiết</button>
-        <button type="button" role="menuitem" onClick={() => selectAction('download')}><Icon name="arrow" size={15} />Tải ảnh minh họa</button>
-        <button type="button" role="menuitem" onClick={() => selectAction('rename')}><Icon name="wand" size={15} />Đổi tên</button>
-        <button type="button" role="menuitem" className="library-menu__danger" onClick={() => selectAction('delete')}><Icon name="close" size={15} />Xóa khỏi bản minh họa</button>
-      </div>}
+      <div className="library-image-card__thumbnail">
+        <PrivateImage key={image.contentUrl} src={image.contentUrl} title={image.title}
+          href={imageDetailHref(image.id)} onFollow={openDetail} />
+      </div>
+      <details ref={menu} className="library-image-actions" onKeyDown={(event) => {
+        if (event.key === "Escape" && menu.current) {
+          menu.current.open = false;
+          menu.current.querySelector("summary")?.focus();
+        }
+      }}>
+        <summary aria-label={"Thao tác cho " + image.title}><Icon name="more" size={18} /></summary>
+        <div className="library-image-actions__items">
+          <a href={imageDetailHref(image.id)} onClick={openDetail}>Xem chi tiết</a>
+          <a href={image.downloadUrl}>Tải ảnh</a>
+          {(["rename", "delete"] as const).map((action) => <button key={action} type="button"
+            onClick={() => {
+              if (menu.current) {
+                menu.current.open = false;
+                menu.current.querySelector("summary")?.focus();
+              }
+              onAction(action, image);
+            }}>{action === "rename" ? "Đổi tên" : "Xóa ảnh"}</button>)}
+        </div>
+      </details>
     </div>
     <div className="library-image-card__body">
-      <h2 title={image.title}>{image.title}</h2>
-      <p>{image.category}</p>
-      <dl><div><dt>Thời điểm</dt><dd>{image.createdAtLabel}</dd></div><div><dt>Model</dt><dd>{image.modelLabel}</dd></div></dl>
+      <h2 title={image.title}><a href={imageDetailHref(image.id)} onClick={openDetail}>{image.title}</a></h2>
+      <p>{image.width} × {image.height} · {image.format}</p>
+      <dl>
+        <div><dt>Thời điểm</dt><dd>{new Date(image.createdAt).toLocaleString("vi-VN")}</dd></div>
+        <div><dt>Model</dt><dd>{image.model || "Không có thông tin"}</dd></div>
+      </dl>
     </div>
   </article>;
 }

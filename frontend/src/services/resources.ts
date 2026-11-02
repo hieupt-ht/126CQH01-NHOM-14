@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { api } from "./api";
 export type ImageRecord = {
   id: string;
@@ -48,37 +48,25 @@ export type StatsRecord = {
 };
 export type Page<T> = { items: T[]; nextCursor: string | null };
 export function useResource<T>(path: string) {
-  const [data, setData] = useState<T | null>(null),
-    [error, setError] = useState(""),
-    [loading, setLoading] = useState(true),
-    [revision, setRevision] = useState(0);
+  const [result, setResult] = useState<{ path: string; data: T | null; error: string; loading: boolean }>({
+    path, data: null, error: "", loading: true,
+  });
+  const [revision, setRevision] = useState(0);
+  const reload = useCallback(() => setRevision((value) => value + 1), []);
   useEffect(() => {
-    let active = true;
-    setLoading(true);
-    setError("");
-    api<T>(path)
-      .then((value) => {
-        if (active) setData(value);
+    const controller = new AbortController();
+    setResult((current) => ({ path, data: current.path === path ? current.data : null, error: "", loading: true }));
+    api<T>(path, { signal: controller.signal })
+      .then((data) => {
+        if (!controller.signal.aborted) setResult({ path, data, error: "", loading: false });
       })
       .catch((reason) => {
-        if (active)
-          setError(
-            reason instanceof Error
-              ? reason.message
-              : "Không tải được dữ liệu.",
-          );
-      })
-      .finally(() => {
-        if (active) setLoading(false);
+        if (!controller.signal.aborted) setResult((current) => ({
+          path, data: current.path === path ? current.data : null, loading: false,
+          error: reason instanceof Error ? reason.message : "Không tải được dữ liệu.",
+        }));
       });
-    return () => {
-      active = false;
-    };
+    return () => controller.abort();
   }, [path, revision]);
-  return {
-    data,
-    error,
-    loading,
-    reload: () => setRevision((value) => value + 1),
-  };
+  return result.path === path ? { ...result, reload } : { data: null, error: "", loading: true, reload };
 }

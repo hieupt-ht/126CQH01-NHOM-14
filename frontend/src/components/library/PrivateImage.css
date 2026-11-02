@@ -1,0 +1,2 @@
+.private-image-fallback { display: grid; place-content: center; gap: 12px; min-height: 180px; padding: 20px; background: var(--surface-secondary); color: var(--text-secondary); text-align: center; }
+.private-image-fallback p { margin: 0; font-size: 12px; overflow-wrap: anywhere; }
