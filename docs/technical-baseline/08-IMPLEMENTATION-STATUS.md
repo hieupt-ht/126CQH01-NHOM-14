@@ -92,7 +92,7 @@ Model không gọi khi gõ prompt/mở thư viện/download.
 ## Còn lại trước bảo vệ
 1. Tự cấu hình Cloudflare token/Azure identity và container private, một smoke live có đo usage.
 2. Browser visual/responsive/keyboard/E2E thật; CUA browser bị tắt trong Work settings ở phiên kiểm tra.
-3. Seed/aggregation/$lookup/JSON import-export vận hành toàn bộ dữ liệu: course report hiện là minh chứng riêng, chưa có nút UI/import migration cloud.
+3. Seed/aggregation/$lookup: course report hiện là minh chứng riêng. [Đối chiếu D5 ngày02/11](../development/D5_METADATA_IMPORT_EXPORT_AUDIT.md) đã hoàn thành; PRD không nêu import/export bắt buộc và Định cho biết chưa có yêu cầu riêng, chờ Hiếu xác nhận phạm vi D5. Công cụ JSON import/export vận hành toàn bộ dữ liệu vẫn chưa triển khai, chỉ mở khi có yêu cầu/phạm vi được chốt; chưa có nút UI/import migration cloud.
 4. Không triển khai Cloudinary/migration runner;07 quy định hướng đổi cloud.
 5. Orphan/temp retention và công cụ operator xử lý needs_review cần task đối soát tiếp, không tự xóa các checkpoint cần phục hồi.
 6. Chỉ phù hợp demo single-process/local worker; chưa tuyên bố hỗ trợ replicas/multi-instance hoặc production SLA.

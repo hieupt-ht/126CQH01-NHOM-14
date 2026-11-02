@@ -118,8 +118,11 @@ Không chạy lại build/test runtime vì không có thay đổi code.
 
 ### Các mục còn lại
 
-- **OPEN QUESTION:** import/export metadata học phần cần nhóm chốt công cụ/phạm vi;
-  không tự thêm UI/API hoặc xuất session/passwordHash/credential. JSON không backup file cloud.
+- **CONFIRMED — D5, 02/11:** đã hoàn thành [đối chiếu import/export](D5_METADATA_IMPORT_EXPORT_AUDIT.md).
+  PRD hiện không có tiêu chí import/export bắt buộc; Định cho biết chưa có yêu cầu riêng từ leader/giảng viên.
+  Code chỉ xuất báo cáo thực nghiệm, chưa có CLI round-trip metadata. Đã hoàn thành phần đối chiếu, chờ Hiếu xác nhận đủ phạm vi D5;
+  không tuyên bố công cụ đã chạy. Nếu phát sinh yêu cầu, chốt phạm vi và áp dụng schema/ownership/chống trùng,
+  loại secret, tách cloud backup theo bản đối chiếu trước khi triển khai. Không tự thêm UI/API.
 - **OPEN QUESTION:** Hiếu review API/DB, Vũ xác minh UI; chưa đánh dấu issue hoàn tất.
 - Chưa smoke test Cloudinary Free authenticated/unsigned URL và FLUX live; không có request cloud,
   không load test Free tier hoặc claim fixture là ảnh thật do FLUX tạo.
