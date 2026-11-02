@@ -3,6 +3,14 @@
 # 08 — Contract triển khai và trạng thái kiểm chứng
 Ngày30/10/2026. Task hiện tại đã được user yêu cầu thực thi theo thứ tự review. Không phải đã nghiệm thu live.
 
+## Đối chiếu tên hiển thị — D2, 02/11/2026 (CONFIRMED)
+
+Field triển khai là `users.displayName`, body register/profile PATCH dùng `displayName`,
+user DTO dùng `data.user.displayName`. `users.name` trong PRD mục9.1 được giữ làm tên lịch sử,
+không phải alias API hoặc field triển khai thứ hai. Ràng buộc hiện hành: trim, string1–80 ký tự.
+Xem [bảng ánh xạ và nguồn code](../backend/database-design.md#user-display-name-contract).
+Không rename schema, gọi database hoặc chạy migration trong task D2.
+
 ## Điều chỉnh authentication — 01/11/2026 (CONFIRMED)
 Chủ dự án đổi quyết định từ opaque session token sang JWT. Backend ký HS256 JWT với `JWT_SECRET`, claims cố định `iss`/`aud` cùng `sub`, random `jti`, `iat`, `exp`; JWT nằm trong HttpOnly cookie, không gửi token trong JSON hay lưu ở frontend. Collection `sessions` vẫn được giữ để lưu hash `jti`, CSRF hash và expiry; mọi request verify chữ ký/claims và active session để logout/revoke có hiệu lực ngay. Cookie, Origin, CSRF, Argon2id và các product invariants còn lại giữ nguyên. Đây là JWT có revocation stateful phía server, không phải xác thực stateless.
 Cookie opaque cũ sẽ không còn hợp lệ; người dùng đăng nhập lại. Session records cũ để TTL dọn theo expiry. Không chạy migration hoặc xóa dữ liệu trong thay đổi này.

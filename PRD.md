@@ -260,6 +260,8 @@ MVP chạy trên một laptop với thư mục dữ liệu bền vững. Khi tri
 
 ### 9.1. Collection
 
+> **Đối chiếu D2 — 02/11/2026 (CONFIRMED theo Issue #17):** `users.name` trong bảng lịch sử bên dưới chỉ tên hiển thị của người dùng. Field triển khai hiện hành là `users.displayName`; API và frontend cũng dùng `displayName`. Giữ `name` tại đây để đối chiếu bản đề xuất gốc, không dùng nó làm field hoặc alias API. Xem [ánh xạ và bằng chứng triển khai](docs/backend/database-design.md#user-display-name-contract). Cập nhật này chỉ làm rõ tài liệu, không đổi schema hoặc migrate dữ liệu.
+
 | Collection | Trường chính |
 |---|---|
 | users | `_id`, `name`, `email`, `passwordHash`, `activeGenerationId`, `lastGenerationAt`, `createdAt`, `updatedAt` |

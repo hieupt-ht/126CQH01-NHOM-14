@@ -6,6 +6,16 @@
 
 # Frontend/Backend Contract
 
+## Tên hiển thị người dùng — D2, 02/11/2026 (CONFIRMED)
+
+`displayName` là field hiện hành xuyên suốt MongoDB, request/response API và frontend.
+Register gửi `{displayName,email,password}`; login/me/register/profile update trả
+`data.user.displayName`; `PATCH /api/v1/users/me` gửi `{displayName}` trim1–80 ký tự.
+`users.name` trong PRD cũ chỉ là tên lịch sử của cùng khái niệm, không phải alias API.
+Không đổi tên biến form nội bộ `fullName` nếu payload đã map đúng sang `displayName`.
+Xem [ánh xạ PRD–schema–API–FE và bằng chứng code](../backend/database-design.md#user-display-name-contract).
+Task D2 chỉ cập nhật tài liệu, không đổi schema hoặc migrate database.
+
 ## Library/Detail/History — hiện hành 02/11/2026 (CONFIRMED)
 
 Theo [phân công cập nhật #17](https://github.com/hieupt-ht/126CQH01-NHOM-14/issues/17#issuecomment-6560294331)

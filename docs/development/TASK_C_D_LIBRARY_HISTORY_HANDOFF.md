@@ -105,6 +105,19 @@ Artifacts ảnh chụp/download/report ở `backend/data/library-history-browser
 
 ## Giới hạn và việc cần nhóm xác nhận
 
+### D2 — Đồng bộ displayName/name, 02/11/2026 (CONFIRMED)
+
+Đã rà PRD, docs và code: `name` của user chỉ còn trong bảng collection PRD lịch sử;
+schema, auth DTO, profile PATCH và payload frontend hiện dùng `displayName`.
+Đã thêm ghi chú ngay tại PRD, bảng ánh xạ trong database-design và dẫn chiếu trong
+api-contract, FRONTEND_BACKEND_CONTRACT và baseline08.
+Nguồn bằng chứng và đường dẫn code nằm tại [bảng ánh xạ](../backend/database-design.md#user-display-name-contract).
+D2 chỉ đổi6 file Markdown; không sửa source/schema/dependency hoặc chạy database/migration.
+Kiểm tra: diff/whitespace, relative links/anchors và đối chiếu field với source hiện hành.
+Không chạy lại build/test runtime vì không có thay đổi code.
+
+### Các mục còn lại
+
 - **OPEN QUESTION:** import/export metadata học phần cần nhóm chốt công cụ/phạm vi;
   không tự thêm UI/API hoặc xuất session/passwordHash/credential. JSON không backup file cloud.
 - **OPEN QUESTION:** Hiếu review API/DB, Vũ xác minh UI; chưa đánh dấu issue hoàn tất.

@@ -10,6 +10,11 @@
 
 ## 1. Quy ước chung
 
+- **CONFIRMED — D2:** tên hiển thị trong request, user DTO và MongoDB là `displayName`.
+  `name` trong PRD cũ chỉ là thuật ngữ lịch sử, không phải alias API.
+  Register nhận `displayName`, login/me trả `data.user.displayName`, profile PATCH nhận `{displayName}`.
+  Xem [bảng ánh xạ và bằng chứng code](database-design.md#user-display-name-contract).
+  Không rename field hoặc migrate DB trong thay đổi tài liệu này.
 - Base URL: `/api/v1`. Mọi endpoint trong bảng là relative path dưới prefix này. JSON UTF-8; thời gian ISO-8601 UTC. Không nhận `userId`, provider, model, quota hoặc secret từ client.
 - Auth: JWT HS256 đặt trong HttpOnly cookie; `JWT_SECRET` server-side, cookie `Secure` trên HTTPS, `SameSite=Lax` theo cấu hình hiện hành. Mỗi request kiểm tra chữ ký, issuer, audience, expiry, `sub`/`jti` và active `sessions` record. Mọi route cá nhân cần JWT + session hợp lệ trừ register/login.
 - Cookie-authenticated unsafe methods yêu cầu origin validation và synchronizer CSRF token qua `X-CSRF-Token`; `GET /auth/csrf` cấp token gắn với JWT cookie. Register/login cũng kiểm tra Origin và rate limit. Exact deployment origin và key-rotation policy còn OPEN QUESTION.
