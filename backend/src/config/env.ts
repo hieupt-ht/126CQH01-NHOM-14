@@ -21,6 +21,7 @@ export interface AppConfig {
   sessionCookieSameSite: SameSitePolicy;
   sessionCookieSecure: boolean;
   generationEnabled: boolean;
+  promptTranslationEnabled: boolean;
   cloudflareAccountId?: string;
   cloudflareApiToken?: string;
   cloudinaryCloudName?: string;
@@ -119,6 +120,9 @@ export function validateEnv(source: EnvSource = process.env): AppConfig {
   if (source.CLOUDINARY_CLOUD_NAME?.trim() && !/^[a-zA-Z0-9_-]+$/.test(source.CLOUDINARY_CLOUD_NAME.trim()))
     throw new EnvironmentValidationError('CLOUDINARY_CLOUD_NAME is invalid.');
   const generationEnabled = readBoolean(source, 'GENERATION_ENABLED', false);
+  const promptTranslationEnabled = readBoolean(source, 'PROMPT_TRANSLATION_ENABLED', false);
+  if (nodeEnv === 'production' && promptTranslationEnabled)
+    throw new EnvironmentValidationError('PROMPT_TRANSLATION_ENABLED cannot be true in production before approval.');
   if (generationEnabled) {
     for (const key of ['CLOUDFLARE_ACCOUNT_ID','CLOUDFLARE_API_TOKEN', ...cloudKeys])
       if (!source[key]?.trim()) throw new EnvironmentValidationError(key + ' is required when GENERATION_ENABLED=true.');
@@ -144,7 +148,7 @@ export function validateEnv(source: EnvSource = process.env): AppConfig {
     sessionTtlDays: readInteger(source, 'SESSION_TTL_DAYS', 7, 1, 365),
     sessionCookieSameSite: sameSiteRaw as SameSitePolicy,
     sessionCookieSecure,
-    generationEnabled, storageNamespace,
+    generationEnabled, promptTranslationEnabled, storageNamespace,
     cloudflareAccountId: source.CLOUDFLARE_ACCOUNT_ID?.trim(), cloudflareApiToken: source.CLOUDFLARE_API_TOKEN?.trim(),
     cloudinaryCloudName: source.CLOUDINARY_CLOUD_NAME?.trim() || undefined,
     cloudinaryApiKey: source.CLOUDINARY_API_KEY?.trim() || undefined,

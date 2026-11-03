@@ -1,5 +1,6 @@
 import { GenerationService } from './modules/generations/service.js';
 import { CloudflareProvider } from './providers/cloudflare.js';
+import { CloudflarePromptTranslator } from './providers/prompt-translation.js';
 import { CloudinaryImageStorage, StorageRegistry } from './storage/storage.js';
 import { configureCloudinary, getCloudinaryClient } from './config/cloudinary.js';
 import { once } from 'node:events';
@@ -34,7 +35,11 @@ export async function startServer(config: AppConfig = validateEnv()): Promise<Se
     const storage = hasStorage ? new CloudinaryImageStorage(getCloudinaryClient(), config.cloudinaryAccountAlias, config.storageNamespace, config.maxImageUploadMb, config.cloudinaryTimeoutMs) : undefined;
     const registry = new StorageRegistry(storage ? new Map([['cloudinary:' + config.cloudinaryAccountAlias, storage]]) : new Map());
     const generations = storage ? new GenerationService(new CloudflareProvider(config.cloudflareAccountId ?? '', config.cloudflareApiToken ?? ''), storage,
-      { userLimit: config.dailyUserLimit, appLimit: config.dailyAppLimit, cooldownMs: 15000, checkpointDir: config.imageStorageDir }, registry, config.generationEnabled) : undefined;
+      { userLimit: config.dailyUserLimit, appLimit: config.dailyAppLimit, cooldownMs: 15000, checkpointDir: config.imageStorageDir }, registry, config.generationEnabled,
+      config.promptTranslationEnabled && config.cloudflareAccountId && config.cloudflareApiToken
+        ? new CloudflarePromptTranslator(config.cloudflareAccountId, config.cloudflareApiToken)
+        : undefined,
+      config.promptTranslationEnabled) : undefined;
     const server = createApp(config, { generations: config.generationEnabled ? generations : undefined, registry, userLimit: config.dailyUserLimit, appLimit: config.dailyAppLimit }).listen(config.port, '0.0.0.0');
     if (generations) { workers.set(server, generations); generations.start(); }
     await once(server, 'listening');
