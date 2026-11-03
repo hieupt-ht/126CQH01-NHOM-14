@@ -1,5 +1,7 @@
 # FLUX STUDIO —126CQH01-NHOM-14
 
+> Cập nhật: Chế độ UI preview đã tắt. Mọi môi trường yêu cầu backend, MongoDB và đăng nhập thật; các hướng dẫn preview bên dưới là lịch sử. Chạy Docker theo [LOCAL_RUN](docs/development/LOCAL_RUN.md).
+
 Ứng dụng tạo và quản lý ảnh: React/TypeScript, Node.js/Express, MongoDB replica set, FLUX qua Cloudflare và Cloudinary authenticated.
 
 ## 1. Xem giao diện — chưa cần DB/cloud (mặc định development)
