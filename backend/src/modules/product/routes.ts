@@ -75,8 +75,11 @@ function pageQuery(query: unknown) {
     query,
   );
   let filter = {};
-  if (parsed.cursor) {
+  if (parsed.cursor !== undefined) {
     try {
+      if (!/^[A-Za-z0-9_-]+$/.test(parsed.cursor) ||
+          Buffer.from(parsed.cursor, "base64url").toString("base64url") !== parsed.cursor)
+        throw new Error("Invalid base64url");
       const cursor = z
         .object({
           id: z.string().regex(/^[a-f0-9]{24}$/),
@@ -224,10 +227,19 @@ export function createProductRouter(
     })
       .sort({ createdAt: -1, _id: -1 })
       .limit(limit + 1);
+    const page = images.slice(0, limit);
+    const jobs = await GenerationModel.find({
+      _id: { $in: page.map((image) => image.generationId) },
+      userId: owner(response),
+    }).select("_id model");
+    const models = new Map(jobs.map((job) => [String(job._id), job.model]));
     response.json({
       success: true,
       data: {
-        items: images.slice(0, limit).map(imageDto),
+        items: page.map((image) => ({
+          ...imageDto(image),
+          model: models.get(String(image.generationId)) ?? "",
+        })),
         nextCursor: cursorFor(images, limit),
       },
     });
@@ -301,6 +313,7 @@ export function createProductRouter(
         );
       }
       response.setHeader("Content-Type", "image/" + image.format);
+      response.setHeader("Content-Length", String(image.bytes));
       response.setHeader(
         "Content-Disposition",
         (mode === "download" ? "attachment" : "inline") +
@@ -312,7 +325,13 @@ export function createProductRouter(
       );
       response.setHeader("Cache-Control", "private, no-store");
       response.setHeader("Cross-Origin-Resource-Policy", "same-origin");
-      await pipeline(stream, response);
+      try {
+        await pipeline(stream, response);
+      } catch {
+        // pipeline terminates partial transfers; never log SDK errors or turn
+        // truncated bytes into a successful JSON response.
+        if (!response.destroyed) response.destroy();
+      }
     });
   router.get("/usage/me", async (_request, response) => {
     const dateKey = new Date().toISOString().slice(0, 10);

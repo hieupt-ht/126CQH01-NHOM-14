@@ -74,3 +74,5 @@
 @media (prefers-reduced-motion: reduce) { .detail-page, .detail-toast { animation: none; } }
 
 .detail-live-art { display: block; width: 100%; max-height: 75svh; object-fit: contain; border-radius: var(--radius-lg); }
+.detail-info-panel h1, .detail-prompt p { overflow-wrap: anywhere; }
+.detail-prompt p { white-space: pre-wrap; }

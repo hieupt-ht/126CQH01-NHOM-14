@@ -1,0 +1,64 @@
+{
+  "generatedAt": "2026-11-02T14:38:15.701Z",
+  "dataset": "10000 synthetic metadata, no AI/cloud calls",
+  "mongodbVersion": "8.2.6",
+  "environment": {
+    "node": "v24.21.0",
+    "platform": "win32",
+    "architecture": "x64",
+    "replicaSetNodes": 1
+  },
+  "before": {
+    "nReturned": 20,
+    "totalDocsExamined": 10000,
+    "totalKeysExamined": 0,
+    "executionTimeMillis": 12
+  },
+  "after": {
+    "nReturned": 20,
+    "totalDocsExamined": 20,
+    "totalKeysExamined": 20,
+    "executionTimeMillis": 3
+  },
+  "aggregation": [
+    {
+      "_id": "failed",
+      "count": 143,
+      "averageDurationMs": 3487.4825174825173
+    },
+    {
+      "_id": "succeeded",
+      "count": 857,
+      "averageDurationMs": 3496.2543757292883
+    }
+  ],
+  "lookup": {
+    "matched": 20,
+    "samples": [
+      {
+        "title": "Synthetic course record 9990",
+        "generation": [
+          {
+            "status": "succeeded",
+            "model": "synthetic-test-model"
+          }
+        ]
+      },
+      {
+        "title": "Synthetic course record 9980",
+        "generation": [
+          {
+            "status": "succeeded",
+            "model": "synthetic-test-model"
+          }
+        ]
+      }
+    ]
+  },
+  "transaction": {
+    "committedRecords": 1,
+    "rolledBackRecords": 0,
+    "reserved": 1
+  },
+  "validationRejected": true
+}

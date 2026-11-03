@@ -1,5 +1,6 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
+import assert from "node:assert/strict";
 import mongoose, { Types } from "mongoose";
 import { MongoMemoryReplSet } from "mongodb-memory-server";
 
@@ -54,6 +55,30 @@ try {
       { $sort: { _id: 1 } },
     ])
     .toArray();
+  // Referencing demonstration on isolated synthetic collections only.
+  await database.collection("course_generations").insertMany(docs.map((doc) => ({
+    _id: doc.generationId, userId: doc.userId, status: doc.status,
+    model: "synthetic-test-model", originalPrompt: "Synthetic metadata; no image was generated",
+  })));
+  const joined = await collection.aggregate([
+    { $match: query },
+    { $sort: { createdAt: -1, _id: -1 } },
+    { $limit: 20 },
+    { $lookup: {
+      from: "course_generations",
+      let: { generationId: "$generationId", ownerId: "$userId" },
+      pipeline: [
+        { $match: { $expr: { $and: [
+          { $eq: ["$_id", "$$generationId"] }, { $eq: ["$userId", "$$ownerId"] },
+        ] } } },
+        { $project: { _id: 0, model: 1, status: 1 } },
+      ],
+      as: "generation",
+    } },
+    { $project: { _id: 0, title: 1, generation: 1 } },
+  ]).toArray();
+  assert.equal(joined.length, 20);
+  assert.ok(joined.every((row) => row.generation.length === 1));
   // Actual MongoDB collection-level validation, independent of Mongoose.
   await database.createCollection("course_validation", {
     validator: {
@@ -77,6 +102,28 @@ try {
   }
   if (!validationRejected)
     throw new Error("Collection validator did not reject invalid BSON.");
+  const usage = database.collection("course_usage");
+  await usage.insertOne({ reserved: 0 });
+  const session = await mongoose.startSession();
+  try {
+    await session.withTransaction(async () => {
+      await usage.updateOne({}, { $inc: { reserved: 1 } }, { session });
+      await database.collection("course_validation").insertOne({ title: "synthetic-committed" }, { session });
+    });
+    await assert.rejects(session.withTransaction(async () => {
+      await usage.updateOne({}, { $inc: { reserved: 1 } }, { session });
+      await database.collection("course_validation").insertOne({ title: "synthetic-rolled-back" }, { session });
+      throw new Error("Intentional isolated rollback");
+    }), /Intentional isolated rollback/);
+  } finally {
+    await session.endSession();
+  }
+  const transaction = {
+    committedRecords: await database.collection("course_validation").countDocuments({ title: "synthetic-committed" }),
+    rolledBackRecords: await database.collection("course_validation").countDocuments({ title: "synthetic-rolled-back" }),
+    reserved: (await usage.findOne())!.reserved,
+  };
+  assert.deepEqual(transaction, { committedRecords: 1, rolledBackRecords: 0, reserved: 1 });
   const summarize = (result: typeof before) => ({
     nReturned: result.executionStats.nReturned,
     totalDocsExamined: result.executionStats.totalDocsExamined,
@@ -90,9 +137,12 @@ try {
     generatedAt: new Date().toISOString(),
     dataset: "10000 synthetic metadata, no AI/cloud calls",
     mongodbVersion: (await database.admin().serverInfo()).version,
+    environment: { node: process.version, platform: process.platform, architecture: process.arch, replicaSetNodes: 1 },
     before: summarize(before),
     after: summarize(after),
     aggregation: stats,
+    lookup: { matched: joined.length, samples: joined.slice(0, 2) },
+    transaction,
     validationRejected,
   };
   await writeFile(
