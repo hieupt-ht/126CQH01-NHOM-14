@@ -13,6 +13,7 @@ import { MongoMemoryReplSet } from "mongodb-memory-server";
 import { createApp } from "../../src/app.js";
 import { createDeclaredIndexes, GenerationModel, ImageModel, UserModel } from "../../src/models/index.js";
 import { StorageRegistry, type ImageStorage } from "../../src/storage/storage.js";
+import { GenerationService } from "../../src/modules/generations/service.js";
 
 const require = createRequire(import.meta.url);
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE ?? "playwright");
@@ -37,7 +38,14 @@ try {
     async delete() { throw new Error("Cloud deletion prohibited in browser test"); },
   };
   const origin = "http://127.0.0.1:5187";
+  let providerCalls = 0;
+  // Accept requests against the real quota transaction, but never start the worker.
+  const generations = new GenerationService({ async generate() {
+    providerCalls++;
+    throw new Error("Inference prohibited in browser test");
+  } }, storage, { userLimit: 5, appLimit: 20, cooldownMs: 0, checkpointDir: resolve(output, "checkpoints") });
   apiServer = createApp({ frontendOrigin: origin, jwtSecret: "isolated-browser-test-secret-at-least-32-bytes" }, {
+    generations,
     registry: new StorageRegistry(new Map([["test:isolated", storage]])),
   }).listen(0, "127.0.0.1");
   await once(apiServer, "listening");
@@ -174,10 +182,43 @@ try {
   await page.goto(origin + "/app/history?job=" + jobs[12]._id);
   await page.getByRole("dialog").getByText("Ảnh đã xóa khỏi thư viện, lịch sử vẫn được giữ.").waitFor();
   assert.equal(generationPosts, 0);
+  const libraryGenerationPosts = generationPosts;
+
+  // Regression for the develop/PR conflict: changing refreshKey must update
+  // sidebar usage on acceptance and stored-image totals on terminal polling.
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto(origin + "/app/create");
+  const sidebar = page.locator(".studio-sidebar .usage-card");
+  await sidebar.getByText("0 / 5", { exact: true }).waitFor();
+  const storedCount = sidebar.locator(".usage-card__metrics > div").filter({ hasText: "Số ảnh" }).locator("dd");
+  await storedCount.getByText("44", { exact: true }).waitFor();
+  await page.locator("#create-prompt").fill("Synthetic refresh regression; no inference");
+  await page.getByRole("button", { name: "Tạo ảnh", exact: true }).click();
+  await sidebar.getByText("1 / 5", { exact: true }).waitFor();
+  await page.waitForURL(/job=/);
+  const acceptedId = new URL(page.url()).searchParams.get("job");
+  const accepted = await GenerationModel.findById(acceptedId);
+  assert.ok(accepted && accepted.status === "queued");
+  // Synthetic persisted result, not FLUX output: only tests FE terminal refresh.
+  const syntheticResult = await ImageModel.create({
+    userId: user._id, generationId: accepted._id, title: "Synthetic refresh fixture",
+    width: 512, height: 320, bytes: bytes.length, format: "png",
+    storage: { provider: "test", accountAlias: "isolated", key: "refresh-fixture", deliveryMode: "private" },
+  });
+  await GenerationModel.updateOne({ _id: accepted._id }, { $set: {
+    status: "succeeded", imageId: syntheticResult._id, completedAt: new Date(),
+  } });
+  await UserModel.updateOne({ _id: user._id }, { $set: { activeGenerationId: null } });
+  await page.getByRole("heading", { name: "Ảnh đã được lưu", exact: true }).waitFor();
+  await storedCount.getByText("45", { exact: true }).waitFor();
+  assert.equal(generationPosts, 1, "only the explicit test CTA may create a job");
+  assert.equal(providerCalls, 0);
   assert.deepEqual(errors, []);
   const report = { passed: true, widths, realApi: true, isolatedMongoDB: true,
     imageSource: "synthetic fixture served by storage stub; no Cloudflare/Cloudinary calls",
-    generationPosts, consoleErrors: errors, checks: ["login", "cursor refresh", "scroll return", "rename persistence", "private download", "modal focus trap", "Escape/focus", "file fallback/retry", "job deep link", "soft-delete/history"] };
+    libraryGenerationPosts, intentionalCreatePosts: generationPosts, providerCalls,
+    terminalResult: "synthetic DB fixture, no worker/inference",
+    consoleErrors: errors, checks: ["login", "cursor refresh", "scroll return", "rename persistence", "private download", "modal focus trap", "Escape/focus", "file fallback/retry", "job deep link", "soft-delete/history", "sidebar refresh on accept and terminal"] };
   await writeFile(resolve(output, "report.json"), JSON.stringify(report, null, 2));
   console.info(JSON.stringify(report, null, 2));
 } finally {

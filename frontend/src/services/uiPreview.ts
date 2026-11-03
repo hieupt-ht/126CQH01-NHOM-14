@@ -1,6 +1,5 @@
-// UI-only development mode. Production builds always use real authentication.
-export const UI_PREVIEW =
-  import.meta.env.DEV && import.meta.env.VITE_UI_PREVIEW !== "false";
+// Authentication is required in every environment, including local development.
+export const UI_PREVIEW: boolean = false;
 
 const previewUser = {
   id: "ui-preview",

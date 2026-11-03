@@ -1,5 +1,7 @@
 # Docker local — MongoDB replica set và Cloudinary
 
+> Cập nhật: UI preview đã tắt; frontend luôn dùng xác thực thật. Các hướng dẫn bật preview bên dưới là lịch sử.
+
 Cập nhật01/11/2026. Chỉ dành local demo/development, không phải cấu hình production.
 Giữ hạ tầng Docker của Hiếu và tích hợp worker/session của nhóm. Nguồn storage: [09](../technical-baseline/09-CLOUDINARY-DECISION.md).
 

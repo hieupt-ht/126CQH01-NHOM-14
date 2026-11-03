@@ -19,6 +19,23 @@ chưa phải nghiệm thu Cloudflare/Cloudinary live hoặc xác nhận review c
 
 ## Phần đã hoàn thiện (CONFIRMED)
 
+### Ghép develop và xử lý conflict PR21 — 03/11/2026
+
+- Đã đọc5 commit mới trên `origin/develop` đến `a743c82` (PR22/23): sửa init replica,
+  cập nhật usage sau generation và bắt buộc đăng nhập thật trong mọi môi trường.
+- Conflict duy nhất ở `frontend/src/services/resources.ts`: giữ `refreshKey` từ develop
+  cùng AbortController, data theo resource path và callback reload ổn định của PR21.
+  Không chọn bỏ toàn bộ một phía; giữ nguyên các thay đổi khác từ develop.
+- Bổ sung regression trong browser script: POST nhận job thật trên DB tạm làm sidebar đổi0/5→1/5;
+  fixture kết quả terminal làm số ảnh44→45 sau polling, không cần refresh trang.
+  Không chạy worker/inference; kết quả terminal là synthetic DB fixture, không phải output FLUX.
+  Các thao tác library/detail/history vẫn0POST generation; chỉ CTA kiểm thử mới gửi1POST, providerCalls=0.
+- Chạy lại FE/BE build, unit34 đạt/1skip (thiếu MONGODB_TEST_URI), integration7 đạt/0skip,
+  browser360/768/1280/1536px và sidebar refresh regression đạt; không lỗi JavaScript.
+  `node --check backend/scripts/docker/init-replica.js` đạt; chưa chạy Docker bootstrap/cloud live.
+- UI preview đã bị tắt trên develop; các hướng dẫn bật preview trước đây trong tài liệu này là lịch sử.
+  Xử lý conflict trên nhánh PR; chưa merge PR vào develop hoặc main.
+
 - Thư viện dùng ImageCard với file thật qua API; hiển thị model từ generation cùng owner,
   thời điểm và kích thước. Menu xem/tải/đổi tên/xóa dùng semantic HTML và keyboard.
 - Rename/delete dùng chung ImageActionDialog với Chi tiết, kiểm tra tên1–120,

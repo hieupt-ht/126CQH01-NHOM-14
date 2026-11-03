@@ -10,7 +10,6 @@ import DashboardLayout from "./layouts/DashboardLayout";
 import "./pages/detail/ImageDetailPage.css";
 import AccountSettingsPage from "./pages/settings/AccountSettingsPage";
 
-// SessionGate bypasses account checks only in the development UI preview.
 function PageRoutes() {
   const pathname = window.location.pathname.replace(/\/+$/, "") || "/";
   if (pathname === "/login") return <LoginPage />;

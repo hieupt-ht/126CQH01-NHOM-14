@@ -47,7 +47,7 @@ export type StatsRecord = {
   jobsByStatus: { _id: string; count: number }[];
 };
 export type Page<T> = { items: T[]; nextCursor: string | null };
-export function useResource<T>(path: string) {
+export function useResource<T>(path: string, refreshKey = 0) {
   const [result, setResult] = useState<{ path: string; data: T | null; error: string; loading: boolean }>({
     path, data: null, error: "", loading: true,
   });
@@ -67,6 +67,6 @@ export function useResource<T>(path: string) {
         }));
       });
     return () => controller.abort();
-  }, [path, revision]);
+  }, [path, revision, refreshKey]);
   return result.path === path ? { ...result, reload } : { data: null, error: "", loading: true, reload };
 }

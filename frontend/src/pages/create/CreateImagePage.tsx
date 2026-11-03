@@ -386,6 +386,7 @@ export default function CreateImagePage() {
   const [posting, setPosting] = useState(false);
   const [examplesOpen, setExamplesOpen] = useState(false);
   const [pollAttempt, setPollAttempt] = useState(0);
+  const [usageRefreshKey, setUsageRefreshKey] = useState(0);
   const promptInput = useRef<HTMLTextAreaElement>(null),
     examplesDialog = useRef<HTMLDialogElement>(null);
   const pending = useRef<{ key: string; prompt: string } | null>(null);
@@ -443,8 +444,10 @@ export default function CreateImagePage() {
         setJob(result);
         setState(result.status);
         setPromptError("");
-        if (["succeeded", "failed", "needs_review"].includes(result.status))
+        if (["succeeded", "failed", "needs_review"].includes(result.status)) {
           usage.reload();
+          setUsageRefreshKey((value) => value + 1);
+        }
         if (["queued", "processing", "saving"].includes(result.status))
           timer = setTimeout(poll, 3000);
       } catch (error) {
@@ -503,6 +506,7 @@ export default function CreateImagePage() {
       setJob(result);
       setJobId(result.id);
       setState(result.status);
+      setUsageRefreshKey((value) => value + 1);
       pending.current = null;
       clearPending(profile.data.user.id);
       const url = new URL(window.location.href);
@@ -548,6 +552,7 @@ export default function CreateImagePage() {
       onCompose={() => promptInput.current?.focus()}
       activeItem="create"
       showSearch={false}
+      usageRefreshKey={usageRefreshKey}
     >
       <div className="create-page">
         <CreateHero />
