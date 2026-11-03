@@ -6,6 +6,41 @@
 
 # Frontend/Backend Contract
 
+## Tên hiển thị người dùng — D2, 02/11/2026 (CONFIRMED)
+
+`displayName` là field hiện hành xuyên suốt MongoDB, request/response API và frontend.
+Register gửi `{displayName,email,password}`; login/me/register/profile update trả
+`data.user.displayName`; `PATCH /api/v1/users/me` gửi `{displayName}` trim1–80 ký tự.
+`users.name` trong PRD cũ chỉ là tên lịch sử của cùng khái niệm, không phải alias API.
+Không đổi tên biến form nội bộ `fullName` nếu payload đã map đúng sang `displayName`.
+Xem [ánh xạ PRD–schema–API–FE và bằng chứng code](../backend/database-design.md#user-display-name-contract).
+Task D2 chỉ cập nhật tài liệu, không đổi schema hoặc migrate database.
+
+## Library/Detail/History — hiện hành 02/11/2026 (CONFIRMED)
+
+Theo [phân công cập nhật #17](https://github.com/hieupt-ht/126CQH01-NHOM-14/issues/17#issuecomment-6560294331)
+và [baseline08](../technical-baseline/08-IMPLEMENTATION-STATUS.md), phần dưới đây ưu tiên hơn các bảng proposal cũ:
+
+- `GET /api/v1/images` và `/generations`: `{items,nextCursor}`, default20/max50,
+  thứ tự giảm dần `(createdAt,_id)`. Cursor là base64url canonical của `{date,id}`;
+  truyền cursor rỗng/sai encoding/sai cấu trúc trả400 `INVALID_CURSOR`.
+- Image list DTO giữ các trường baseline08, bổ sung `model` từ generation cùng owner
+  để card hiển thị model thật; chuỗi rỗng nếu tham chiếu không còn hợp lệ. Không copy model vào schema ảnh.
+- Detail trả DTO ảnh cùng `prompt`/`model`; PATCH chỉ nhận `{title}` trim1–120, trả200 DTO ảnh.
+  Không hỗ trợ favorite ở P0.
+- DELETE trả204 sau soft-delete, `storageDeletionStatus=pending`; không khẳng định cloud đã xóa,
+  không hoàn quota, giữ generation. History list/detail có `imageDeleted`.
+- `/images/:id/content` và `/download` đã CONFIRMED; stream sau auth/owner check,
+  `Content-Type=image/{png|jpeg|webp}`, `Content-Length` theo bytes metadata,
+  `Cache-Control: private, no-store`, `nosniff`, disposition inline/attachment.
+  Lỗi mở file trả503 `STORAGE_UNAVAILABLE`; stream lỗi giữa chừng bị ngắt để browser nhận lỗi tải.
+- Missing/not-owned cùng404 cho detail, content, download, PATCH, DELETE và job detail.
+- FE lưu cursor/back stack/vị trí qua query của route danh sách; `returnTo` chỉ nhận
+  `/app/library` hoặc `/app/history`. `/app/history?job=<id>` mở drawer lần tạo,
+  không tạo job. Polling dừng khi terminal/rời trang/lỗi; tải lại trạng thái chỉ GET.
+
+Kiểm thử và giới hạn: [bàn giao C/D](TASK_C_D_LIBRARY_HISTORY_HANDOFF.md).
+
 This is the frontend/backend coordination contract for implementation. The current auth decision (01/11/2026) is HS256 JWT in an HttpOnly cookie with MongoDB session revocation. The frontend continues to use `credentials: include`; it must not store or decode auth tokens. Cloudflare FLUX and Cloudinary authenticated storage remain current providers. Older Gemini/local storage text is historical where it conflicts with the latest baseline.
 
 ## Application endpoint map

@@ -6,6 +6,9 @@ import {
   type Page,
 } from "../../services/resources";
 import "./HistoryPage.css";
+import "../library/LibraryPage.css";
+import { imageDetailHref, useListNavigation, useRestoreListScroll } from "../../services/listNavigation";
+import { trapDialogFocus } from "../../components/ui/dialogFocus";
 const labels = {
   queued: "Đang chờ",
   processing: "Đang tạo",
@@ -15,21 +18,27 @@ const labels = {
   needs_review: "Cần kiểm tra",
 };
 export default function HistoryPage() {
-  const [selected, setSelected] = useState<string | null>(null);
-  const [cursor, setCursor] = useState(""),
-    [previous, setPrevious] = useState<string[]>([]);
+  const [selected, setSelected] = useState<string | null>(new URLSearchParams(window.location.search).get("job"));
+  const { cursor, previous, move } = useListNavigation();
+  const selectJob = (id: string) => {
+    const url = new URL(window.location.href);
+    url.searchParams.set("job", id);
+    window.history.replaceState(null, "", url.pathname + url.search);
+    setSelected(id);
+  };
   const { data, loading, error, reload } = useResource<Page<GenerationRecord>>(
     "/generations?limit=20" +
       (cursor ? "&cursor=" + encodeURIComponent(cursor) : ""),
   );
+  useRestoreListScroll(loading);
   const hasActive = data?.items.some((job) =>
     ["queued", "processing", "saving"].includes(job.status),
   );
   useEffect(() => {
-    if (!hasActive) return;
+    if (!hasActive || loading || error) return;
     const timer = setTimeout(reload, 5000);
     return () => clearTimeout(timer);
-  }, [data, hasActive]);
+  }, [data, hasActive, loading, error, reload]);
   return (
     <DashboardLayout
       search=""
@@ -53,6 +62,7 @@ export default function HistoryPage() {
             Tạo ảnh mới
           </a>
         </header>
+        {new URLSearchParams(window.location.search).get("notice") === "deleted" && <p role="status">Đã xóa khỏi thư viện. Lịch sử tạo vẫn được giữ.</p>}
         {loading && !data ? (
           <p role="status">Đang tải lịch sử…</p>
         ) : error ? (
@@ -90,7 +100,7 @@ export default function HistoryPage() {
                       <td>
                         <button
                           className="history-prompt-button"
-                          onClick={() => setSelected(job.id)}
+                          onClick={() => selectJob(job.id)}
                         >
                           {job.prompt}
                         </button>
@@ -108,7 +118,7 @@ export default function HistoryPage() {
                       <td>
                         <button
                           className="history-row-action"
-                          onClick={() => setSelected(job.id)}
+                          onClick={() => selectJob(job.id)}
                         >
                           Chi tiết
                         </button>
@@ -121,6 +131,7 @@ export default function HistoryPage() {
             <div className="history-cards">
               {data.items.map((job) => (
                 <article className="history-card" key={job.id}>
+                  <button className="history-card__prompt" onClick={() => selectJob(job.id)}>Chi tiết lần tạo</button>
                   <span
                     className={"history-status history-status--" + job.status}
                   >
@@ -138,7 +149,8 @@ export default function HistoryPage() {
                     {job.imageId && !job.imageDeleted && (
                       <a
                         className="studio-button studio-button--subtle"
-                        href={"/app/images/" + job.imageId + "?from=history"}
+                        href={imageDetailHref(job.imageId)}
+                        onClick={(event) => { event.currentTarget.href = imageDetailHref(job.imageId!); }}
                       >
                         Xem ảnh
                       </a>
@@ -173,24 +185,20 @@ export default function HistoryPage() {
           </>
         )}
         <nav className="library-pagination" aria-label="Phân trang lịch sử">
-          {previous.length > 0 && (
+          {(previous.length > 0 || cursor) && (
             <button
               className="studio-button studio-button--subtle"
-              onClick={() => {
-                setCursor(previous[previous.length - 1]);
-                setPrevious((value) => value.slice(0, -1));
-              }}
+              disabled={loading}
+              onClick={() => move(previous.at(-1) ?? "", true)}
             >
               Trang trước
             </button>
           )}
-          {data?.nextCursor && (
+          {!error && data?.nextCursor && (
             <button
               className="studio-button studio-button--subtle"
-              onClick={() => {
-                setPrevious((value) => [...value, cursor]);
-                setCursor(data.nextCursor!);
-              }}
+              disabled={loading}
+              onClick={() => move(data.nextCursor!)}
             >
               Trang sau
             </button>
@@ -198,7 +206,12 @@ export default function HistoryPage() {
         </nav>
       </div>
       {selected && (
-        <HistoryDetail id={selected} onClose={() => setSelected(null)} />
+        <HistoryDetail key={selected} id={selected} onClose={() => {
+          setSelected(null);
+          const url = new URL(window.location.href);
+          url.searchParams.delete("job");
+          window.history.replaceState(null, "", url.pathname + url.search);
+        }} />
       )}
     </DashboardLayout>
   );
@@ -210,7 +223,7 @@ function HistoryDetail({ id, onClose }: { id: string; onClose: () => void }) {
     loading,
     error,
     reload,
-  } = useResource<GenerationRecord>("/generations/" + id);
+  } = useResource<GenerationRecord>("/generations/" + encodeURIComponent(id));
   const dialog = useRef<HTMLDialogElement>(null);
   const trigger = useRef(document.activeElement as HTMLElement | null);
   useEffect(() => {
@@ -220,16 +233,18 @@ function HistoryDetail({ id, onClose }: { id: string; onClose: () => void }) {
     };
   }, []);
   useEffect(() => {
-    if (!job || !["queued", "processing", "saving"].includes(job.status))
+    if (!job || loading || error || !["queued", "processing", "saving"].includes(job.status))
       return;
     const timer = setTimeout(reload, 5000);
     return () => clearTimeout(timer);
-  }, [job]);
+  }, [job, loading, error, reload]);
   return (
     <dialog
       className="history-drawer"
       ref={dialog}
       aria-labelledby="history-detail-title"
+      tabIndex={-1}
+      onKeyDown={trapDialogFocus}
       onCancel={onClose}
       onClose={onClose}
     >
@@ -246,7 +261,7 @@ function HistoryDetail({ id, onClose }: { id: string; onClose: () => void }) {
       {loading && !job ? (
         <p role="status">Đang tải…</p>
       ) : error ? (
-        <p role="alert">{error}</p>
+        <section role="alert"><p>{error}</p><button className="studio-button studio-button--subtle" onClick={reload}>Tải lại trạng thái</button></section>
       ) : (
         job && (
           <>
@@ -284,7 +299,8 @@ function HistoryDetail({ id, onClose }: { id: string; onClose: () => void }) {
               job.imageId && (
                 <a
                   className="studio-button studio-button--primary"
-                  href={"/app/images/" + job.imageId + "?from=history"}
+                  href={imageDetailHref(job.imageId)}
+                  onClick={(event) => { event.currentTarget.href = imageDetailHref(job.imageId!); }}
                 >
                   Xem ảnh
                 </a>

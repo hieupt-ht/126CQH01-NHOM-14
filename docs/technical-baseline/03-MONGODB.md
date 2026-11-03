@@ -40,6 +40,12 @@ Không lưu API key, signed credentials, base64 ảnh vào documents/export.
 Chưa sửa model hoặc migrate trong task tài liệu.
 
 ## JSON import/export
+
+> **Đối chiếu D5 — 02/11/2026:** xem [kết quả PRD–Issue–code](../development/D5_METADATA_IMPORT_EXPORT_AUDIT.md).
+> PRD hiện không liệt kê import/export trong FR/thực nghiệm/nghiệm thu; Định cho biết chưa có yêu cầu riêng từ leader/giảng viên; cần reviewer xác nhận đủ phạm vi D5.
+> Đã hoàn thành phần đối chiếu; công cụ, format và round-trip bên dưới vẫn là PROPOSAL chưa triển khai,
+> không phải chức năng đã kiểm thử hoặc một yêu cầu mới được tự bật. Không thêm API/UI hoặc coi JSON metadata là backup ảnh cloud.
+
 CONFIRMED khả năng cần cho dữ liệu nhóm; PROPOSAL công cụ CLI/script vận hành, chưa thêm nút UI.
 mongoexport/mongoimport dùng Extended JSON để giữ ObjectId/Date; export mỗi collection.
 Không import sessions/passwordHash/quota/lease active vào môi trường demo của thành viên khác.

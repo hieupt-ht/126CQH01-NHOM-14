@@ -22,12 +22,37 @@
 
 ### 2.1 `users`
 
+<a id="user-display-name-contract"></a>
+
+**CONFIRMED — D2, 02/11/2026:** tên hiển thị có một field hiện hành duy nhất là `displayName`.
+`name` trong [PRD mục9.1](../../PRD.md#91-collection) là tên trong bản đề xuất lịch sử,
+không phải field thứ hai hoặc alias được API hỗ trợ.
+
+| Vị trí | Tên hiện hành / ý nghĩa |
+|---|---|
+| PRD lịch sử: `users.name` | Cùng khái niệm tên hiển thị; đối chiếu sang `users.displayName` |
+| MongoDB/Mongoose `users` | `displayName`: string bắt buộc, trim, dài1–80 ký tự |
+| `POST /api/v1/auth/register` | Body dùng `displayName`; không gửi `name` |
+| User DTO của register/login/me và cập nhật hồ sơ | `data.user.displayName` |
+| `PATCH /api/v1/users/me` | Body `{displayName}`; whitelist, không nhận `name` |
+| Frontend đăng ký và hồ sơ | Gửi/đọc `displayName`; biến form nội bộ `fullName` không phải field API |
+
+Bằng chứng code: [user model](../../backend/src/models/user.model.ts),
+[registrationSchema/userDto](../../backend/src/modules/auth/auth.ts),
+[profile PATCH](../../backend/src/modules/product/routes.ts),
+[UserProfile](../../frontend/src/services/api.ts),
+[form đăng ký](../../frontend/src/pages/auth/RegisterPage.tsx) và
+[trang hồ sơ](../../frontend/src/pages/settings/AccountSettingsPage.tsx).
+Đây là đồng bộ thuật ngữ theo contract đã chốt tại Issue #17, không phải quyết định rename mới.
+Task D2 không gọi database, rename field, thêm alias, chạy migration hoặc chuyển dữ liệu `name` cũ.
+Nếu phát hiện DB cũ có `name`, cần kiểm kê và thống nhất task migration riêng trước khi đổi dữ liệu.
+
 **Mục đích:** tài khoản, trạng thái tài khoản và thông tin quota/active job cần atomic update.
 
 | Field | Type | Required | Default/constraint |
 |---|---|---:|---|
 | `_id` | ObjectId | Có | MongoDB generated |
-| `displayName` | string | Có | Trim; 1–80 ký tự (giới hạn đề xuất) |
+| `displayName` | string | Có | CONFIRMED theo implementation hiện hành: trim; 1–80 ký tự |
 | `email` | string | Có | Trim + lowercase; unique |
 | `passwordHash` | string | Có | Hash do thư viện uy tín tạo; không trả/log |
 | `status` | string enum | Có | `active` mặc định; `disabled` |
