@@ -3,14 +3,34 @@ const admin = connect('mongodb://mongodb:27017/admin?directConnection=true');
 const authenticated = admin.auth(process.env.MONGO_INITDB_ROOT_USERNAME, process.env.MONGO_INITDB_ROOT_PASSWORD);
 if (authenticated !== 1 && authenticated?.ok !== 1)
   throw new Error('MongoDB authentication failed');
+
+const hasMongoError = (error, code, codeName) =>
+  error?.code === code || error?.codeName === codeName;
+
+let status;
 try {
-  const status = admin.runCommand({ replSetGetStatus: 1 });
-  if (status.ok !== 1) {
-    if (status.code !== 94) throw new Error('Replica status unavailable');
-    const result = admin.runCommand({ replSetInitiate: { _id: 'rs0', members: [{ _id: 0, host: 'mongodb:27017' }] } });
-    if (result.ok !== 1 && result.code !== 23) throw new Error('Replica initialization failed');
+  status = admin.runCommand({ replSetGetStatus: 1 });
+} catch (error) {
+  if (!hasMongoError(error, 94, 'NotYetInitialized'))
+    throw new Error('Could not read replica-set status; check MongoDB configuration');
+}
+
+const notInitialized = !status || (status.ok !== 1 && hasMongoError(status, 94, 'NotYetInitialized'));
+if (!notInitialized && status.ok !== 1)
+  throw new Error('Could not read replica-set status; check MongoDB configuration');
+
+if (notInitialized) {
+  let result;
+  try {
+    result = admin.runCommand({ replSetInitiate: { _id: 'rs0', members: [{ _id: 0, host: 'mongodb:27017' }] } });
+  } catch (error) {
+    if (!hasMongoError(error, 23, 'AlreadyInitialized'))
+      throw new Error('Could not initialize replica set; check existing configuration');
   }
-} catch (error) { throw new Error('Could not initialize replica set; check existing configuration'); }
+  if (result && result.ok !== 1 && !hasMongoError(result, 23, 'AlreadyInitialized'))
+    throw new Error('Could not initialize replica set; check existing configuration');
+}
+
 for (let attempt = 0; attempt < 60; attempt++) {
   const hello = admin.runCommand({ hello: 1 });
   if (hello.setName === 'rs0' && hello.isWritablePrimary) {
