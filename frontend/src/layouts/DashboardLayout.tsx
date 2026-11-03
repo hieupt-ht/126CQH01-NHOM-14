@@ -17,6 +17,7 @@ type Props = {
   onCompose: () => void;
   activeItem?: "home" | "create" | "library" | "history" | "settings";
   showSearch?: boolean;
+  usageRefreshKey?: number;
 };
 type SidebarProps = Pick<
   Props,
@@ -152,9 +153,10 @@ export default function DashboardLayout({
   onCompose,
   activeItem = "home",
   showSearch = true,
+  usageRefreshKey = 0,
 }: Props) {
-  const usage = useResource<UsageRecord>("/usage/me");
-  const stats = useResource<StatsRecord>("/stats/me");
+  const usage = useResource<UsageRecord>("/usage/me", usageRefreshKey);
+  const stats = useResource<StatsRecord>("/stats/me", usageRefreshKey);
   const [user, setUser] = useState<UserProfile | null>(null);
   const [accountError, setAccountError] = useState("");
   const [loggingOut, setLoggingOut] = useState(false);
