@@ -13,6 +13,11 @@ import { AppError } from "../../errors/app-error.js";
 import type { GenerationDocument } from "../../models/generation.model.js";
 import type { ImageProvider } from "../../providers/cloudflare.js";
 import {
+  containsVietnameseText,
+  MAX_TRANSLATED_PROMPT_LENGTH,
+  type PromptTranslator,
+} from "../../providers/prompt-translation.js";
+import {
   digest,
   type ImageStorage,
   type StorageRegistry,
@@ -34,6 +39,8 @@ export class GenerationService {
     private options: GenerationOptions,
     private registry?: StorageRegistry,
     private inferenceEnabled = true,
+    private promptTranslator?: PromptTranslator,
+    private promptTranslationEnabled = false,
   ) {}
   private matchReplay(job: GenerationDocument, fingerprint: string) {
     if (job.requestFingerprint !== fingerprint)
@@ -48,6 +55,28 @@ export class GenerationService {
     const fingerprint = createHash("sha256").update(prompt).digest("hex");
     const replay = await GenerationModel.findOne({ userId, requestKey });
     if (replay) return this.matchReplay(replay, fingerprint);
+    let submittedPrompt = prompt;
+    if (this.promptTranslationEnabled && containsVietnameseText(prompt)) {
+      if (!this.promptTranslator)
+        throw new AppError(
+          502,
+          "GENERATION_FAILED",
+          "Không thể dịch mô tả. Yêu cầu chưa được tạo; vui lòng thử lại sau.",
+        );
+      submittedPrompt = await this.promptTranslator.translateVietnameseToEnglish(prompt);
+      if (!submittedPrompt.trim())
+        throw new AppError(
+          502,
+          "GENERATION_FAILED",
+          "Không thể dịch mô tả. Yêu cầu chưa được tạo; vui lòng thử lại sau.",
+        );
+      if (submittedPrompt.length > MAX_TRANSLATED_PROMPT_LENGTH)
+        throw new AppError(
+          400,
+          "INVALID_PROMPT",
+          "Bản dịch vượt giới hạn mô tả. Yêu cầu chưa được tạo; vui lòng rút gọn mô tả.",
+        );
+    }
     const id = new Types.ObjectId(),
       now = new Date(),
       dateKey = now.toISOString().slice(0, 10);
@@ -113,7 +142,7 @@ export class GenerationService {
               requestKey,
               requestFingerprint: fingerprint,
               originalPrompt: prompt,
-              submittedPrompt: prompt,
+              submittedPrompt,
               provider: "cloudflare",
               model: "@cf/black-forest-labs/flux-1-schnell",
               settings: { steps: 4 },

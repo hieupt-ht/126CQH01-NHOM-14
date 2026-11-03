@@ -2,6 +2,10 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { CloudflareProvider } from "../src/providers/cloudflare.js";
 import { AppError } from "../src/errors/app-error.js";
+import {
+  CloudflarePromptTranslator,
+  containsVietnameseText,
+} from "../src/providers/prompt-translation.js";
 import { validateEnv, EnvironmentValidationError } from "../src/config/env.js";
 test("Cloudflare boundary sends one prompt, default steps and decodes documented response", async () => {
   let count = 0;
@@ -63,6 +67,11 @@ test("Cloudflare quota, server errors and network uncertainty never retry infere
 test("generation disabled by default and config rejects insecure or incomplete setup", () => {
   const base = { MONGODB_URI: "mongodb://127.0.0.1:27027/flux_config_test", JWT_SECRET: "test-only-secret-do-not-use-outside-tests-0123456789" };
   assert.equal(validateEnv(base).generationEnabled, false);
+  assert.equal(validateEnv(base).promptTranslationEnabled, false);
+  assert.throws(
+    () => validateEnv({ ...base, NODE_ENV: "production", PROMPT_TRANSLATION_ENABLED: "true" }),
+    EnvironmentValidationError,
+  );
   assert.throws(
     () => validateEnv({ ...base, GENERATION_ENABLED: "true" }),
     EnvironmentValidationError,
@@ -79,5 +88,87 @@ test("generation disabled by default and config rejects insecure or incomplete s
         SESSION_COOKIE_SECURE: "false",
       }),
     EnvironmentValidationError,
+  );
+});
+
+test("prompt translation preserves Vietnamese text at the adapter boundary and returns English", async () => {
+  const source = "Một con mèo cam ngồi cạnh cửa sổ, không có người.";
+  const translated = "An orange cat sits beside a window, with no people.";
+  let count = 0;
+  const translator = new CloudflarePromptTranslator(
+    "test-account",
+    "test-token",
+    async (url, init) => {
+      count++;
+      assert.match(String(url), /@cf\/meta\/m2m100-1\.2b$/);
+      assert.equal(init?.method, "POST");
+      assert.deepEqual(JSON.parse(String(init?.body)), {
+        text: source,
+        source_lang: "vietnamese",
+        target_lang: "english",
+      });
+      assert.ok(init?.signal);
+      return new Response(JSON.stringify({ success: true, result: { translated_text: translated } }));
+    },
+  );
+  assert.equal(await translator.translateVietnameseToEnglish(source), translated);
+  assert.equal(count, 1);
+  assert.equal(containsVietnameseText(source), true);
+  assert.equal(containsVietnameseText("A quiet English landscape"), false);
+  assert.equal(containsVietnameseText("A cat ngồi beside a window"), true);
+});
+
+test("translation adapter forwards English, mixed, multiline, long and constraint-heavy prompt inputs exactly", async () => {
+  const prompts = [
+    "A quiet English landscape at sunrise.",
+    "Một cô gái in a yellow coat đứng bên trái cây cầu.",
+    "Câu một: hai con chim xanh bay sang phải.\nCâu hai: không có người hoặc chữ.",
+    "Một ngôi làng nhỏ dưới chân núi, " + "mái nhà đỏ và cửa sổ xanh, ".repeat(55),
+    "Không thêm người. Chính xác ba bông hoa tím ở bên phải chiếc bình trắng.",
+  ];
+  for (const prompt of prompts) {
+    let calls = 0;
+    const translator = new CloudflarePromptTranslator("test-account", "test-token", async (_url, init) => {
+      calls++;
+      assert.equal(JSON.parse(String(init?.body)).text, prompt);
+      return new Response(JSON.stringify({ result: { translated_text: "Mock English translation." } }));
+    });
+    assert.equal(await translator.translateVietnameseToEnglish(prompt), "Mock English translation.");
+    assert.equal(calls, 1);
+  }
+});
+
+test("translation errors, timeouts and oversized output fail closed without retries", async () => {
+  let calls = 0;
+  const failed = new CloudflarePromptTranslator("a", "b", async () => {
+    calls++;
+    return new Response("provider error", { status: 503 });
+  });
+  await assert.rejects(
+    failed.translateVietnameseToEnglish("một con mèo"),
+    (error: unknown) => error instanceof AppError && error.code === "GENERATION_FAILED",
+  );
+  assert.equal(calls, 1);
+
+  calls = 0;
+  const timeout = new CloudflarePromptTranslator("a", "b", async (_url, init) => {
+    calls++;
+    assert.ok(init?.signal);
+    throw new DOMException("aborted", "TimeoutError");
+  });
+  await assert.rejects(
+    timeout.translateVietnameseToEnglish("một con mèo"),
+    (error: unknown) => error instanceof AppError && error.code === "GENERATION_FAILED",
+  );
+  assert.equal(calls, 1);
+
+  const oversized = new CloudflarePromptTranslator(
+    "a",
+    "b",
+    async () => new Response(JSON.stringify({ result: { translated_text: "x".repeat(2049) } })),
+  );
+  await assert.rejects(
+    oversized.translateVietnameseToEnglish("một con mèo"),
+    (error: unknown) => error instanceof AppError && error.code === "INVALID_PROMPT",
   );
 });

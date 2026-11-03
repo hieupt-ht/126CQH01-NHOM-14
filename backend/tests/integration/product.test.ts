@@ -17,6 +17,7 @@ import {
   DailyUsageModel,
 } from "../../src/models/index.js";
 import { GenerationService } from "../../src/modules/generations/service.js";
+import { AppError } from "../../src/errors/app-error.js";
 import {
   StorageRegistry,
   type ImageStorage,
@@ -179,6 +180,7 @@ test(
       assert.equal(first.status, 202);
       assert.equal(second.status, 202);
       const job = ((await first.json()) as any).data;
+      assert.equal(job.prompt, "Một căn nhà");
       assert.equal(((await second.json()) as any).data.id, job.id);
       assert.equal(await GenerationModel.countDocuments({}), 1);
       const usage = await DailyUsageModel.findOne({ scopeType: "user" });
@@ -202,6 +204,8 @@ test(
       assert.equal(calls, 1);
       const completed = await GenerationModel.findById(job.id);
       assert.equal(completed.status, "succeeded");
+      assert.equal(completed.originalPrompt, "Một căn nhà");
+      assert.equal(completed.submittedPrompt, "Một căn nhà");
       const image = await ImageModel.findOne({ generationId: job.id });
       assert.ok(image);
       const storedImageDocument = await ImageModel.collection.findOne({ generationId: image!.generationId });
@@ -431,6 +435,71 @@ test(
         0,
       );
       assert.equal(calls, 4);
+
+      const translatedUser = await UserModel.create({
+        displayName: "Translation test",
+        email: "translation@example.test",
+        passwordHash: "test-hash",
+      });
+      let translationCalls = 0;
+      let translatedInferenceCalls = 0;
+      const translationService = new GenerationService(
+        {
+          async generate(prompt) {
+            translatedInferenceCalls++;
+            assert.equal(prompt, "An orange cat sits beside a window.");
+            return png;
+          },
+        },
+        storage,
+        { userLimit: 5, appLimit: 20, cooldownMs: 0, checkpointDir: temp },
+        undefined,
+        true,
+        {
+          async translateVietnameseToEnglish(prompt) {
+            translationCalls++;
+            if (prompt.includes("lỗi dịch"))
+              throw new AppError(502, "GENERATION_FAILED", "Translation failed safely.");
+            return "An orange cat sits beside a window.";
+          },
+        },
+        true,
+      );
+      await assert.rejects(
+        translationService.accept(translatedUser._id, "translation-failure-key-123", "Một prompt lỗi dịch"),
+        (error: unknown) => error instanceof AppError && error.code === "GENERATION_FAILED",
+      );
+      assert.equal(await GenerationModel.countDocuments({ userId: translatedUser._id }), 0);
+      assert.equal(
+        await DailyUsageModel.countDocuments({ scopeType: "user", scopeId: String(translatedUser._id) }),
+        0,
+      );
+      assert.equal(translatedInferenceCalls, 0);
+
+      const sourcePrompt = "Một con mèo cam ngồi cạnh cửa sổ.";
+      const translatedJob = await translationService.accept(
+        translatedUser._id,
+        "translation-success-key-123",
+        sourcePrompt,
+      );
+      const replayedTranslatedJob = await translationService.accept(
+        translatedUser._id,
+        "translation-success-key-123",
+        sourcePrompt,
+      );
+      assert.equal(replayedTranslatedJob!._id.toString(), translatedJob!._id.toString());
+      assert.equal(translationCalls, 2);
+      assert.equal(translatedJob!.originalPrompt, sourcePrompt);
+      assert.equal(translatedJob!.submittedPrompt, "An orange cat sits beside a window.");
+      assert.equal(translatedInferenceCalls, 0);
+      assert.equal(
+        (await DailyUsageModel.findOne({ scopeType: "user", scopeId: String(translatedUser._id) }))!.reservedRequests,
+        1,
+      );
+      await translationService.runOnce();
+      assert.equal(translatedInferenceCalls, 1);
+      assert.equal((await GenerationModel.findById(translatedJob!._id))!.status, "succeeded");
+
       const stats = await request("/stats/me");
       assert.equal(stats.status, 200);
       assert.equal((await request("/images?cursor=bad")).status, 400);
