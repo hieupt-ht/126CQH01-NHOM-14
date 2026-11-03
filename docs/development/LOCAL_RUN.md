@@ -1,5 +1,7 @@
 # Chạy FLUX STUDIO trên máy mới
 
+> Cập nhật: UI preview đã tắt; các hướng dẫn preview bên dưới là lịch sử. Đăng ký và đăng nhập luôn dùng backend và MongoDB thật; biến `VITE_UI_PREVIEW` không còn tác dụng.
+
 Cập nhật01/11/2026. Cách đơn giản nhất để chạy toàn bộ ứng dụng là Docker Compose. Hướng dẫn này dành cho môi trường local development, không phải production.
 
 ## Cần chuẩn bị

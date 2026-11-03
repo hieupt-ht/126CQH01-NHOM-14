@@ -77,8 +77,6 @@
 .login-panel__topbar { display: flex; justify-content: space-between; align-items: center; gap: 20px; min-height: 40px; }
 .login-preview { display: inline-flex; align-items: center; gap: 7px; color: var(--text-secondary); font-size: 10px; }
 .login-preview > span { width: 5px; height: 5px; border-radius: var(--radius-full); background: var(--accent-primary-hover); }
-.login-studio-link { display: inline-flex; align-items: center; gap: 8px; color: var(--text-secondary); font-size: 11px; transition: color var(--transition-fast); }
-.login-studio-link:hover { color: var(--accent-cyan); }
 .login-card { width: min(100%, 390px); margin: auto; padding-block: 48px; }
 .login-card__emblem { display: grid; place-items: center; width: 52px; height: 52px; margin-bottom: 30px; border: 1px solid var(--border-primary); border-radius: var(--radius-lg); color: var(--accent-primary-hover); background: var(--gradient-card); box-shadow: var(--shadow-primary); }
 .login-heading__eyebrow { color: var(--text-secondary); font-size: 9px; font-weight: 500; letter-spacing: 1.6px; }
@@ -184,7 +182,7 @@
   .login-showcase h1 { font-size: 30px; }
   .login-heading h2 { font-size: 29px; }
   .login-panel { padding-inline: 10px; }
-  .login-preview, .login-studio-link { font-size: 10px; }
+  .login-preview { font-size: 10px; }
 }
 
 @media (max-height: 760px) and (min-width: 768px) {

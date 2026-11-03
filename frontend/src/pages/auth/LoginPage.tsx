@@ -141,10 +141,6 @@ export default function LoginPage() {
             <span />
             FLUX STUDIO
           </span>
-          <a className="login-studio-link" href="/">
-            Xem studio
-            <Icon name="arrow" size={16} />
-          </a>
         </div>
 
         <div className="login-card">
