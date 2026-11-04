@@ -2,6 +2,9 @@ import { AppError } from "../errors/app-error.js";
 
 export const MAX_TRANSLATED_PROMPT_LENGTH = 2048;
 const TRANSLATION_MODEL = "@cf/meta/m2m100-1.2b";
+// Visual characteristics approved by the owner's watercolor reference image.
+// Apply only to an explicit affirmative watercolor request, never every image.
+const WATERCOLOR_DIRECTION = "Hand-painted watercolor illustration on textured watercolor paper, with translucent washes of pigment, soft bleeding edges, visible brush strokes and unpainted paper highlights. The entire scene is painted in watercolor. ";
 
 export interface PromptTranslator {
   translateVietnameseToEnglish(prompt: string): Promise<string>;
@@ -9,8 +12,24 @@ export interface PromptTranslator {
 
 export function containsVietnameseText(prompt: string): boolean {
   return /[ăâđêôơưàáảãạằắẳẵặầấẩẫậèéẻẽẹềếểễệìíỉĩịòóỏõọồốổỗộờớởỡợùúủũụừứửữựỳýỷỹỵ]/i.test(
-    prompt,
+    prompt.normalize("NFC"),
   );
+}
+
+// M2M100 can omit a trailing medium instruction while translating a long
+// sentence. Restore only this explicit, affirmative instruction, never infer a
+// style from a mention of water, a quoted caption, or a negated request.
+function preserveWatercolorInstruction(original: string, translated: string): string {
+  const clauses = original.normalize("NFC").toLocaleLowerCase("vi").split(/[,.!?;\n]+/u);
+  const requested = clauses.some((part) => {
+    const clause = part.trim();
+    if (/["'“”‘’«»]/u.test(clause)) return false;
+    if (/(?:^|\s)(?:không|đừng|tránh|chẳng|chưa|loại bỏ|nếu|hoặc|hay)(?:\s|$)/u.test(clause))
+      return false;
+    return /(?:^(?:vẽ\s+)?(?:tranh|phong cách)|(?:^|\s)(?:với|theo)\s+phong cách)\s+màu\s+nước(?:\s|$)/u.test(clause);
+  });
+  if (!requested || translated.startsWith(WATERCOLOR_DIRECTION)) return translated;
+  return WATERCOLOR_DIRECTION + translated;
 }
 
 function translationError(): AppError {
@@ -63,6 +82,7 @@ export class CloudflarePromptTranslator implements PromptTranslator {
       if (
         typeof payload === "object" &&
         payload !== null &&
+        !("success" in payload && payload.success === false) &&
         "result" in payload &&
         typeof payload.result === "object" &&
         payload.result !== null &&
@@ -77,7 +97,7 @@ export class CloudflarePromptTranslator implements PromptTranslator {
     if (typeof translatedPrompt !== "string" || !translatedPrompt.trim())
       throw translationError();
 
-    const normalizedPrompt = translatedPrompt.trim();
+    const normalizedPrompt = preserveWatercolorInstruction(prompt, translatedPrompt.trim());
     if (normalizedPrompt.length > MAX_TRANSLATED_PROMPT_LENGTH)
       throw new AppError(
         400,

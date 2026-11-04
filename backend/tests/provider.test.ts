@@ -116,6 +116,74 @@ test("prompt translation preserves Vietnamese text at the adapter boundary and r
   assert.equal(containsVietnameseText(source), true);
   assert.equal(containsVietnameseText("A quiet English landscape"), false);
   assert.equal(containsVietnameseText("A cat ngồi beside a window"), true);
+  // Input methods can send decomposed Unicode; detection must not mutate input.
+  assert.equal(containsVietnameseText("cây táo".normalize("NFD")), true);
+});
+
+test("translation rejects unsuccessful, empty and malformed provider results", async () => {
+  for (const payload of [
+    { success: false, result: { translated_text: "Unrelated output" } },
+    { success: true, result: { translated_text: "   " } },
+    { success: true, result: { translated_text: 123 } },
+    { success: true, result: null },
+  ]) {
+    let calls = 0;
+    const translator = new CloudflarePromptTranslator("a", "b", async () => {
+      calls++;
+      return new Response(JSON.stringify(payload));
+    });
+    await assert.rejects(translator.translateVietnameseToEnglish("cây táo"),
+      (error: unknown) => error instanceof AppError && error.code === "GENERATION_FAILED");
+    assert.equal(calls, 1);
+  }
+});
+
+test("explicit watercolor request gets reference-approved medium details without another provider call", async () => {
+  const original = "Tạo cho tôi hình ảnh ngôi nhà , có cái cây táo bên cạnh, và con người dắt chú chó đi dạo biết hình ảnh tạo ra với phong cách màu nước";
+  const droppedStyle = "Create me a picture of the house, there is an apple tree next to it, and man leads the dog for a walk.";
+  for (const source of [original, original.normalize("NFD"), "Tranh màu nước về ngôi nhà."]) {
+    let calls = 0;
+    const translator = new CloudflarePromptTranslator("a", "b", async (_url, init) => {
+      calls++;
+      assert.equal(JSON.parse(String(init?.body)).text, source);
+      return new Response(JSON.stringify({ success: true, result: { translated_text: droppedStyle } }));
+    });
+    const result = await translator.translateVietnameseToEnglish(source);
+    assert.match(result, /^Hand-painted watercolor illustration on textured watercolor paper/);
+    assert.match(result, /translucent washes of pigment, soft bleeding edges, visible brush strokes/);
+    assert.ok(result.endsWith(droppedStyle));
+    assert.equal(calls, 1);
+  }
+});
+
+test("watercolor guard does not invent styles from negatives, quotations or ordinary water", async () => {
+  for (const source of [
+    "Ngôi nhà, không dùng phong cách màu nước.",
+    "Đừng vẽ tranh màu nước. Vẽ bằng sơn dầu.",
+    "Ngôi nhà với phong cách màu nước hoặc sơn dầu.",
+    'Một tấm bảng ghi chữ "phong cách màu nước".',
+    "Người đọc sách về phong cách màu nước.",
+    "Một cốc nước màu xanh đặt cạnh ngôi nhà.",
+    "Một ngôi nhà chụp chân thực.",
+  ]) {
+    const translator = new CloudflarePromptTranslator("a", "b", async () =>
+      new Response(JSON.stringify({ result: { translated_text: "Mock faithful translation." } })));
+    assert.equal(await translator.translateVietnameseToEnglish(source), "Mock faithful translation.");
+  }
+  for (const translation of ["A watercolor house.", "A watercolour house.", "A water-color house."]) {
+    const translator = new CloudflarePromptTranslator("a", "b", async () =>
+      new Response(JSON.stringify({ result: { translated_text: translation } })));
+    const result = await translator.translateVietnameseToEnglish("Tranh màu nước về ngôi nhà.");
+    assert.match(result, /^Hand-painted watercolor illustration/);
+    assert.ok(result.endsWith(translation));
+  }
+});
+
+test("restoring omitted style still enforces the submitted prompt length limit", async () => {
+  const translator = new CloudflarePromptTranslator("a", "b", async () =>
+    new Response(JSON.stringify({ result: { translated_text: "x".repeat(2040) } })));
+  await assert.rejects(translator.translateVietnameseToEnglish("Tranh màu nước về ngôi nhà."),
+    (error: unknown) => error instanceof AppError && error.code === "INVALID_PROMPT");
 });
 
 test("translation adapter forwards English, mixed, multiline, long and constraint-heavy prompt inputs exactly", async () => {

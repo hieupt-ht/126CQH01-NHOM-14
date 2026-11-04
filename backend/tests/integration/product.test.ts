@@ -17,6 +17,7 @@ import {
   DailyUsageModel,
 } from "../../src/models/index.js";
 import { GenerationService } from "../../src/modules/generations/service.js";
+import { CloudflarePromptTranslator } from "../../src/providers/prompt-translation.js";
 import { AppError } from "../../src/errors/app-error.js";
 import {
   StorageRegistry,
@@ -447,7 +448,9 @@ test(
         {
           async generate(prompt) {
             translatedInferenceCalls++;
-            assert.equal(prompt, "An orange cat sits beside a window.");
+            assert.match(prompt, /^Hand-painted watercolor illustration on textured watercolor paper/);
+            assert.match(prompt, /translucent washes of pigment, soft bleeding edges, visible brush strokes/);
+            assert.ok(prompt.endsWith("A house beside an apple tree, a person walking a dog."));
             return png;
           },
         },
@@ -455,14 +458,16 @@ test(
         { userLimit: 5, appLimit: 20, cooldownMs: 0, checkpointDir: temp },
         undefined,
         true,
-        {
-          async translateVietnameseToEnglish(prompt) {
+        new CloudflarePromptTranslator("test-account", "test-token", async (_url, init) => {
             translationCalls++;
+            const prompt = JSON.parse(String(init?.body)).text as string;
             if (prompt.includes("lỗi dịch"))
-              throw new AppError(502, "GENERATION_FAILED", "Translation failed safely.");
-            return "An orange cat sits beside a window.";
-          },
-        },
+              return new Response("Translation failed safely.", { status: 503 });
+            // Reproduce the real provider dropping the trailing watercolor clause.
+            return new Response(JSON.stringify({ success: true, result: {
+              translated_text: "A house beside an apple tree, a person walking a dog.",
+            } }));
+        }),
         true,
       );
       await assert.rejects(
@@ -476,7 +481,9 @@ test(
       );
       assert.equal(translatedInferenceCalls, 0);
 
-      const sourcePrompt = "Một con mèo cam ngồi cạnh cửa sổ.";
+      // Decomposed Unicode from an input method still translates, while storage
+      // and the replay fingerprint retain the exact original bytes.
+      const sourcePrompt = "Ngôi nhà cạnh cây táo, một người dắt chó đi dạo, phong cách màu nước.".normalize("NFD");
       const translatedJob = await translationService.accept(
         translatedUser._id,
         "translation-success-key-123",
@@ -490,7 +497,8 @@ test(
       assert.equal(replayedTranslatedJob!._id.toString(), translatedJob!._id.toString());
       assert.equal(translationCalls, 2);
       assert.equal(translatedJob!.originalPrompt, sourcePrompt);
-      assert.equal(translatedJob!.submittedPrompt, "An orange cat sits beside a window.");
+      assert.match(translatedJob!.submittedPrompt, /^Hand-painted watercolor illustration on textured watercolor paper/);
+      assert.ok(translatedJob!.submittedPrompt.endsWith("A house beside an apple tree, a person walking a dog."));
       assert.equal(translatedInferenceCalls, 0);
       assert.equal(
         (await DailyUsageModel.findOne({ scopeType: "user", scopeId: String(translatedUser._id) }))!.reservedRequests,
