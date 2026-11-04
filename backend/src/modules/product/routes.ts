@@ -20,6 +20,7 @@ import {
   type AuthConfig,
 } from "../auth/auth.js";
 import type { GenerationService } from "../generations/service.js";
+import { ASPECT_RATIOS, IMAGE_STYLES } from "../generations/presentation.js";
 import type { StorageRegistry } from "../../storage/storage.js";
 
 export type ProductDependencies = {
@@ -47,6 +48,8 @@ function jobDto(job: GenerationDocument) {
   return {
     id: String(job._id),
     prompt: job.originalPrompt,
+    aspectRatio: job.settings.aspectRatio ?? "auto",
+    style: job.settings.style ?? "none",
     status: job.status,
     model: job.model,
     createdAt: job.createdAt,
@@ -138,9 +141,11 @@ export function createProductRouter(
     return image;
   }
   router.post("/generations", async (request, response) => {
-    const { prompt } = parseInput(
+    const { prompt, aspectRatio, style } = parseInput(
       z
         .object({
+          aspectRatio: z.enum(ASPECT_RATIOS).default("auto"),
+          style: z.enum(IMAGE_STYLES).default("none"),
           prompt: z
             .string()
             .min(1)
@@ -164,6 +169,7 @@ export function createProductRouter(
       owner(response),
       key,
       prompt,
+      { aspectRatio, style },
     );
     response.status(202).json({ success: true, data: jobDto(job!) });
   });

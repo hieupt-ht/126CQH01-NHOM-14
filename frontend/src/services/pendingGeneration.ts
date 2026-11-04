@@ -1,4 +1,5 @@
-export type PendingGeneration = { key: string; prompt: string };
+import { aspectOptions, styleOptions, type AspectRatio, type ImageStyle } from "../domain/generationOptions";
+export type PendingGeneration = { key: string; prompt: string; aspectRatio?: AspectRatio; style?: ImageStyle };
 const storageKey = (userId: string) => "flux.pending-generation." + userId;
 export function restorePending(userId: string): PendingGeneration | null {
   const raw = sessionStorage.getItem(storageKey(userId));
@@ -16,7 +17,12 @@ export function restorePending(userId: string): PendingGeneration | null {
       value.prompt.trim() &&
       value.prompt.length <= 2048
     )
-      return { key: value.key, prompt: value.prompt };
+      {
+        const options = value as Record<string, unknown>;
+        if (options.aspectRatio !== undefined && !aspectOptions.some(item => item.value === options.aspectRatio)) throw new Error("Invalid ratio");
+        if (options.style !== undefined && !styleOptions.some(item => item.value === options.style)) throw new Error("Invalid style");
+        return { key: value.key, prompt: value.prompt, aspectRatio: options.aspectRatio as AspectRatio | undefined, style: options.style as ImageStyle | undefined };
+      }
   } catch {
     /* Invalid browser draft is discarded; it cannot initiate a job. */
   }

@@ -60,3 +60,40 @@
   font-synthesis: none;
   text-rendering: optimizeLegibility;
 }
+
+/* Owner-requested light mode. Dark Midnight Aurora tokens above stay intact. */
+:root[data-theme="light"] {
+  color-scheme: light;
+  --bg-primary: #F4F6FC;
+  --bg-secondary: #ECF0F9;
+  --bg-tertiary: #E7ECF6;
+  --bg-elevated: #FFFFFF;
+  --bg-sidebar: #F8FAFF;
+  --bg-navbar: #FFFFFF;
+  --bg-overlay: rgba(15, 23, 42, 0.5);
+  --surface-primary: #FFFFFF;
+  --surface-secondary: #EEF2FB;
+  --surface-elevated: #FFFFFF;
+  --surface-hover: #E4EAF7;
+  --surface-input: #F7F9FE;
+  --surface-glass: rgba(255, 255, 255, 0.9);
+  --text-primary: #17233C;
+  --text-secondary: #47566F;
+  --text-muted: #596982;
+  --text-disabled: #748198;
+  --text-accent: #08788D;
+  --accent-cyan: #08788D;
+  --accent-cyan-hover: #065C70;
+  --border-primary: #BDC9DE;
+  --border-secondary: #D3DCEE;
+  --border-subtle: rgba(71, 85, 105, 0.16);
+  --border-hover: #7A8CAA;
+  --success: #15803D;
+  --warning: #8B5206;
+  --danger: #C82D3A;
+  --info: #086D9D;
+  --gradient-hero: linear-gradient(120deg, #E8F0FF 0%, #F0E9FC 60%, #E0F4F7 100%);
+  --gradient-sidebar: linear-gradient(180deg, #F8FAFF 0%, #EEF2FB 100%);
+  --gradient-card: linear-gradient(145deg, #FFFFFF 0%, #EEF2FB 100%);
+  --shadow-card: 0 8px 32px rgba(30, 47, 80, 0.08);
+}

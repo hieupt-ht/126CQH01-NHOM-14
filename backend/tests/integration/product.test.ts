@@ -513,6 +513,45 @@ test(
       assert.equal((await request("/images?cursor=bad")).status, 400);
 
       const cooldownUser = await UserModel.create({
+        displayName: "Padding test", email: "padding@example.test", passwordHash: "test-hash",
+      });
+      let paddedInferenceCalls = 0, paddedSavingCalls = 0;
+      const paddedService = new GenerationService({ async generate(prompt) {
+        paddedInferenceCalls++;
+        assert.match(prompt, /^Cinematic visual style/);
+        return png;
+      } }, { ...storage, async put(key, bytes, mime, owner) {
+        paddedSavingCalls++;
+        if (paddedSavingCalls === 1) throw new Error("Isolated storage outage");
+        return storage.put(key, bytes, mime, owner);
+      } }, { userLimit: 5, appLimit: 20, cooldownMs: 0, checkpointDir: temp });
+      const selected = { aspectRatio: "16:9", style: "cinematic" } as const;
+      const padded = await paddedService.accept(cooldownUser._id, "padding-request-key-1", "A house", selected);
+      assert.equal(padded!.originalPrompt, "A house");
+      // A literal prompt can equal another intent's serialized fingerprint input.
+      // Equality of the stored payload/options must still reject this replay.
+      await assert.rejects(paddedService.accept(cooldownUser._id, "padding-request-key-1", JSON.stringify(["A house", "16:9", "cinematic"])),
+        (error: unknown) => error instanceof AppError && error.code === "IDEMPOTENCY_CONFLICT");
+      assert.equal((await paddedService.accept(cooldownUser._id, "padding-request-key-1", "A house", selected))!._id.toString(), padded!._id.toString());
+      for (const changed of [{ ...selected, aspectRatio: "9:16" as const }, { ...selected, style: "anime" as const }]) {
+        await assert.rejects(paddedService.accept(cooldownUser._id, "padding-request-key-1", "A house", changed),
+          (error: unknown) => error instanceof AppError && error.code === "IDEMPOTENCY_CONFLICT");
+      }
+      await paddedService.runOnce();
+      assert.equal((await GenerationModel.findById(padded!._id))!.status, "saving");
+      await GenerationModel.updateOne({ _id: padded!._id }, { $set: { "lease.expiresAt": new Date(0) } });
+      await paddedService.runOnce();
+      const framedImage = await ImageModel.findOne({ generationId: padded!._id });
+      assert.ok(framedImage);
+      assert.equal(framedImage.width * 9, framedImage.height * 16);
+      assert.equal(framedImage.format, "png");
+      assert.equal(paddedInferenceCalls, 1);
+      assert.equal(paddedSavingCalls, 2);
+      assert.equal((await DailyUsageModel.findOne({ scopeType: "user", scopeId: String(cooldownUser._id) }))!.reservedRequests, 1);
+      for (const invalid of [{ aspectRatio: "2:1" }, { style: "unknown" }, { count: 8 }])
+        assert.equal((await request("/generations", "POST", { prompt: "A house", ...invalid })).status, 400);
+
+      const actualCooldownUser = await UserModel.create({
         displayName: "Cooldown",
         email: "cooldown@example.test",
         passwordHash: "test-hash",
@@ -522,10 +561,10 @@ test(
         storage,
         { userLimit: 5, appLimit: 20, cooldownMs: 15000, checkpointDir: temp },
       );
-      await cooldownService.accept(cooldownUser._id, "cooldown-request-key-1", "first");
-      await UserModel.updateOne({ _id: cooldownUser._id }, { $set: { activeGenerationId: null } });
+      await cooldownService.accept(actualCooldownUser._id, "cooldown-request-key-1", "first");
+      await UserModel.updateOne({ _id: actualCooldownUser._id }, { $set: { activeGenerationId: null } });
       await assert.rejects(
-        cooldownService.accept(cooldownUser._id, "cooldown-request-key-2", "second"),
+        cooldownService.accept(actualCooldownUser._id, "cooldown-request-key-2", "second"),
         (error: unknown) => error instanceof Error && "code" in error && error.code === "GENERATION_IN_PROGRESS",
       );
 

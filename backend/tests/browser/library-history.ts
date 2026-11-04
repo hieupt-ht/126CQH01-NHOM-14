@@ -275,12 +275,44 @@ try {
   const storedCount = sidebar.locator(".usage-card__metrics > div").filter({ hasText: "Số ảnh" }).locator("dd");
   await storedCount.getByText(String(savedBefore), { exact: true }).waitFor();
   await page.locator("#create-prompt").fill("Synthetic refresh regression; no inference");
+  // Create controls are real API inputs. Changing them or theme never dispatches.
+  await page.getByRole("button", { name: "Chuyển sang chế độ sáng", exact: true }).click();
+  assert.equal(await page.locator("html").getAttribute("data-theme"), "light");
+  await page.reload();
+  assert.equal(await page.locator("html").getAttribute("data-theme"), "light");
+  for (const theme of ["light", "dark"]) {
+    if (theme === "dark") await page.getByRole("button", { name: "Chuyển sang chế độ tối", exact: true }).click();
+    for (const width of widths) {
+      await page.setViewportSize({ width, height: 900 });
+      assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `create ${theme} overflow at ${width}`);
+      await page.screenshot({ path: resolve(output, `create-controls-${theme}-${width}.png`), fullPage: true });
+    }
+  }
+  await page.setViewportSize({ width: 1280, height: 900 });
+  const wide = page.getByRole("radio", { name: "16:9 Ngang", exact: true });
+  await wide.check();
+  await wide.focus();
+  await page.keyboard.press("ArrowRight");
+  assert.equal(await page.getByRole("radio", { name: "9:16 Dọc", exact: true }).isChecked(), true);
+  await wide.check();
+  await page.getByLabel("Chủ đề / phong cách").selectOption("watercolor");
+  assert.equal(generationPosts, 0);
+  await page.locator("#create-prompt").fill("Synthetic refresh regression; no inference");
   await page.getByRole("button", { name: "Tạo ảnh", exact: true }).click();
   await sidebar.getByText("1 / 5", { exact: true }).waitFor();
   await page.waitForURL(/job=/);
   const acceptedId = new URL(page.url()).searchParams.get("job");
   const accepted = await GenerationModel.findById(acceptedId);
   assert.ok(accepted && accepted.status === "queued");
+  assert.equal(accepted.settings.aspectRatio, "16:9");
+  assert.equal(accepted.settings.style, "watercolor");
+  assert.equal(accepted.originalPrompt, "Synthetic refresh regression; no inference");
+  assert.match(accepted.submittedPrompt, /^Hand-painted watercolor illustration/);
+  assert.equal(await wide.isDisabled(), true);
+  await page.reload();
+  await page.getByRole("radio", { name: "16:9 Ngang", exact: true }).waitFor();
+  await page.waitForFunction(() => (document.querySelector('input[value="16:9"]') as HTMLInputElement)?.checked);
+  assert.equal(await page.getByLabel("Chủ đề / phong cách").inputValue(), "watercolor");
   // Synthetic persisted result, not FLUX output: only tests FE terminal refresh.
   const syntheticResult = await ImageModel.create({
     userId: user._id, generationId: accepted._id, title: "Synthetic refresh fixture",
@@ -297,6 +329,7 @@ try {
   assert.equal(providerCalls, 0);
   assert.deepEqual(errors, []);
   const report = { passed: true, widths, realApi: true, isolatedMongoDB: true,
+    createControlChecks: ["light/dark at all widths", "theme reload persistence", "ratio keyboard navigation", "no POST on selection", "persisted style/ratio and original text", "active selectors locked", "job reload restores options"],
     imageSource: "synthetic fixture served by storage stub; no Cloudflare/Cloudinary calls",
     libraryGenerationPosts, intentionalCreatePosts: generationPosts, providerCalls,
     terminalResult: "synthetic DB fixture, no worker/inference",

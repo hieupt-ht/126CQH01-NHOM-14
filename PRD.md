@@ -150,6 +150,15 @@ Không có tính năng chọn userId tự do từ frontend. Backend lấy danh t
 
 ## 6. Chính sách prompt và chất lượng ảnh
 
+**CONFIRMED — bổ sung theo yêu cầu chủ dự án 04/11/2026:** trang Tạo ảnh có
+chọn tỷ lệ và chủ đề/phong cách, vẫn một ảnh/lượt, không có bộ chọn số lượng.
+Thêm chế độ sáng/tối toàn giao diện. Theo xác nhận của chủ dự án, tỷ lệ thực hiện
+bằng thêm viền trắng giữ toàn bộ pixel ảnh sau tạo, không crop hoặc gọi AI thêm.
+Chủ đề được backend chuyển thành chỉ dẫn phong cách, lưu lựa chọn cùng job và
+giữ nguyên prompt gốc. Xem contract hiện hành cho enum, fingerprint, giới hạn và
+khôi phục request; các đoạn hoãn light mode/style/ratio cũ không áp dụng cho yêu
+cầu bổ sung này. Độ bám phong cách vẫn cần đánh giá ảnh thật.
+
 ### 6.1. Xử lý prompt mặc định
 
 **CONFIRMED — ngoại lệ local 04/11/2026:** theo yêu cầu trực tiếp của chủ dự án
