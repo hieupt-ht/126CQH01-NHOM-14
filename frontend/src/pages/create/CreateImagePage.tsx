@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type RefObject } from "react";
-import ImageSizeInfo from "../../components/dashboard/ImageSizeInfo";
+import { aspectOptions, styleOptions, type AspectRatio, type ImageStyle } from "../../domain/generationOptions";
 import DashboardLayout from "../../layouts/DashboardLayout";
 import Icon from "../../components/ui/Icon";
 import ReferenceArtwork from "../../components/dashboard/ReferenceArtwork";
@@ -9,6 +9,7 @@ import {
   restorePending,
   persistPending,
   clearPending,
+  type PendingGeneration,
 } from "../../services/pendingGeneration";
 import { api, ApiError, type UserProfile } from "../../services/api";
 import { UI_PREVIEW } from "../../services/uiPreview";
@@ -157,11 +158,17 @@ function GenerationPanel({
   onGenerate,
   disabled,
   usage,
+  aspectRatio, style, onAspectRatio, onStyle, locked,
 }: {
   state: GenerationState;
   onGenerate: () => void;
   disabled: boolean;
   usage: UsageRecord | null;
+  aspectRatio: AspectRatio;
+  style: ImageStyle;
+  onAspectRatio: (value: AspectRatio) => void;
+  onStyle: (value: ImageStyle) => void;
+  locked: boolean;
 }) {
   const busy =
     state === "queued" || state === "processing" || state === "saving";
@@ -177,10 +184,10 @@ function GenerationPanel({
           </span>
           <h2 id="generation-title">Thiết lập tạo ảnh</h2>
         </div>
-        <span className="create-card__label">1 ẢNH / LƯỢT</span>
+        <span className="create-card__label">FLUX</span>
       </div>
       <p className="create-generation__intro">
-        Cấu hình và quyền tạo ảnh được backend kiểm soát.
+        Chọn khung hình và phong cách cho ý tưởng của bạn.
       </p>
       <div className="create-generation__field">
         <span>Model</span>
@@ -190,23 +197,29 @@ function GenerationPanel({
           <span className="create-readonly__dot" />
         </div>
       </div>
-      <div className="create-generation__facts">
-        <div>
-          <span>Số lượng</span>
-          <strong>1 ảnh / lượt</strong>
+      <fieldset className="create-ratios" disabled={locked}>
+        <legend>Khung hình</legend>
+        <div className="create-ratios__grid">
+          {aspectOptions.map(option => <label key={option.value} className={`create-ratio ${aspectRatio === option.value ? "create-ratio--selected" : ""}`}>
+            <input type="radio" name="aspectRatio" value={option.value} checked={aspectRatio === option.value}
+              onChange={() => onAspectRatio(option.value)} />
+            <span className="create-ratio__shape" aria-hidden="true" style={{ aspectRatio: option.ratio, width: option.value === "9:16" ? 14 : option.value === "3:4" ? 18 : 25 }} />
+            <strong>{option.value === "auto" ? "Gốc" : option.value}</strong><small>{option.label}</small>
+          </label>)}
         </div>
-        <div>
-          <span>Lượt còn</span>
-          <strong className="create-generation__muted">
-            {usage?.remainingToday ?? "Đang tải…"}
-          </strong>
-        </div>
+        <p>Giữ toàn bộ ảnh, thêm viền trắng để vừa tỷ lệ đã chọn.</p>
+      </fieldset>
+      <div className="create-style">
+        <label htmlFor="create-style">Chủ đề / phong cách <span>Tùy chọn</span></label>
+        <select id="create-style" value={style} onChange={event => onStyle(event.target.value as ImageStyle)} disabled={locked}>
+          {styleOptions.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
+        </select>
+        <p>Phong cách được áp dụng khi tạo ảnh. Chọn “Theo mô tả của tôi” để dùng ý tưởng tự do.</p>
       </div>
-      <ImageSizeInfo />
       <div className="create-generation__note">
         <Icon name="shield" size={17} />
         <p>
-          Backend kiểm tra hạn mức và cấu hình dịch vụ trước khi nhận yêu cầu.
+          {usage ? `Còn ${usage.remainingToday} lượt tạo hôm nay.` : "Đang tải lượt tạo…"}
         </p>
       </div>
       <button
@@ -224,9 +237,6 @@ function GenerationPanel({
         {busy ? "Đang xử lý..." : "Tạo ảnh"}
         {!busy && <Icon name="arrow" size={17} />}
       </button>
-      <p className="create-generation__footnote">
-        Mỗi lần tạo chỉ tạo một ảnh.
-      </p>
     </aside>
   );
 }
@@ -378,6 +388,8 @@ export default function CreateImagePage() {
     () => new URLSearchParams(window.location.search).get("prompt") ?? "",
   );
   const [state, setState] = useState<GenerationState>("idle");
+  const [aspectRatio, setAspectRatio] = useState<AspectRatio>("auto");
+  const [style, setStyle] = useState<ImageStyle>("none");
   const [job, setJob] = useState<GenerationRecord | null>(null);
   const [jobId, setJobId] = useState(
     () => new URLSearchParams(window.location.search).get("job") ?? "",
@@ -389,7 +401,7 @@ export default function CreateImagePage() {
   const [usageRefreshKey, setUsageRefreshKey] = useState(0);
   const promptInput = useRef<HTMLTextAreaElement>(null),
     examplesDialog = useRef<HTMLDialogElement>(null);
-  const pending = useRef<{ key: string; prompt: string } | null>(null);
+  const pending = useRef<PendingGeneration | null>(null);
   useEffect(() => {
     if (UI_PREVIEW) {
       // Discard only the old preview draft, never a real user's unresolved request.
@@ -407,6 +419,8 @@ export default function CreateImagePage() {
       if (saved) {
         pending.current = saved;
         setPrompt(saved.prompt);
+        setAspectRatio(saved.aspectRatio ?? "auto");
+        setStyle(saved.style ?? "none");
         setPromptError(
           "Có yêu cầu chưa xác định sau lần gửi trước. Nhấn Tạo ảnh để kiểm tra cùng mã; không tạo mã mới.",
         );
@@ -442,6 +456,8 @@ export default function CreateImagePage() {
         );
         if (cancelled) return;
         setJob(result);
+        setAspectRatio(result.aspectRatio ?? "auto");
+        setStyle(result.style ?? "none");
         setState(result.status);
         setPromptError("");
         if (["succeeded", "failed", "needs_review"].includes(result.status)) {
@@ -486,7 +502,7 @@ export default function CreateImagePage() {
       return;
     }
     if (!pending.current)
-      pending.current = { key: crypto.randomUUID(), prompt };
+      pending.current = { key: crypto.randomUUID(), prompt, aspectRatio, style };
     try {
       persistPending(profile.data.user.id, pending.current);
     } catch {
@@ -501,7 +517,7 @@ export default function CreateImagePage() {
       const result = await api<GenerationRecord>("/generations", {
         method: "POST",
         headers: { "Idempotency-Key": pending.current.key },
-        body: JSON.stringify({ prompt: pending.current.prompt }),
+        body: JSON.stringify({ prompt: pending.current.prompt, aspectRatio: pending.current.aspectRatio ?? "auto", style: pending.current.style ?? "none" }),
       });
       setJob(result);
       setJobId(result.id);
@@ -569,6 +585,8 @@ export default function CreateImagePage() {
             locked={posting || active || Boolean(pending.current)}
           />
           <GenerationPanel
+            aspectRatio={aspectRatio} style={style} onAspectRatio={setAspectRatio} onStyle={setStyle}
+            locked={posting || active || Boolean(pending.current)}
             state={state}
             onGenerate={() => {
               void generate();
@@ -576,7 +594,6 @@ export default function CreateImagePage() {
             disabled={posting || active || state === "not_found" || !profile.data}
             usage={usage.data}
           />
-        </div>
         {job?.status === "succeeded" && job.imageId ? (
           <section className="create-card create-result">
             <h2>Ảnh đã được lưu</h2>
@@ -621,6 +638,7 @@ export default function CreateImagePage() {
             thể chuyển trang và theo dõi trong lịch sử.
           </p>
         )}
+        </div>
       </div>
       <dialog
         className="create-examples-dialog"

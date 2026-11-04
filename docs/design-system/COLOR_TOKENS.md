@@ -1,5 +1,16 @@
 # Color Tokens
 
+## Ngoại lệ được chủ dự án yêu cầu — 04/11/2026 (CONFIRMED)
+
+Yêu cầu trực tiếp thêm chế độ sáng/tối cho phép bổ sung palette sáng tại
+`:root[data-theme="light"]` trong runtime `tokens.css`. Đây là mở rộng có chủ đích
+so với quy tắc dark-only cũ, không sửa `writing-block.md` hoặc các giá trị dark
+gốc. Các component vẫn dùng cùng biến màu; nền/surface/text/border/status của
+light mode được định nghĩa tập trung để giữ tương phản. Giữ gradient thương hiệu
+tím–xanh; artwork không bị áp filter/đổi màu. Theme mặc định tối, nút ở topbar có
+nhãn truy cập và preference `flux.theme` tồn tại qua reload; storage bị chặn vẫn
+cho phép đổi trong phiên. Lựa chọn theme không tiêu hao lượt tạo ảnh.
+
 The canonical token values live in `writing-block.md` under Rule `FLUX-UI-001`. The verified runtime
 mirror is `frontend/src/styles/tokens.css`, imported by `frontend/src/index.css`. It is an
 implementation mirror, not a second palette; if it disagrees with the canonical source, the source

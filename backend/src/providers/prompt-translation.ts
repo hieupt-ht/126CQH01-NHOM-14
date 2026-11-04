@@ -2,6 +2,7 @@ import { AppError } from "../errors/app-error.js";
 
 export const MAX_TRANSLATED_PROMPT_LENGTH = 2048;
 const TRANSLATION_MODEL = "@cf/meta/m2m100-1.2b";
+export { WATERCOLOR_DIRECTION };
 // Visual characteristics approved by the owner's watercolor reference image.
 // Apply only to an explicit affirmative watercolor request, never every image.
 const WATERCOLOR_DIRECTION = "Hand-painted watercolor illustration on textured watercolor paper, with translucent washes of pigment, soft bleeding edges, visible brush strokes and unpainted paper highlights. The entire scene is painted in watercolor. ";

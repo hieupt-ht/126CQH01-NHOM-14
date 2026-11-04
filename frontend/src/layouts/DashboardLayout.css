@@ -104,3 +104,4 @@
 .usage-card__progress::-webkit-progress-value { background: var(--gradient-neon); border-radius: var(--radius-full); }
 .usage-card__progress::-moz-progress-bar { background: var(--gradient-neon); border-radius: var(--radius-full); }
 .usage-card__storage { margin-top: 17px; padding-top: 15px; border-top: 1px solid var(--border-subtle); }
+:root[data-theme="light"] .studio-nav__item--active { color: var(--text-on-primary); }

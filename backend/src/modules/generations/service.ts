@@ -3,6 +3,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { mkdir, readFile, rename, writeFile, unlink } from "node:fs/promises";
 import { join } from "node:path";
 import sharp from "sharp";
+import { DEFAULT_PRESENTATION, applyImageStyle, padImageToRatio, type Presentation } from "./presentation.js";
 import {
   DailyUsageModel,
   GenerationModel,
@@ -42,8 +43,10 @@ export class GenerationService {
     private promptTranslator?: PromptTranslator,
     private promptTranslationEnabled = false,
   ) {}
-  private matchReplay(job: GenerationDocument, fingerprint: string) {
-    if (job.requestFingerprint !== fingerprint)
+  private matchReplay(job: GenerationDocument, fingerprint: string, prompt: string, presentation: Presentation) {
+    if (job.requestFingerprint !== fingerprint || job.originalPrompt !== prompt ||
+      (job.settings.aspectRatio ?? "auto") !== presentation.aspectRatio ||
+      (job.settings.style ?? "none") !== presentation.style)
       throw new AppError(
         409,
         "IDEMPOTENCY_CONFLICT",
@@ -51,10 +54,13 @@ export class GenerationService {
       );
     return job;
   }
-  async accept(userId: Types.ObjectId, requestKey: string, prompt: string) {
-    const fingerprint = createHash("sha256").update(prompt).digest("hex");
+  async accept(userId: Types.ObjectId, requestKey: string, prompt: string, presentation: Presentation = DEFAULT_PRESENTATION) {
+    // Preserve fingerprints for legacy/default requests; explicit options are part of intent.
+    const intent = presentation.aspectRatio === "auto" && presentation.style === "none"
+      ? prompt : JSON.stringify([prompt, presentation.aspectRatio, presentation.style]);
+    const fingerprint = createHash("sha256").update(intent).digest("hex");
     const replay = await GenerationModel.findOne({ userId, requestKey });
-    if (replay) return this.matchReplay(replay, fingerprint);
+    if (replay) return this.matchReplay(replay, fingerprint, prompt, presentation);
     let submittedPrompt = prompt;
     if (this.promptTranslationEnabled && containsVietnameseText(prompt)) {
       if (!this.promptTranslator)
@@ -77,6 +83,7 @@ export class GenerationService {
           "Bản dịch vượt giới hạn mô tả. Yêu cầu chưa được tạo; vui lòng rút gọn mô tả.",
         );
     }
+    submittedPrompt = applyImageStyle(submittedPrompt, presentation.style);
     const id = new Types.ObjectId(),
       now = new Date(),
       dateKey = now.toISOString().slice(0, 10);
@@ -87,7 +94,7 @@ export class GenerationService {
           requestKey,
         }).session(session);
         if (existing) {
-          this.matchReplay(existing, fingerprint);
+          this.matchReplay(existing, fingerprint, prompt, presentation);
           return;
         }
         const user = await UserModel.findOneAndUpdate(
@@ -145,7 +152,7 @@ export class GenerationService {
               submittedPrompt,
               provider: "cloudflare",
               model: "@cf/black-forest-labs/flux-1-schnell",
-              settings: { steps: 4 },
+              settings: { steps: 4, ...presentation },
               quotaReservation: {
                 dateKey,
                 userReserved: true,
@@ -159,7 +166,7 @@ export class GenerationService {
       });
     } catch (error) {
       const existing = await GenerationModel.findOne({ userId, requestKey });
-      if (existing) return this.matchReplay(existing, fingerprint);
+      if (existing) return this.matchReplay(existing, fingerprint, prompt, presentation);
       throw error;
     }
     return GenerationModel.findOne({ userId, requestKey });
@@ -327,6 +334,7 @@ export class GenerationService {
           },
         );
       }
+      bytes = await padImageToRatio(bytes, (job.settings.aspectRatio ?? "auto") as Presentation["aspectRatio"]);
       if (bytes.length > 10 * 1024 * 1024)
         throw new AppError(
           502,

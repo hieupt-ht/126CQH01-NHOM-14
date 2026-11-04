@@ -6,6 +6,37 @@
 
 # Frontend/Backend Contract
 
+## Thiết lập tạo ảnh và giao diện — 04/11/2026 (CONFIRMED)
+
+Chủ dự án yêu cầu chế độ sáng/tối, khung hình và chủ đề theo ảnh mẫu; bỏ control
+số lượng ảnh. Một lượt vẫn tạo một ảnh. Đây là phạm vi bổ sung theo yêu cầu trực
+tiếp, thay phần hoãn các control này trong tài liệu cũ.
+
+- `POST /api/v1/generations` nhận `{prompt, aspectRatio?, style?}`. Tỷ lệ:
+  `auto` (mặc định), `1:1`, `16:9`, `9:16`, `4:3`, `3:4`. Chủ đề/phong cách:
+  `none` (mặc định), `watercolor`, `cinematic`, `photographic`, `illustration`, `anime`.
+  Field lạ, enum sai và số lượng ảnh đều bị từ chối400.
+- Job DTO trả `aspectRatio` và `style`; record cũ thiếu settings tương ứng đọc
+  thành `auto`/`none`. Lưu lựa chọn trong `generations.settings` hiện có, không
+  thêm collection/migration. `originalPrompt` giữ nguyên; chỉ dẫn phong cách
+  được backend thêm vào `submittedPrompt`, kiểm tra tổng độ dài2048 trước quota.
+- Fingerprint gồm prompt+tỷ lệ+style khi có lựa chọn khác mặc định; cùng key đổi
+  lựa chọn trả409. Request cũ/giá trị mặc định giữ fingerprint nguyên văn cũ.
+  FE giữ key và toàn bộ payload trong sessionStorage khi chưa rõ kết quả, khóa
+  lựa chọn trong lúc gửi/active/chờ kiểm tra lại và khôi phục lựa chọn từ job DTO.
+- Theo lựa chọn trực tiếp của chủ dự án, **giữ toàn bộ ảnh, thêm viền trắng**:
+  FLUX không nhận tham số kích thước chưa được tài liệu hóa. Worker giữ checkpoint
+  bytes gốc; mỗi lần saving tạo canvas PNG đúng tỷ lệ bằng extend, không crop,
+  stretch hoặc phóng to pixel gốc. Giữ giới hạn4096px/10MiB, lưu metadata/integrity
+  theo file cuối; retry saving không thêm inference. `auto` giữ nguyên bytes.
+- Light/dark dùng preference localStorage `flux.theme`, mặc định dark, không gọi
+  API, không thay màu artwork; light palette tập trung trong token root theo yêu
+  cầu này. Không đổi `writing-block.md` hoặc token dark gốc.
+
+Giới hạn: chủ đề là chỉ dẫn văn bản, không bảo đảm model bám100%; tỷ lệ là khung
+có viền sau xử lý, không phải ảnh được FLUX render trực tiếp ở kích thước đó.
+Máy đang chạy cần restart backend để nhận contract mới; không tự commit/push.
+
 ## Hạn mức cá nhân — 04/11/2026 (CONFIRMED)
 
 Theo yêu cầu chủ dự án, `DAILY_USER_LIMIT` mặc định20 lượt/người/ngày UTC.

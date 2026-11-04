@@ -6,6 +6,7 @@ import { useResource, type UsageRecord, type StatsRecord } from "../services/res
 import UsageCard from "../components/dashboard/UsageCard";
 import Brand from "../components/dashboard/Brand";
 import Icon from "../components/ui/Icon";
+import { useTheme } from "../services/theme";
 import "./DashboardLayout.css";
 
 type Props = {
@@ -155,6 +156,7 @@ export default function DashboardLayout({
   showSearch = true,
   usageRefreshKey = 0,
 }: Props) {
+  const { theme, toggleTheme } = useTheme();
   const usage = useResource<UsageRecord>("/usage/me", usageRefreshKey);
   const stats = useResource<StatsRecord>("/stats/me", usageRefreshKey);
   const [user, setUser] = useState<UserProfile | null>(null);
@@ -268,6 +270,11 @@ export default function DashboardLayout({
             </div>
           )}
           <div className="studio-topbar__right">
+            <button type="button" className="studio-icon-button" onClick={toggleTheme}
+              aria-label={theme === "dark" ? "Chuyển sang chế độ sáng" : "Chuyển sang chế độ tối"}
+              title={theme === "dark" ? "Chế độ sáng" : "Chế độ tối"}>
+              <Icon name={theme === "dark" ? "sun" : "moon"} />
+            </button>
             <span className="preview-badge">
               <span className="status-dot" />
               {UI_PREVIEW ? "XEM THỬ UI" : "FLUX STUDIO"}
