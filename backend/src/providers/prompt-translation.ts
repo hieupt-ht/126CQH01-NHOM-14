@@ -1,4 +1,5 @@
 import { AppError } from "../errors/app-error.js";
+import { protectPromptTerms, PROMPT_TERM_REVISION } from "./prompt-terms.js";
 
 export const MAX_TRANSLATED_PROMPT_LENGTH = 2048;
 const TRANSLATION_MODEL = "@cf/meta/m2m100-1.2b";
@@ -8,6 +9,8 @@ export { WATERCOLOR_DIRECTION };
 const WATERCOLOR_DIRECTION = "Hand-painted watercolor illustration on textured watercolor paper, with translucent washes of pigment, soft bleeding edges, visible brush strokes and unpainted paper highlights. The entire scene is painted in watercolor. ";
 
 export interface PromptTranslator {
+  readonly model?: string;
+  readonly revision?: string;
   translateVietnameseToEnglish(prompt: string): Promise<string>;
 }
 
@@ -42,6 +45,8 @@ function translationError(): AppError {
 }
 
 export class CloudflarePromptTranslator implements PromptTranslator {
+  readonly model = TRANSLATION_MODEL;
+  readonly revision = PROMPT_TERM_REVISION;
   constructor(
     private readonly accountId: string,
     private readonly token: string,
@@ -50,6 +55,7 @@ export class CloudflarePromptTranslator implements PromptTranslator {
   ) {}
 
   async translateVietnameseToEnglish(prompt: string): Promise<string> {
+    const protectedPrompt = protectPromptTerms(prompt);
     let response: Response;
     try {
       response = await this.transport(
@@ -64,7 +70,7 @@ export class CloudflarePromptTranslator implements PromptTranslator {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            text: prompt,
+            text: protectedPrompt.text,
             source_lang: "vietnamese",
             target_lang: "english",
           }),
@@ -98,7 +104,7 @@ export class CloudflarePromptTranslator implements PromptTranslator {
     if (typeof translatedPrompt !== "string" || !translatedPrompt.trim())
       throw translationError();
 
-    const normalizedPrompt = preserveWatercolorInstruction(prompt, translatedPrompt.trim());
+    const normalizedPrompt = preserveWatercolorInstruction(prompt, protectedPrompt.restore(translatedPrompt.trim()));
     if (normalizedPrompt.length > MAX_TRANSLATED_PROMPT_LENGTH)
       throw new AppError(
         400,

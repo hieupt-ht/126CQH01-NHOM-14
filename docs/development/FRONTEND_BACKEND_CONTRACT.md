@@ -6,6 +6,30 @@
 
 # Frontend/Backend Contract
 
+## Bảo vệ nghĩa prompt trong M2M100 — 04/11/2026 (CONFIRMED)
+
+Chủ dự án chọn giữ M2M100 sau khi dữ liệu thật cho thấy trâu→beetle và thổi sáo→
+blasting. Bổ sung glossary thuật ngữ thị giác theo từ/cụm, không ghép sẵn toàn bộ
+prompt ví dụ. Trước cùng một call M2M100, các cụm áp dụng được thay bằng mã tạm;
+sau dịch yêu cầu mỗi mã còn đúng1 lần rồi khôi phục English. Có kiểm tra ranh giới
+Unicode/NFC, ưu tiên cụm dài và phân biệt từ sáo đứng riêng với động tác thổi sáo.
+Nhóm hiện có: trâu/cưỡi trâu, thổi sáo, ruộng lúa, bướm phát sáng, màu phát sáng,
+nền đêm và xích lô/đạp xích lô (revision visual-terms-v2); cụm phủ định được bảo vệ khi có thuật ngữ cảnh áp dụng. Giới hạn64 cụm
+được bảo vệ/request là giới hạn ứng dụng để chặn phình dữ liệu, không phải giới
+hạn của nhà cung cấp. Prompt không khớp nhóm cảnh giữ luồng provider nguyên văn.
+
+Thiếu/lặp/sai mã trả422 `PROMPT_TRANSLATION_INCOMPLETE` trước job/quota; FE hiện
+có xử lý4xx để xóa pending key, giữ nội dung và cho chỉnh sửa. Không âm thầm gửi
+bản dịch lỗi đến FLUX. Không thêm call dịch/inference, đổi model hoặc retry AI.
+`originalPrompt`/fingerprint giữ nguyên; `submittedPrompt` chỉ lưu text đã khôi
+phục và phong cách, kiểm tra tổng2048 như cũ. Thêm model/revision trong settings
+promptTranslation hiện có để đối chiếu; không thêm schema/collection/migration.
+
+Đây là bảo vệ từ vựng hữu hạn, không phải kiểm chứng toàn bộ ngữ nghĩa. Chi tiết
+ngoài glossary, câu mơ hồ và khả năng model giữ mã vẫn cần đối chiếu thật. Input
+có mã dài hơn có thể tăng usage dù số call không tăng. Các ảnh/job cũ không tự
+tạo lại; muốn kiểm tra bản sửa phải chủ động tạo intent mới.
+
 ## Hồ sơ và avatar — 04/11/2026 (CONFIRMED)
 
 Theo yêu cầu chủ dự án: tất cả trang đăng nhập dùng cụm tài khoản căn phải trong

@@ -5,6 +5,15 @@ Status: prototype; disabled by default, local opt-in applied on 2026-11-04.
 
 ## Local fix — 2026-11-04
 
+### Meaning follow-up: buffalo and flute
+
+The owner reported another failure with a boy riding a buffalo and playing a
+flute. Stored M2M100 output actually said beetle/blasting. The owner explicitly
+chose to retain M2M100. A versioned bounded visual-terminology guard now protects
+applicable units through the same translation call and rejects missing/corrupt
+units before job/quota. This does not establish general semantic fidelity or
+live image quality. See [evidence, scope and current limits](PROMPT_MEANING_REVIEW_2026-11-04.md).
+
 ### Latest: owner's visual watercolor reference
 
 **CONFIRMED:** the owner supplied a reference with translucent washes, soft
