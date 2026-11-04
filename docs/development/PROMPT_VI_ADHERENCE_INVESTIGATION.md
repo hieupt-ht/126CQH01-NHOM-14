@@ -1,7 +1,125 @@
-# Vietnamese Prompt Adherence — Investigation and Disabled Prototype
+# Vietnamese Prompt Adherence — Investigation and Local Opt-in
 
 Date: 2026-11-03  
-Status: prototype only; automatic translation remains disabled.
+Status: prototype; disabled by default, local opt-in applied on 2026-11-04.
+
+## Local fix — 2026-11-04
+
+### Latest: owner's visual watercolor reference
+
+**CONFIRMED:** the owner supplied a reference with translucent washes, soft
+bleeding edges, visible brushwork, paper texture and white paper highlights.
+The local watercolor guard now expresses those specific visual characteristics,
+even if the machine translation already contains the word watercolor. It prefixes
+`Hand-painted watercolor illustration on textured watercolor paper, with
+translucent washes of pigment, soft bleeding edges, visible brush strokes and
+unpainted paper highlights. The entire scene is painted in watercolor.`
+The translated scene follows unchanged. The guard still requires an explicit
+affirmative watercolor instruction; the reference does not become a preset for
+every image or introduce additional subjects/backgrounds. No model/steps/provider
+or extra cloud call is added. The original request and fingerprint remain exact,
+and the full submitted prompt is length-checked after adding the direction.
+
+Read-only inspection of the latest reported generation still showed no watercolor
+in its submitted prompt. Thus the earlier on-disk/mock check did not establish
+that the running HTTP process had loaded the edit. Apply this fix by explicitly
+restarting the backend after confirming zero active jobs, not by relying on Docker
+bind-mount hot reload. A health check only establishes server availability, not
+live inference quality. Existing saved jobs/images are not rewritten/regenerated.
+
+The sections below record earlier iterations; the expanded direction above
+supersedes the earlier `Watercolor painting.` fallback. Final image fidelity still
+needs reviewed live evidence. Unit/integration tests use mocked cloud transport.
+
+Latest verification: backend build passed; unit41 pass/1 skip (test URI absent),
+isolated integration15 pass/0 skip, diff check passed. Zero active jobs were
+confirmed before explicitly restarting Docker backend. After restart, health
+returned200 and Docker was healthy; a mocked adapter check using the exact
+reported Vietnamese sentence emitted the expanded medium direction plus the scene.
+No live translation/inference was performed in verification; no existing job,
+image or quota was modified, and no commit/push was performed.
+
+**Owner feedback after restart:** the owner subsequently reported that the image
+was successfully generated with the intended result. This is user-reported local
+feedback, not an independently scored A/B/C study or evidence of100% adherence.
+No before/after Workers AI usage, latency dataset or billing/account plan was
+collected. Group rollout, broader semantic fidelity and remaining issue#25
+acceptance criteria remain open. This change preserves opt-in defaults and the
+production guard; the root local `.env` opt-in is ignored and is not distributed.
+
+### Follow-up: dropped watercolor instruction
+
+**CONFIRMED:** a read-only comparison of the user's relevant saved generation
+showed that the original requested watercolor but the actual submitted English
+text ended at “walk.” and contained no style instruction. This establishes a
+translation omission for that job; it does not explain every model mismatch.
+
+The existing local translation adapter now restores an explicitly requested
+watercolor medium with `Watercolor painting.` when the English output omits it.
+It recognizes affirmative `tranh màu nước`, `phong cách màu nước` at a clause
+start, or `với/theo phong cách màu nước` in a clause, including decomposed Unicode.
+It conservatively skips clauses containing negation, quotes, alternatives or
+conditions. This is a narrow guard, not a Vietnamese semantic parser; indirect,
+ambiguous and other style instructions still require separate evaluation.
+Existing watercolor/watercolour wording is not duplicated. No inferred paper
+texture, lighting, new subject, negative prompt or provider parameter is added.
+The final prompt is checked against2048 after restoration, saved as
+`submittedPrompt`, and sent to FLUX once; original/fingerprint/history stay exact.
+There is no extra translation call, inference, retry or cloud test.
+
+Regression coverage reproduces the user's sentence and an omitted-style response,
+NFC/NFD input, negated/quoted/ambiguous mentions, existing English style and
+post-restoration overflow. The isolated replica-set test now uses the actual
+translation adapter with mocked HTTP, persists the restored style, checks replay,
+quota and worker input. Image quality after this change remains unverified live.
+
+Follow-up verification: backend build passed; unit tests41 pass/1 skip (dedicated
+MongoDB URI absent); isolated integration tests15 pass/0 skip; diff whitespace
+check passed. The running Docker backend is healthy (HTTP200). A mocked-transport
+check inside that container produced `Watercolor painting. A house beside an apple
+tree, a person walking a dog.` from the omitted-style fixture without cloud access.
+
+**CONFIRMED:** the owner's direct request authorizes a local trial to address
+Vietnamese prompt adherence. This is a scoped exception to the original raw-prompt
+contract, documented in PRD §6.1 and the shared API contract; it does not approve
+production rollout or change the pending group decision in issue #25.
+
+The running Docker backend had `GENERATION_ENABLED=true` but no
+`PROMPT_TRANSLATION_ENABLED`. Compose did not forward that flag, so prompts were
+sent unchanged. Compose now forwards an explicit opt-in (default false).
+Vietnamese detection now checks an NFC copy to handle decomposed input methods;
+the original string and request fingerprint remain byte-for-byte unchanged.
+Provider responses with `success:false` are rejected even if they contain text.
+
+Use the root `.env` for Docker or `backend/.env` for direct Node startup:
+
+```dotenv
+PROMPT_TRANSLATION_ENABLED=true
+```
+
+For Docker, apply environment changes with
+`docker compose up -d --no-deps --force-recreate backend`.
+Check only the non-secret flag with
+`docker compose exec -T backend node -p process.env.PROMPT_TRANSLATION_ENABLED`.
+Setting the flag makes no translation request by itself. A new Vietnamese create
+intent adds one translation step before FLUX and shares Workers AI usage.
+Existing images are not regenerated. To revert, set false and recreate backend.
+
+Regression tests use a decomposed Vietnamese house/apple-tree/person/dog/watercolor
+prompt and a **mock** English translation, checking exact original storage,
+translated worker input, replay and one inference. These assertions prove data
+flow only, not semantic translation or generated image quality. No live cloud
+call is part of verification. English-only input is unchanged; unaccented
+Vietnamese and other accented languages remain limitations of heuristic detection.
+The investigation below records the original 03/11 baseline.
+
+Verification on 04/11: backend `npm run build` passed; `npm test` had 38 pass,
+1 skip (no dedicated `MONGODB_TEST_URI`); `npm run test:integration` had 15 pass,
+0 skip using temporary replica sets and mocked providers. `docker compose config
+--quiet` and `git diff --check` passed. The local backend was recreated with the
+flag confirmed `true`, Docker health healthy and `/api/health` HTTP200. No active
+queued/processing/saving jobs existed before restart. `.env` remains ignored.
+No live inference or translation was triggered by this verification.
 
 ## Decision and sources
 

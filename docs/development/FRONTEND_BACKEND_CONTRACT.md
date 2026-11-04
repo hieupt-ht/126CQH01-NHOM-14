@@ -6,6 +6,40 @@
 
 # Frontend/Backend Contract
 
+## Prompt tiếng Việt — thử nghiệm local 04/11/2026 (CONFIRMED)
+
+Theo yêu cầu sửa prompt tiếng Việt của chủ dự án, bật thử bản dịch ở local.
+`PROMPT_TRANSLATION_ENABLED=true` được truyền từ `.env` gốc qua Compose;
+mặc định false, production vẫn bị chặn. API vẫn nhận `{prompt}` và trả prompt
+gốc; không đổi endpoint/DTO/schema. Khi bật, text có dấu Việt (cả NFC/NFD)
+được dịch bằng M2M100 trước transaction tạo job, lưu nguyên văn `originalPrompt`
+và lưu bản dịch ở `submittedPrompt`; worker chỉ gửi trường sau cho FLUX.
+Nhận diện dùng bản sao NFC, không thay nội dung gốc hoặc fingerprint.
+Tiếng Anh giữ nguyên; tiếng Việt không dấu chưa được nhận diện đáng tin cậy.
+Lỗi dịch trả502 `GENERATION_FAILED`, bản dịch quá2048 UTF-16 trả400
+`INVALID_PROMPT`, chưa tạo job/trừ quota; không fallback âm thầm sang prompt gốc.
+Replay dùng original fingerprint, không dịch hoặc inference lại job đã có.
+Hai request đồng thời trước khi lưu job vẫn có thể gọi dịch trùng (giới hạn
+prototype hiện có); transaction giữ một job/một quota reservation.
+Quyết định triển khai chung và đánh giá ảnh/usage ở #25 vẫn **OPEN QUESTION**.
+
+**CONFIRMED — bổ sung cùng ngày:** bản dịch thật của lần tạo người dùng báo
+đã mất đoạn màu nước. Adapter bảo vệ các chỉ dẫn màu nước khẳng định, rõ ràng:
+nếu thiếu watercolor/watercolour trong bản dịch, thêm `Watercolor painting.` ở đầu.
+Mệnh đề có phủ định, dấu trích dẫn hoặc lựa chọn/điều kiện mơ hồ không được suy diễn
+thành yêu cầu màu nước. Không thêm texture/ánh sáng/chủ thể hoặc gọi AI thêm.
+`submittedPrompt` chứa chính xác bản sau bảo vệ, kiểm tra2048 sau khi bổ sung;
+`originalPrompt`/fingerprint/replay/history không thay đổi. Đây là bộ bảo vệ hẹp,
+không nhận diện mọi cách diễn đạt/phong cách, không bảo đảm ngữ nghĩa bản dịch khác.
+
+**CONFIRMED — cập nhật theo ảnh mẫu do chủ dự án gửi:** chỉ dẫn màu nước nay
+được diễn đạt bằng nét cọ, màu loang trong, cạnh mềm, vân giấy và khoảng giấy trắng
+trong tiền tố `Hand-painted watercolor illustration ...`. Áp dụng cho yêu cầu màu
+nước rõ ràng kể cả khi bản dịch đã có từ watercolor; vẫn giữ nguyên nội dung
+bản dịch phía sau. Đây là đặc điểm phong cách được yêu cầu thêm qua ảnh mẫu,
+không tự thêm chủ thể/bố cục từ ảnh hoặc xử lý ảnh tham chiếu qua provider.
+Giới hạn2048 kiểm tra trên toàn bộ prompt cuối; không tăng số call/model/steps.
+
 ## Tên hiển thị người dùng — D2, 02/11/2026 (CONFIRMED)
 
 `displayName` là field hiện hành xuyên suốt MongoDB, request/response API và frontend.

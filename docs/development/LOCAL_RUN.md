@@ -1,5 +1,11 @@
 # Chạy FLUX STUDIO trên máy mới
 
+> Thử prompt tiếng Việt ở local (04/11): đặt `PROMPT_TRANSLATION_ENABLED=true`
+> trong `.env` gốc rồi chạy `docker compose up -d --no-deps --force-recreate backend`.
+> Cờ mặc định false; khi bật sẽ thêm bước dịch M2M100 trước FLUX, dùng chung
+> hạn mức Workers AI. Giữ prompt gốc trong lịch sử; ảnh cũ không tự tạo lại.
+> Xem [phạm vi và giới hạn thử nghiệm](PROMPT_VI_ADHERENCE_INVESTIGATION.md#local-fix--2026-11-04).
+
 > Cập nhật: UI preview đã tắt; các hướng dẫn preview bên dưới là lịch sử. Đăng ký và đăng nhập luôn dùng backend và MongoDB thật; biến `VITE_UI_PREVIEW` không còn tác dụng.
 
 Cập nhật01/11/2026. Cách đơn giản nhất để chạy toàn bộ ứng dụng là Docker Compose. Hướng dẫn này dành cho môi trường local development, không phải production.

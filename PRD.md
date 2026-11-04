@@ -152,6 +152,33 @@ Không có tính năng chọn userId tự do từ frontend. Backend lấy danh t
 
 ### 6.1. Xử lý prompt mặc định
 
+**CONFIRMED — ngoại lệ local 04/11/2026:** theo yêu cầu trực tiếp của chủ dự án
+khắc phục prompt tiếng Việt, cho phép bật `PROMPT_TRANSLATION_ENABLED=true`
+trong môi trường development để dịch Việt → Anh bằng adapter M2M100 hiện có
+trước FLUX. Giữ chính xác `originalPrompt`; chỉ `submittedPrompt` dùng bản dịch.
+Mặc định vẫn tắt và production vẫn từ chối bật. Đây là thử nghiệm local,
+chưa phải quyết định triển khai chính thức của nhóm ở issue #25.
+Không sửa nội dung lịch sử, tự thêm phong cách, đổi model ảnh hoặc tự gọi lại FLUX.
+Lỗi dịch/rỗng/quá dài phải dừng trước khi tạo job và giữ quota; bản dịch cần
+được đối chiếu chất lượng và usage riêng, chưa có kết quả ảnh live trong bản sửa.
+
+**CONFIRMED — sửa mất chỉ dẫn màu nước, 04/11/2026:** lần tạo do người dùng
+đối chiếu có `submittedPrompt` bỏ hẳn phần màu nước. Trong thử nghiệm dịch local,
+nếu prompt yêu cầu rõ `tranh màu nước` / `phong cách màu nước` / `với|theo phong cách
+màu nước` nhưng bản dịch thiếu từ watercolor/watercolour, giữ chỉ dẫn bằng tiền tố
+`Watercolor painting.` trước nội dung dịch. Không áp dụng cho mệnh đề phủ định,
+trích dẫn hoặc lựa chọn mơ hồ; không thêm chi tiết hình ảnh hay một model/call khác.
+Giới hạn2048 áp dụng sau bước này. Đây là bảo vệ cụ thể cho lỗi đã quan sát,
+không phải bộ kiểm chứng ngữ nghĩa tổng quát hoặc cam kết ảnh đúng100%.
+
+**CONFIRMED — ảnh tham chiếu màu nước của chủ dự án, 04/11/2026:** yêu cầu
+tiếp theo làm rõ nét cọ, màu loang trong, cạnh màu mềm và vân giấy. Với chỉ dẫn
+màu nước khẳng định được nhận diện ở trên, thay tiền tố ngắn bằng mô tả kỹ thuật
+minh họa vẽ tay bằng màu nước trên giấy có vân, màu trong, cạnh màu loang mềm,
+nét cọ và khoảng giấy trắng. Áp dụng kể cả bản dịch đã có từ watercolor;
+giữ phần mô tả nội dung sau tiền tố. Không tự lấy thêm nhà/cây/người/bối cảnh
+từ ảnh tham chiếu. Giới hạn/phủ định/quota và phạm vi thử local giữ như trên.
+
 1. Kiểm tra kiểu chuỗi và nội dung không rỗng sau trim.
 2. Chuẩn hóa khoảng trắng không cần thiết, loại ký tự điều khiển; không bỏ dấu hoặc tự sửa nội dung.
 3. Giữ nguyên chủ thể, số lượng, màu, hành động, bố cục, phong cách, câu chữ cần hiện trong ảnh và phủ định.
