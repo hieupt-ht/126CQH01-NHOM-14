@@ -156,7 +156,7 @@ export function validateEnv(source: EnvSource = process.env): AppConfig {
     cloudinaryAccountAlias,
     cloudinaryTimeoutMs: readInteger(source, 'CLOUDINARY_TIMEOUT_MS', 30000, 1000, 120000),
     maxImageUploadMb: readInteger(source, 'MAX_IMAGE_UPLOAD_MB', DEFAULT_MAX_IMAGE_UPLOAD_MB, 1, MAX_IMAGE_UPLOAD_MB),
-    dailyUserLimit: readInteger(source, 'DAILY_USER_LIMIT', 5, 1, 100), dailyAppLimit: readInteger(source, 'DAILY_APP_LIMIT', 20, 1, 100),
+    dailyUserLimit: readInteger(source, 'DAILY_USER_LIMIT', 20, 1, 100), dailyAppLimit: readInteger(source, 'DAILY_APP_LIMIT', 20, 1, 100),
     imageStorageDir: resolve(source.IMAGE_STORAGE_DIR?.trim() || 'data/images'),
   };
 }
