@@ -162,11 +162,11 @@ cầu bổ sung này. Độ bám phong cách vẫn cần đánh giá ảnh thậ
 ### 6.1. Xử lý prompt mặc định
 
 **CONFIRMED — ngoại lệ local 04/11/2026:** theo yêu cầu trực tiếp của chủ dự án
-khắc phục prompt tiếng Việt, cho phép bật `PROMPT_TRANSLATION_ENABLED=true`
-trong môi trường development để dịch Việt → Anh bằng adapter M2M100 hiện có
+khắc phục prompt tiếng Việt, Docker Compose local bật dịch Việt → Anh mặc định
+bằng adapter M2M100 hiện có
 trước FLUX. Giữ chính xác `originalPrompt`; chỉ `submittedPrompt` dùng bản dịch.
-Mặc định vẫn tắt và production vẫn từ chối bật. Đây là thử nghiệm local,
-chưa phải quyết định triển khai chính thức của nhóm ở issue #25.
+Backend chạy trực tiếp mặc định tắt và production vẫn từ chối bật. Đây là
+thử nghiệm local của nhóm; triển khai production ở issue #25 vẫn chưa chốt.
 Không sửa nội dung lịch sử, tự thêm phong cách, đổi model ảnh hoặc tự gọi lại FLUX.
 Lỗi dịch/rỗng/quá dài phải dừng trước khi tạo job và giữ quota; bản dịch cần
 được đối chiếu chất lượng và usage riêng, chưa có kết quả ảnh live trong bản sửa.

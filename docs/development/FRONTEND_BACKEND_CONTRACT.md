@@ -46,9 +46,9 @@ không reset hoặc hoàn lượt. Giá trị môi trường có thể ghi đè 
 
 ## Prompt tiếng Việt — thử nghiệm local 04/11/2026 (CONFIRMED)
 
-Theo yêu cầu sửa prompt tiếng Việt của chủ dự án, bật thử bản dịch ở local.
-`PROMPT_TRANSLATION_ENABLED=true` được truyền từ `.env` gốc qua Compose;
-mặc định false, production vẫn bị chặn. API vẫn nhận `{prompt}` và trả prompt
+Theo yêu cầu của chủ dự án, Docker Compose local luôn bật bản dịch cho nhóm,
+kể cả khi `.env` cũ có `PROMPT_TRANSLATION_ENABLED=false`. Backend chạy trực tiếp
+vẫn mặc định tắt và production vẫn bị chặn. API vẫn nhận `{prompt}` và trả prompt
 gốc; không đổi endpoint/DTO/schema. Khi bật, text có dấu Việt (cả NFC/NFD)
 được dịch bằng M2M100 trước transaction tạo job, lưu nguyên văn `originalPrompt`
 và lưu bản dịch ở `submittedPrompt`; worker chỉ gửi trường sau cho FLUX.
@@ -59,7 +59,7 @@ Lỗi dịch trả502 `GENERATION_FAILED`, bản dịch quá2048 UTF-16 trả400
 Replay dùng original fingerprint, không dịch hoặc inference lại job đã có.
 Hai request đồng thời trước khi lưu job vẫn có thể gọi dịch trùng (giới hạn
 prototype hiện có); transaction giữ một job/một quota reservation.
-Quyết định triển khai chung và đánh giá ảnh/usage ở #25 vẫn **OPEN QUESTION**.
+Triển khai production và đánh giá ảnh/usage ở #25 vẫn **OPEN QUESTION**.
 
 **CONFIRMED — bổ sung cùng ngày:** bản dịch thật của lần tạo người dùng báo
 đã mất đoạn màu nước. Adapter bảo vệ các chỉ dẫn màu nước khẳng định, rõ ràng:
