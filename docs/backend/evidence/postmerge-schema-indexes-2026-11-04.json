@@ -1,0 +1,443 @@
+{
+  "sourceCommit": "ecbbd0a",
+  "source": "Mongoose schema declarations only; no live database introspection or user records",
+  "generatedAt": "2026-11-04T02:12:55.860Z",
+  "collections": [
+    {
+      "collection": "users",
+      "fields": [
+        {
+          "name": "displayName",
+          "type": "String",
+          "required": true
+        },
+        {
+          "name": "email",
+          "type": "String",
+          "required": true
+        },
+        {
+          "name": "passwordHash",
+          "type": "String",
+          "required": true
+        },
+        {
+          "name": "status",
+          "type": "String",
+          "required": true
+        },
+        {
+          "name": "activeGenerationId",
+          "type": "ObjectId",
+          "required": false
+        },
+        {
+          "name": "lastGenerationAt",
+          "type": "Date",
+          "required": false
+        },
+        {
+          "name": "_id",
+          "type": "ObjectId",
+          "required": false
+        },
+        {
+          "name": "createdAt",
+          "type": "Date",
+          "required": false
+        },
+        {
+          "name": "updatedAt",
+          "type": "Date",
+          "required": false
+        },
+        {
+          "name": "__v",
+          "type": "Number",
+          "required": false
+        }
+      ],
+      "declaredIndexes": [
+        {
+          "keys": {
+            "email": 1
+          },
+          "name": "users_email_unique",
+          "unique": true
+        }
+      ]
+    },
+    {
+      "collection": "sessions",
+      "fields": [
+        {
+          "name": "userId",
+          "type": "ObjectId",
+          "required": true
+        },
+        {
+          "name": "tokenHash",
+          "type": "String",
+          "required": true
+        },
+        {
+          "name": "csrfTokenHash",
+          "type": "String",
+          "required": false
+        },
+        {
+          "name": "createdAt",
+          "type": "Date",
+          "required": true
+        },
+        {
+          "name": "expiresAt",
+          "type": "Date",
+          "required": true
+        },
+        {
+          "name": "lastSeenAt",
+          "type": "Date",
+          "required": true
+        },
+        {
+          "name": "_id",
+          "type": "ObjectId",
+          "required": false
+        }
+      ],
+      "declaredIndexes": [
+        {
+          "keys": {
+            "tokenHash": 1
+          },
+          "name": "sessions_token_hash_unique",
+          "unique": true
+        },
+        {
+          "keys": {
+            "userId": 1,
+            "expiresAt": 1
+          },
+          "name": "sessions_user_expiry",
+          "unique": false
+        },
+        {
+          "keys": {
+            "expiresAt": 1
+          },
+          "name": "sessions_expiry_ttl",
+          "unique": false,
+          "expireAfterSeconds": 0
+        }
+      ]
+    },
+    {
+      "collection": "generations",
+      "fields": [
+        {
+          "name": "userId",
+          "type": "ObjectId",
+          "required": true
+        },
+        {
+          "name": "requestKey",
+          "type": "String",
+          "required": true
+        },
+        {
+          "name": "requestFingerprint",
+          "type": "String",
+          "required": true
+        },
+        {
+          "name": "originalPrompt",
+          "type": "String",
+          "required": true
+        },
+        {
+          "name": "submittedPrompt",
+          "type": "String",
+          "required": true
+        },
+        {
+          "name": "provider",
+          "type": "String",
+          "required": true
+        },
+        {
+          "name": "model",
+          "type": "String",
+          "required": true
+        },
+        {
+          "name": "settings",
+          "type": "Mixed",
+          "required": true
+        },
+        {
+          "name": "savingAttempts",
+          "type": "Number",
+          "required": false
+        },
+        {
+          "name": "status",
+          "type": "String",
+          "required": true
+        },
+        {
+          "name": "imageId",
+          "type": "ObjectId",
+          "required": false
+        },
+        {
+          "name": "lease",
+          "type": "Embedded",
+          "required": false
+        },
+        {
+          "name": "checkpoint",
+          "type": "Embedded",
+          "required": false
+        },
+        {
+          "name": "error",
+          "type": "Embedded",
+          "required": false
+        },
+        {
+          "name": "quotaReservation",
+          "type": "Embedded",
+          "required": true
+        },
+        {
+          "name": "startedAt",
+          "type": "Date",
+          "required": false
+        },
+        {
+          "name": "completedAt",
+          "type": "Date",
+          "required": false
+        },
+        {
+          "name": "durationMs",
+          "type": "Number",
+          "required": false
+        },
+        {
+          "name": "_id",
+          "type": "ObjectId",
+          "required": false
+        },
+        {
+          "name": "createdAt",
+          "type": "Date",
+          "required": false
+        },
+        {
+          "name": "__v",
+          "type": "Number",
+          "required": false
+        }
+      ],
+      "declaredIndexes": [
+        {
+          "keys": {
+            "userId": 1,
+            "requestKey": 1
+          },
+          "name": "generations_user_request_unique",
+          "unique": true
+        },
+        {
+          "keys": {
+            "userId": 1,
+            "createdAt": -1,
+            "_id": -1
+          },
+          "name": "generations_user_history",
+          "unique": false
+        },
+        {
+          "keys": {
+            "status": 1,
+            "createdAt": 1
+          },
+          "name": "generations_worker_scan",
+          "unique": false
+        }
+      ]
+    },
+    {
+      "collection": "images",
+      "fields": [
+        {
+          "name": "userId",
+          "type": "ObjectId",
+          "required": true
+        },
+        {
+          "name": "generationId",
+          "type": "ObjectId",
+          "required": true
+        },
+        {
+          "name": "title",
+          "type": "String",
+          "required": true
+        },
+        {
+          "name": "storage",
+          "type": "Embedded",
+          "required": true
+        },
+        {
+          "name": "storageRevision",
+          "type": "Number",
+          "required": false
+        },
+        {
+          "name": "integrity.sha256",
+          "type": "String",
+          "required": false
+        },
+        {
+          "name": "width",
+          "type": "Number",
+          "required": true
+        },
+        {
+          "name": "height",
+          "type": "Number",
+          "required": true
+        },
+        {
+          "name": "format",
+          "type": "String",
+          "required": true
+        },
+        {
+          "name": "bytes",
+          "type": "Number",
+          "required": true
+        },
+        {
+          "name": "isFavorite",
+          "type": "Boolean",
+          "required": true
+        },
+        {
+          "name": "deletedAt",
+          "type": "Date",
+          "required": false
+        },
+        {
+          "name": "storageCleanupAttempts",
+          "type": "Number",
+          "required": false
+        },
+        {
+          "name": "storageCleanupNextAt",
+          "type": "Date",
+          "required": false
+        },
+        {
+          "name": "storageDeletionStatus",
+          "type": "String",
+          "required": true
+        },
+        {
+          "name": "_id",
+          "type": "ObjectId",
+          "required": false
+        },
+        {
+          "name": "createdAt",
+          "type": "Date",
+          "required": false
+        },
+        {
+          "name": "updatedAt",
+          "type": "Date",
+          "required": false
+        },
+        {
+          "name": "__v",
+          "type": "Number",
+          "required": false
+        }
+      ],
+      "declaredIndexes": [
+        {
+          "keys": {
+            "generationId": 1
+          },
+          "name": "images_generation_unique",
+          "unique": true
+        },
+        {
+          "keys": {
+            "userId": 1,
+            "deletedAt": 1,
+            "createdAt": -1,
+            "_id": -1
+          },
+          "name": "images_user_library",
+          "unique": false
+        }
+      ]
+    },
+    {
+      "collection": "dailyUsage",
+      "fields": [
+        {
+          "name": "scopeType",
+          "type": "String",
+          "required": true
+        },
+        {
+          "name": "scopeId",
+          "type": "String",
+          "required": true
+        },
+        {
+          "name": "dateKey",
+          "type": "String",
+          "required": true
+        },
+        {
+          "name": "reservedRequests",
+          "type": "Number",
+          "required": true
+        },
+        {
+          "name": "_id",
+          "type": "ObjectId",
+          "required": false
+        },
+        {
+          "name": "updatedAt",
+          "type": "Date",
+          "required": false
+        },
+        {
+          "name": "__v",
+          "type": "Number",
+          "required": false
+        }
+      ],
+      "declaredIndexes": [
+        {
+          "keys": {
+            "scopeType": 1,
+            "scopeId": 1,
+            "dateKey": 1
+          },
+          "name": "daily_usage_scope_date_unique",
+          "unique": true
+        }
+      ]
+    }
+  ]
+}
