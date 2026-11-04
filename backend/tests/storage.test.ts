@@ -1,12 +1,24 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { Writable } from "node:stream";
+import sharp from "sharp";
 import { CloudinaryImageStorage } from "../src/storage/storage.js";
 import type { CloudinaryClient } from "../src/services/cloudinary.service.js";
 import type { UploadApiOptions } from "cloudinary";
 import { validateEnv } from "../src/config/env.js";
 
 const owner = "671000000000000000000010";
+test("avatar adapter accepts only owner-scoped server paths and authenticated storage", async () => {
+  const f = fakeCloud(), adapter = new CloudinaryImageStorage(f.client, "primary", "flux-studio/test", 10, 1000, f.transport);
+  const image = await sharp({ create: { width: 32, height: 32, channels: 3, background: "#224466" } }).webp().toBuffer();
+  const path = `avatars/${owner}/${"a".repeat(32)}/original.webp`;
+  await assert.rejects(adapter.put(path.replace(owner, "671000000000000000000099"), image, "image/webp", owner));
+  assert.equal(f.uploads.length, 0);
+  const object = await adapter.put(path, image, "image/webp", owner);
+  assert.equal(object.deliveryMode, "private");
+  assert.equal(f.uploads[0].type, "authenticated");
+  assert.ok(object.key.startsWith("flux-studio/test/avatars/" + owner + "/"));
+});
 const key = "generations/671000000000000000000011/original.png";
 const bytes = Buffer.from("test-image-bytes");
 // Signature validation is separately covered by the service tests.

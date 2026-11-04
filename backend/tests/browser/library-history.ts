@@ -14,6 +14,7 @@ import { createApp } from "../../src/app.js";
 import { createDeclaredIndexes, GenerationModel, ImageModel, UserModel } from "../../src/models/index.js";
 import { StorageRegistry, type ImageStorage } from "../../src/storage/storage.js";
 import { GenerationService } from "../../src/modules/generations/service.js";
+import { AvatarService } from "../../src/modules/profile/avatar.js";
 
 const require = createRequire(import.meta.url);
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE ?? "playwright");
@@ -38,6 +39,13 @@ try {
     async delete() { throw new Error("Cloud deletion prohibited in browser test"); },
   };
   const origin = "http://127.0.0.1:5187";
+  const avatarObjects = new Map<string, Buffer>();
+  const avatarStorage: ImageStorage = {
+    async put(key, data) { avatarObjects.set(key, data); return { provider: "test", accountAlias: "avatar", key, deliveryMode: "private" }; },
+    async openRead(object) { const data = avatarObjects.get(object.key); if (!data) throw new Error("Missing test avatar"); return Readable.from(data); },
+    async delete(object) { avatarObjects.delete(object.key); },
+  };
+  const registry = new StorageRegistry(new Map([["test:isolated", storage], ["test:avatar", avatarStorage]]));
   let providerCalls = 0;
   // Accept requests against the real quota transaction, but never start the worker.
   const generations = new GenerationService({ async generate() {
@@ -46,7 +54,8 @@ try {
   } }, storage, { userLimit: 5, appLimit: 20, cooldownMs: 0, checkpointDir: resolve(output, "checkpoints") });
   apiServer = createApp({ frontendOrigin: origin, jwtSecret: "isolated-browser-test-secret-at-least-32-bytes" }, {
     generations,
-    registry: new StorageRegistry(new Map([["test:isolated", storage]])),
+    registry,
+    avatars: new AvatarService(avatarStorage, registry),
   }).listen(0, "127.0.0.1");
   await once(apiServer, "listening");
   const address = apiServer.address();
@@ -99,6 +108,68 @@ try {
   await page.getByLabel("Mật khẩu", { exact: true }).fill(password);
   await page.getByRole("button", { name: "Đăng nhập", exact: true }).click();
   await page.waitForURL(/\/app/);
+  // Shared account placement must not depend on a page showing the search field.
+  const accountRoutes = ["/app", "/app/create", "/app/library", "/app/history", "/app/settings", "/app/images/" + images[0]._id];
+  for (const theme of ["dark", "light"]) {
+    await page.goto(origin + "/app/settings");
+    const toggle = page.getByRole("button", { name: theme === "light" ? "Chuyển sang chế độ sáng" : "Chuyển sang chế độ tối", exact: true });
+    if (await toggle.count()) await toggle.click();
+    for (const width of [360, 768, 1280, 1536]) {
+      await page.setViewportSize({ width, height: 900 });
+      for (const route of accountRoutes) {
+        await page.goto(origin + route);
+        await page.locator(".account-avatar").waitFor();
+        const placement = await page.locator(".studio-topbar").evaluate((header: HTMLElement) => {
+          const group = header.querySelector(".studio-topbar__right")!.getBoundingClientRect();
+          return { actual: group.right, expected: header.getBoundingClientRect().right - parseFloat(getComputedStyle(header).paddingRight), overflow: document.documentElement.scrollWidth > innerWidth };
+        });
+        assert.ok(Math.abs(placement.actual - placement.expected) < 2, `account not right-aligned: ${route}/${width}/${theme}`);
+        assert.equal(placement.overflow, false, `overflow: ${route}/${width}/${theme}`);
+      }
+    }
+  }
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto(origin + "/app/settings");
+  const nameInput = page.getByLabel("Tên hiển thị", { exact: true });
+  const editProfile = page.getByRole("button", { name: "Chỉnh sửa hồ sơ", exact: true });
+  await editProfile.click();
+  await nameInput.fill("   ");
+  await page.getByText("Vui lòng nhập tên hiển thị.", { exact: true }).waitFor();
+  assert.equal(await page.getByRole("button", { name: "Lưu thay đổi", exact: true }).isDisabled(), true);
+  await page.getByRole("button", { name: "Hủy chỉnh sửa", exact: true }).click();
+  assert.equal(await nameInput.inputValue(), "Browser test");
+  await editProfile.click();
+  await nameInput.fill("x".repeat(81));
+  await page.getByText("Tên hiển thị tối đa 80 ký tự.", { exact: true }).waitFor();
+  const updatedDisplayName = "Nguyễn Minh An";
+  await nameInput.fill("  " + updatedDisplayName + "  ");
+  await page.getByRole("button", { name: "Lưu thay đổi", exact: true }).click();
+  await page.getByText("Đã lưu hồ sơ.", { exact: true }).waitFor();
+  await page.locator(".account-menu__name strong").getByText(updatedDisplayName, { exact: true }).waitFor();
+  assert.equal(await page.locator(".account-avatar").textContent(), "NA");
+  assert.equal((await UserModel.findById(user._id))!.displayName, updatedDisplayName);
+  const avatarFile = page.getByLabel("Thay ảnh avatar", { exact: true });
+  await avatarFile.setInputFiles({ name: "invalid.svg", mimeType: "image/svg+xml", buffer: Buffer.from("<svg/>") });
+  await page.getByText("Chọn ảnh PNG, JPEG hoặc WebP tối đa 2 MB.", { exact: true }).waitFor();
+  await avatarFile.setInputFiles({ name: "avatar-fixture.png", mimeType: "image/png", buffer: bytes });
+  await page.getByText("Ảnh xem trước · Chưa lưu", { exact: true }).waitFor();
+  assert.equal(avatarObjects.size, 0, "selecting a file must not upload it");
+  await page.getByRole("button", { name: "Lưu ảnh đại diện", exact: true }).click();
+  await page.getByText("Đã cập nhật ảnh đại diện.", { exact: true }).waitFor();
+  await page.locator(".account-avatar img").waitFor();
+  await page.waitForFunction(() => {
+    const image = document.querySelector(".account-avatar img") as HTMLImageElement;
+    return image?.complete && image.naturalWidth > 0;
+  });
+  assert.equal(avatarObjects.size, 1);
+  await page.reload();
+  await page.waitForFunction(() => (document.querySelector("#settings-display-name") as HTMLInputElement)?.value === "Nguyễn Minh An");
+  await page.screenshot({ path: resolve(output, "profile-settings-1280.png"), fullPage: true });
+  await page.locator(".account-avatar img").waitFor();
+  await page.setViewportSize({ width: 360, height: 900 });
+  await page.screenshot({ path: resolve(output, "profile-settings-360.png"), fullPage: true });
+  assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+  assert.equal(generationPosts, 0);
   await page.goto(origin + "/app/library");
   await page.locator(".library-image-card").first().waitFor();
   assert.equal(await page.locator(".library-image-card").count(), 20);

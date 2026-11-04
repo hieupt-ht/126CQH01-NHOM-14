@@ -52,7 +52,7 @@ Xây dựng website cho phép đăng ký, đăng nhập, nhập mô tả, tạo 
 | Mức | Nội dung |
 |---|---|
 | P0 — bắt buộc | Auth; một ô prompt; tạo một ảnh; trạng thái tác vụ; lưu file và metadata; thư viện; chi tiết; tải xuống; đổi tên; xóa; lịch sử gồm cả lỗi; phân quyền; hạn mức; chống gửi trùng; báo cáo MongoDB |
-| P1 — sau khi P0 chạy ổn | Yêu thích; tìm theo tiêu đề; lọc theo ngày; dashboard thống kê; hồ sơ cơ bản; phản hồi chất lượng ảnh |
+| P1 — sau khi P0 chạy ổn | Yêu thích; tìm theo tiêu đề; lọc theo ngày; dashboard thống kê; hồ sơ tên hiển thị/avatar (bổ sung theo yêu cầu chủ dự án04/11); phản hồi chất lượng ảnh |
 | Ngoài MVP | Chỉnh sửa ảnh bằng AI; upload ảnh đầu vào; tạo truyện; nhân vật nhất quán; nhiều ảnh mỗi yêu cầu; thanh toán; cộng đồng; lựa chọn nhiều nhà cung cấp trên giao diện; AI viết lại prompt tự động |
 
 Tài liệu thiết kế có thể dự trù mở rộng, nhưng không tạo trước toàn bộ collection truyện tranh hoặc hệ thống thanh toán.

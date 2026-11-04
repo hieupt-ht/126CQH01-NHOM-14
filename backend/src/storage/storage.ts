@@ -70,7 +70,8 @@ export class CloudinaryImageStorage implements ImageStorage {
   }
   async put(key: string, bytes: Buffer, mime: string, ownerId?: string): Promise<StoredObject> {
     if (!ownerId || !/^[a-f0-9]{24}$/i.test(ownerId) ||
-        !/^generations\/[a-f0-9]{24}\/original\.(png|jpeg|webp)$/.test(key) ||
+        !(/^generations\/[a-f0-9]{24}\/original\.(png|jpeg|webp)$/.test(key) ||
+          new RegExp("^avatars/" + ownerId + "/[a-f0-9]{32}/original\\.webp$").test(key)) ||
         mime !== "image/" + key.split(".").pop())
       throw new AppError(400, "INVALID_STORAGE_INPUT", "Thông tin lưu ảnh không hợp lệ.");
     const publicId = this.namespace + "/" + key.replace(/\.(png|jpeg|webp)$/, "");

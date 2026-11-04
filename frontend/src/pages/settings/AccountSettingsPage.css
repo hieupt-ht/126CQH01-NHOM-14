@@ -13,7 +13,7 @@
 .settings-preview-note p, .settings-info-note p { margin: 0; color: var(--text-secondary); font-size: 11px; line-height: 1.7; }
 .settings-preview-note svg, .settings-info-note svg { flex-shrink: 0; margin-top: 2px; }
 .profile-identity { display: flex; align-items: center; gap: 14px; margin: 24px 0 25px; }
-.profile-identity > div:last-child { display: grid; gap: 4px; min-width: 0; }
+.profile-identity__copy { display: grid; gap: 4px; min-width: 0; }
 .profile-identity strong { overflow-wrap: anywhere; font-size: 15px; font-weight: 600; }
 .profile-identity span { color: var(--text-secondary); font-size: 11px; }
 .settings-avatar { display: grid; place-items: center; width: 64px; height: 64px; flex-shrink: 0; border: 1px solid var(--accent-primary-hover); border-radius: var(--radius-full); background: var(--gradient-neon); color: var(--text-on-primary); font-size: 18px; font-weight: 700; letter-spacing: .5px; box-shadow: var(--shadow-primary); }
@@ -77,3 +77,16 @@
   .settings-field__control { padding-inline: 11px; }
   .settings-readonly-badge { display: none; }
 }
+.settings-edit { margin-inline-start: auto; flex-shrink: 0; }
+.settings-load-error { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; color: var(--danger); }
+@media (max-width: 767px) {
+  .profile-identity { flex-wrap: wrap; }
+  .settings-edit { margin-inline-start: 0; width: 100%; }
+}
+.settings-avatar-upload { padding: 18px; margin-bottom: 24px; border: 1px solid var(--border-secondary); border-radius: var(--radius-md); background: var(--surface-input); }
+.settings-avatar-upload label { display: block; font-size: 12px; font-weight: 600; margin-bottom: 12px; }
+.settings-avatar-upload input { display: block; width: 100%; min-width: 0; color: var(--text-secondary); font-size: 12px; }
+.settings-avatar-upload p { font-size: 11px; line-height: 1.7; color: var(--text-secondary); overflow-wrap: anywhere; }
+.settings-avatar-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
+.settings-avatar-upload .settings-field__error { color: var(--danger); }
+.settings-avatar-upload .settings-avatar-success { color: var(--success); }

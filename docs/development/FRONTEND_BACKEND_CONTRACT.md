@@ -6,6 +6,38 @@
 
 # Frontend/Backend Contract
 
+## Hồ sơ và avatar — 04/11/2026 (CONFIRMED)
+
+Theo yêu cầu chủ dự án: tất cả trang đăng nhập dùng cụm tài khoản căn phải trong
+layout chung; hoàn thiện sửa tên và **chỉ thêm thay avatar**, không đổi email.
+`PATCH /users/me` vẫn chỉ nhận `{displayName}` trim1–80. Sau lưu tên/avatar,
+header đọc lại `/auth/me` và đồng bộ ngay; initials dùng cùng quy tắc đầu/cuối.
+
+- `PUT /api/v1/users/me/avatar`: body bytes ảnh, Content-Type image/png,
+  image/jpeg hoặc image/webp; tối đa2MiB, ảnh tĩnh, mỗi cạnh tối đa4096px.
+  Session + Origin + CSRF bắt buộc. Backend kiểm tra decoded format khớp MIME,
+  chuẩn hóa orientation, bỏ metadata, resize trong256x256, lưu WebP authenticated.
+  Không nhận publicId/userId/URL từ client; tối đa10 lần upload/15 phút/tài khoản
+  trên mỗi tiến trình backend. File sai400/415, quá dung lượng413, quá nhanh429.
+- Trả200 `{success:true,data:{user}}`. User DTO register/login/me/PATCH/upload
+  bổ sung `avatarUrl: string|null` là đường dẫn backend có revision, không trả
+  storage key, credential hay signed URL. User cũ thiếu avatar đọc thành null.
+- `GET /api/v1/users/me/avatar?v=<revision>` chỉ đọc avatar của session hiện tại;
+  không có avatar404, kho lỗi503. Trả image/webp, Content-Length và inline,
+  Cache-Control private/no-store, nosniff. Revision chỉ đổi URL cache, không dùng
+  để chọn owner hoặc đọc avatar lịch sử.
+- Metadata nằm trong users.avatar; ảnh ở Cloudinary namespace avatars/owner/
+  server-random-id/original. Thay ảnh dùng compare-and-swap revision để tránh
+  ghi đè đồng thời; conflict409, đọc lại DB khi mất acknowledgement, không xóa
+  ảnh có thể đã trở thành avatar hiện tại. Không tạo generation/image/quota.
+- Ảnh cũ vào users.avatarPendingDeletion cùng atomic update. Cleanup thử tối đa3
+  entry trước/sau upload; lỗi giữ entry để thử ở upload tiếp theo. Tồn từ20 entry
+  thì dừng upload nếu chưa dọn được. Không thêm lịch cleanup nền. Kết quả cloud/DB
+  không xác định có thể để lại object private cần đối soát, ưu tiên tránh xóa nhầm.
+- UI chọn ảnh có preview local, nút Lưu/Hủy riêng; không upload khi chỉ chọn file.
+  Loading/error/success, giữ file khi lỗi và initials fallback. Email chỉ đọc;
+  không thêm workflow xác minh email/mật khẩu hoặc dependency.
+
 ## Thiết lập tạo ảnh và giao diện — 04/11/2026 (CONFIRMED)
 
 Chủ dự án yêu cầu chế độ sáng/tối, khung hình và chủ đề theo ảnh mẫu; bỏ control

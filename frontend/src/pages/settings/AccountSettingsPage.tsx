@@ -4,8 +4,10 @@ import Icon from "../../components/ui/Icon";
 import "./AccountSettingsPage.css";
 import { api, type UserProfile } from "../../services/api";
 import { useResource } from "../../services/resources";
+import ProfileAvatar from "../../components/ui/ProfileAvatar";
 
 type AccountProfile = {
+  avatarUrl?: string | null;
   displayName: string | null;
   email: string | null;
 };
@@ -29,16 +31,6 @@ const unavailableUsage: UsageData = {
   resetAt: null,
 };
 
-function getInitials(displayName: string | null) {
-  const words = displayName?.trim().split(/\s+/).filter(Boolean) ?? [];
-  if (!words.length) return "";
-  if (words.length === 1)
-    return Array.from(words[0]).slice(0, 2).join("").toLocaleUpperCase("vi-VN");
-  const first = Array.from(words[0])[0] ?? "";
-  const last = Array.from(words[words.length - 1])[0] ?? "";
-  return `${first}${last}`.toLocaleUpperCase("vi-VN");
-}
-
 function validateDisplayName(value: string) {
   const normalized = value.trim();
   if (!normalized) return "Vui lòng nhập tên hiển thị.";
@@ -55,21 +47,6 @@ function formatResetTime(resetAt: string | null) {
     timeStyle: "short",
     timeZone: "Asia/Ho_Chi_Minh",
   }).format(date);
-}
-
-function InitialsAvatar({ displayName }: { displayName: string | null }) {
-  const initials = getInitials(displayName);
-  return (
-    <div
-      className="settings-avatar"
-      role="img"
-      aria-label={
-        initials ? `Ảnh đại diện chữ cái ${initials}` : "Ảnh đại diện mặc định"
-      }
-    >
-      {initials || <Icon name="settings" size={25} />}
-    </div>
-  );
 }
 
 function ProfileSkeleton({
@@ -150,6 +127,33 @@ export default function AccountSettingsPage() {
   const [submitted, setSubmitted] = useState(false);
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
   const [saveMessage, setSaveMessage] = useState("");
+  const [editing, setEditing] = useState(false);
+  const [profileRefreshKey, setProfileRefreshKey] = useState(0);
+  const editButton = useRef<HTMLButtonElement>(null);
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [avatarSaving, setAvatarSaving] = useState(false);
+  const [avatarMessage, setAvatarMessage] = useState("");
+  const [avatarError, setAvatarError] = useState(false);
+  const avatarInput = useRef<HTMLInputElement>(null);
+  const avatarInFlight = useRef(false);
+  useEffect(() => {
+    if (!avatarFile) { setAvatarPreview(null); return; }
+    const url = URL.createObjectURL(avatarFile); setAvatarPreview(url);
+    return () => URL.revokeObjectURL(url);
+  }, [avatarFile]);
+  const saveAvatar = async () => {
+    if (!avatarFile || avatarInFlight.current || saveStatus === "saving") return;
+    avatarInFlight.current = true; setAvatarSaving(true); setAvatarMessage(""); setAvatarError(false);
+    try {
+      const result = await api<{ user: UserProfile }>("/users/me/avatar", { method: "PUT", headers: { "Content-Type": avatarFile.type }, body: avatarFile });
+      setProfile(result.user); setProfileRefreshKey(value => value + 1); setAvatarFile(null);
+      if (avatarInput.current) avatarInput.current.value = "";
+      setAvatarMessage("Đã cập nhật ảnh đại diện.");
+    } catch (error) {
+      setAvatarError(true); setAvatarMessage(error instanceof Error ? error.message : "Không lưu được ảnh đại diện.");
+    } finally { avatarInFlight.current = false; setAvatarSaving(false); }
+  };
   const displayNameInput = useRef<HTMLInputElement>(null);
   const account = useResource<{ user: UserProfile }>("/auth/me");
   const usage = useResource<UsageData>("/usage/me");
@@ -175,6 +179,8 @@ export default function AccountSettingsPage() {
   const originalDisplayName = profile.displayName?.trim() ?? "";
   const isDirty = normalizedDisplayName !== originalDisplayName;
   const canSave = Boolean(
+    editing &&
+    !avatarSaving &&
     profile.displayName &&
     !validationError &&
     isDirty &&
@@ -182,7 +188,7 @@ export default function AccountSettingsPage() {
   );
 
   const handleDisplayNameChange = (value: string) => {
-    if (saveStatus === "saving") return;
+    if (!editing || saveStatus === "saving") return;
     setDisplayName(value);
     setTouched(true);
     setSaveStatus("idle");
@@ -194,7 +200,7 @@ export default function AccountSettingsPage() {
     setSubmitted(true);
     setSaveMessage("");
 
-    if (saveStatus === "saving" || !isDirty) return;
+    if (!editing || avatarSaving || saveStatus === "saving" || !isDirty) return;
     if (validationError || !profile.displayName) {
       displayNameInput.current?.focus();
       return;
@@ -208,8 +214,11 @@ export default function AccountSettingsPage() {
       });
       setProfile(result.user);
       setDisplayName(result.user.displayName);
+      setProfileRefreshKey(value => value + 1);
+      setEditing(false);
       setSaveStatus("success");
       setSaveMessage("Đã lưu hồ sơ.");
+      requestAnimationFrame(() => editButton.current?.focus());
     } catch (error) {
       setSaveStatus("error");
       setSaveMessage(
@@ -227,6 +236,7 @@ export default function AccountSettingsPage() {
       onCompose={() => undefined}
       activeItem="settings"
       showSearch={false}
+      profileRefreshKey={profileRefreshKey}
     >
       <div className="settings-page">
         <header className="settings-header">
@@ -237,7 +247,9 @@ export default function AccountSettingsPage() {
           </div>
         </header>
 
-        {account.error && <p role="alert">{account.error}</p>}
+        {account.error && <div role="alert" className="settings-load-error"><p>{account.error}</p>
+          <button type="button" className="studio-button studio-button--subtle" onClick={account.reload}>Tải lại hồ sơ</button>
+        </div>}
         {usage.error && <p role="alert">{usage.error}</p>}
         <div className="settings-grid">
           <section
@@ -262,12 +274,44 @@ export default function AccountSettingsPage() {
               <p>Thông tin được lấy từ tài khoản đang đăng nhập.</p>
             </div>
 
+            {account.loading && !profile.displayName ? <ProfileSkeleton /> : <>
             <div className="profile-identity">
-              <InitialsAvatar displayName={profile.displayName} />
-              <div>
+              <ProfileAvatar className="settings-avatar" displayName={profile.displayName} avatarUrl={avatarPreview ?? profile.avatarUrl} />
+              <div className="profile-identity__copy">
                 <strong>{profile.displayName ?? "Chưa có tên hiển thị"}</strong>
-                <span>Avatar chữ cái · Không hỗ trợ tải ảnh lên</span>
+                <span>{avatarFile ? "Ảnh xem trước · Chưa lưu" : "Hồ sơ cá nhân"}</span>
               </div>
+              <button ref={editButton} type="button" className="studio-button studio-button--subtle settings-edit"
+                disabled={!profile.displayName || editing || avatarSaving || saveStatus === "saving"}
+                onClick={() => {
+                  setEditing(true); setSaveStatus("idle"); setSaveMessage(""); setTouched(false); setSubmitted(false);
+                  requestAnimationFrame(() => displayNameInput.current?.focus());
+                }}>
+                Chỉnh sửa hồ sơ
+              </button>
+            </div>
+
+            <div className="settings-avatar-upload">
+              <label htmlFor="settings-avatar-file">Thay ảnh avatar</label>
+              <input ref={avatarInput} id="settings-avatar-file" type="file" accept="image/png,image/jpeg,image/webp"
+                disabled={!profile.displayName || avatarSaving || saveStatus === "saving"}
+                aria-describedby="settings-avatar-hint"
+                onChange={event => {
+                  const file = event.target.files?.[0]; setAvatarMessage(""); setAvatarError(false);
+                  if (!file) { setAvatarFile(null); return; }
+                  if (!["image/png", "image/jpeg", "image/webp"].includes(file.type) || !file.size || file.size > 2 * 1024 * 1024) {
+                    setAvatarFile(null); event.target.value = ""; setAvatarError(true); setAvatarMessage("Chọn ảnh PNG, JPEG hoặc WebP tối đa 2 MB."); return;
+                  }
+                  setAvatarFile(file);
+                }} />
+              <p id="settings-avatar-hint">PNG, JPEG hoặc WebP tĩnh, tối đa 2 MB / 4096px. Ảnh hiển thị trong khung tròn.</p>
+              {avatarFile && <div className="settings-avatar-actions">
+                <button type="button" className="studio-button studio-button--primary" disabled={avatarSaving || saveStatus === "saving"} aria-busy={avatarSaving} onClick={() => void saveAvatar()}>
+                  {avatarSaving ? "Đang lưu ảnh…" : "Lưu ảnh đại diện"}
+                </button>
+                <button type="button" className="studio-button studio-button--subtle" disabled={avatarSaving} onClick={() => { setAvatarFile(null); setAvatarMessage(""); if (avatarInput.current) avatarInput.current.value = ""; }}>Hủy chọn ảnh</button>
+              </div>}
+              {avatarMessage && <p role={avatarError ? "alert" : "status"} className={avatarError ? "settings-field__error" : "settings-avatar-success"}>{avatarMessage}</p>}
             </div>
 
             <form className="settings-form" onSubmit={handleSubmit} noValidate>
@@ -287,6 +331,7 @@ export default function AccountSettingsPage() {
                     autoComplete="name"
                     placeholder="Nhập tên hiển thị của bạn"
                     value={displayName}
+                    readOnly={!editing}
                     onChange={(event) =>
                       handleDisplayNameChange(event.target.value)
                     }
@@ -337,11 +382,12 @@ export default function AccountSettingsPage() {
                   <span className="settings-readonly-badge">Chỉ đọc</span>
                 </div>
                 <p className="settings-field__hint" id="settings-email-hint">
-                  Email chỉ hiển thị khi hệ thống xác thực được kết nối.
+                  Email đăng nhập hiện chỉ đọc. Khi chưa có ảnh avatar, hệ thống dùng chữ cái từ tên hiển thị.
                 </p>
               </div>
 
               <div className="settings-form__footer">
+                {editing ? <>
                 <button
                   className="studio-button studio-button--primary settings-save"
                   type="submit"
@@ -355,8 +401,14 @@ export default function AccountSettingsPage() {
                   )}
                   {saveStatus === "saving" ? "Đang lưu…" : "Lưu thay đổi"}
                 </button>
+                <button type="button" className="studio-button studio-button--subtle" disabled={saveStatus === "saving"}
+                  onClick={() => {
+                    setDisplayName(profile.displayName ?? ""); setEditing(false); setTouched(false); setSubmitted(false);
+                    setSaveStatus("idle"); setSaveMessage(""); requestAnimationFrame(() => editButton.current?.focus());
+                  }}>Hủy chỉnh sửa</button>
+                </> : null}
                 <span className="settings-save-hint">
-                  Chỉ bật khi tên hợp lệ và đã thay đổi.
+                  {editing ? "Chỉ lưu khi tên hợp lệ và đã thay đổi." : "Nhấn Chỉnh sửa hồ sơ để cập nhật tên hiển thị."}
                 </span>
               </div>
               {saveMessage && (
@@ -373,6 +425,7 @@ export default function AccountSettingsPage() {
                 </div>
               )}
             </form>
+            </>}
           </section>
 
           <UsageLimitsCard

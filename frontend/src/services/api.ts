@@ -25,7 +25,7 @@ export async function api<T>(
     csrfToken = result.csrfToken;
   }
   const headers = new Headers(options.headers);
-  if (options.body) headers.set("Content-Type", "application/json");
+  if (typeof options.body === "string") headers.set("Content-Type", "application/json");
   if (csrfToken && !["GET", "HEAD"].includes(method))
     headers.set("X-CSRF-Token", csrfToken);
   let response: Response;
@@ -67,6 +67,7 @@ export async function api<T>(
   return result.data as T;
 }
 export type UserProfile = {
+  avatarUrl?: string | null;
   id: string;
   displayName: string;
   email: string;
