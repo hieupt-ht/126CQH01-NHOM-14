@@ -2,7 +2,7 @@
 // This never starts the generation worker or reads application .env credentials.
 import assert from "node:assert/strict";
 import { once } from "node:events";
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -70,10 +70,13 @@ try {
   });
   const email = "browser-library@example.test";
   const password = "isolated-test-password";
-  const registered = await page.request.post(origin + "/api/v1/auth/register", {
-    headers: { Origin: origin }, data: { email, password, displayName: "Browser test" },
-  });
-  assert.equal(registered.status(), 201);
+  await page.goto(origin + "/register");
+  await page.getByLabel("Họ và tên", { exact: true }).fill("Browser test");
+  await page.getByLabel("Địa chỉ email", { exact: true }).fill(email);
+  await page.getByLabel("Mật khẩu", { exact: true }).fill(password);
+  await page.getByLabel("Xác nhận mật khẩu", { exact: true }).fill(password);
+  await page.getByRole("button", { name: "Tạo tài khoản", exact: true }).click();
+  await page.waitForURL(origin + "/login");
   const user = await UserModel.findOne({ email });
   assert.ok(user);
   const jobs = await GenerationModel.create(Array.from({ length: 45 }, (_, i) => ({
@@ -133,11 +136,63 @@ try {
   await dialog.waitFor({ state: "detached" });
   await page.reload();
   await page.getByRole("heading", { name: "Tên ảnh sau refresh", exact: true }).waitFor();
+  const renamedDetailUrl = page.url();
+  const previousCookie = (await page.context().cookies(origin)).map((cookie: { name: string; value: string }) => cookie.name + "=" + cookie.value).join("; ");
+  await page.getByLabel("Thông tin không gian cá nhân", { exact: true }).click();
+  await page.getByRole("button", { name: "Đăng xuất", exact: true }).click();
+  await page.waitForURL(origin + "/login");
+  const revoked = await page.request.get(origin + "/api/v1/images/" + images[12]._id, { headers: { Cookie: previousCookie } });
+  assert.equal(revoked.status(), 401, "logout revokes the previous session immediately");
+  await page.goto(renamedDetailUrl);
+  await page.waitForURL(origin + "/login");
+  await page.getByLabel("Địa chỉ email", { exact: true }).fill(email);
+  await page.getByLabel("Mật khẩu", { exact: true }).fill(password);
+  await page.getByRole("button", { name: "Đăng nhập", exact: true }).click();
+  await page.waitForURL(/\/app/);
+  await page.goto(renamedDetailUrl);
+  await page.getByRole("heading", { name: "Tên ảnh sau refresh", exact: true }).waitFor();
   const downloadEvent = page.waitForEvent("download");
   await page.getByRole("link", { name: "Tải ảnh", exact: true }).click();
   const download = await downloadEvent;
   assert.equal(await download.failure(), null);
   await download.saveAs(resolve(output, "download.png"));
+  assert.deepEqual(await readFile(resolve(output, "download.png")), bytes);
+
+  // Independent browser session B must never gain access to A's image/job.
+  const other = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+  other.on("pageerror", (error: Error) => errors.push(error.message));
+  const otherEmail = "browser-other@example.test";
+  const otherRegistration = await other.request.post(origin + "/api/v1/auth/register", {
+    headers: { Origin: origin }, data: { email: otherEmail, password, displayName: "Other test" },
+  });
+  assert.equal(otherRegistration.status(), 201);
+  await other.goto(origin + "/login");
+  await other.getByLabel("Địa chỉ email", { exact: true }).fill(otherEmail);
+  await other.getByLabel("Mật khẩu", { exact: true }).fill(password);
+  await other.getByRole("button", { name: "Đăng nhập", exact: true }).click();
+  await other.waitForURL(/\/app/);
+  await other.goto(origin + "/app/library");
+  await other.getByRole("heading", { name: "Bạn chưa có hình ảnh nào", exact: true }).waitFor();
+  const csrfResponse = await other.request.get(origin + "/api/v1/auth/csrf");
+  const csrf = (await csrfResponse.json()).data.csrfToken;
+  for (const path of ["/images/" + images[12]._id, "/images/" + images[12]._id + "/content",
+    "/images/" + images[12]._id + "/download", "/generations/" + jobs[12]._id]) {
+    assert.equal((await other.request.get(origin + "/api/v1" + path)).status(), 404);
+  }
+  for (const method of ["PATCH", "DELETE"]) {
+    const response = await other.request.fetch(origin + "/api/v1/images/" + images[12]._id, {
+      method, headers: { Origin: origin, "X-CSRF-Token": csrf },
+      ...(method === "PATCH" ? { data: { title: "Forbidden" } } : {}),
+    });
+    assert.equal(response.status(), 404);
+  }
+  await other.goto(origin + "/app/images/" + images[12]._id);
+  await other.getByRole("heading", { name: "Không mở được hình ảnh", exact: true }).waitFor();
+  assert.equal(await other.getByText("Tên ảnh sau refresh", { exact: true }).count(), 0);
+  await other.goto(origin + "/app/history?job=" + jobs[12]._id);
+  await other.getByRole("dialog").getByRole("alert").waitFor();
+  assert.equal(await other.getByRole("link", { name: "Xem ảnh", exact: true }).count(), 0);
+  await other.close();
   await page.getByRole("link", { name: "Quay lại thư viện", exact: true }).click();
   await page.getByRole("heading", { name: "Tên ảnh sau refresh", exact: true }).waitFor();
   assert.equal(new URL(page.url()).searchParams.get("cursor"), new URL(secondPageUrl).searchParams.get("cursor"));
@@ -147,8 +202,23 @@ try {
   await card.getByRole("button", { name: "Đổi tên", exact: true }).click();
   await page.getByRole("dialog").getByLabel("Tên hình ảnh").press("Escape");
   assert.equal(await page.locator("summary:focus").count(), 1, "Escape restores focus to action trigger");
+  await card.locator("summary").click();
+  await card.getByRole("button", { name: "Đổi tên", exact: true }).click();
+  await page.getByRole("dialog").getByLabel("Tên hình ảnh").fill("Tên ảnh từ thư viện");
+  await page.getByRole("dialog").getByRole("button", { name: "Lưu", exact: true }).click();
+  await page.getByRole("dialog").waitFor({ state: "detached" });
+  await page.getByRole("heading", { name: "Tên ảnh từ thư viện", exact: true }).waitFor();
+  await page.reload();
+  await page.getByRole("heading", { name: "Tên ảnh từ thư viện", exact: true }).waitFor();
   await page.screenshot({ path: resolve(output, "library-return.png"), fullPage: true });
-  await card.getByRole("heading").getByRole("link").click();
+  fileUnavailable = true;
+  await page.reload();
+  await page.locator(".library-image-card .private-image-fallback").first().waitFor();
+  await page.getByRole("heading", { name: "Tên ảnh từ thư viện", exact: true }).waitFor();
+  fileUnavailable = false;
+  await page.getByRole("button", { name: "Tải lại ảnh", exact: true }).first().click();
+  await page.locator(".library-image-card img").first().waitFor();
+  await page.getByRole("heading", { name: "Tên ảnh từ thư viện", exact: true }).getByRole("link").click();
   fileUnavailable = true;
   await page.reload();
   await page.getByRole("status").filter({ hasText: "Không tải được ảnh" }).first().waitFor();
@@ -181,6 +251,17 @@ try {
   await page.getByRole("status").filter({ hasText: "Đã xóa khỏi thư viện" }).waitFor();
   await page.goto(origin + "/app/history?job=" + jobs[12]._id);
   await page.getByRole("dialog").getByText("Ảnh đã xóa khỏi thư viện, lịch sử vẫn được giữ.").waitFor();
+  await page.goto(origin + "/app/library");
+  const libraryDelete = page.locator(".library-image-card").filter({ has: page.getByRole("heading", { name: "Ảnh kiểm thử 44", exact: true }) });
+  await libraryDelete.locator("summary").click();
+  await libraryDelete.getByRole("button", { name: "Xóa ảnh", exact: true }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Xác nhận xóa", exact: true }).click();
+  await page.getByRole("dialog").waitFor({ state: "detached" });
+  await page.getByRole("status").filter({ hasText: "Đã xóa khỏi thư viện" }).waitFor();
+  await libraryDelete.waitFor({ state: "detached" });
+  assert.equal((await ImageModel.findById(images[44]._id))!.storageDeletionStatus, "pending");
+  await page.goto(origin + "/app/history?job=" + jobs[44]._id);
+  await page.getByRole("dialog").getByText("Ảnh đã xóa khỏi thư viện, lịch sử vẫn được giữ.").waitFor();
   assert.equal(generationPosts, 0);
   const libraryGenerationPosts = generationPosts;
 
@@ -188,10 +269,11 @@ try {
   // sidebar usage on acceptance and stored-image totals on terminal polling.
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.goto(origin + "/app/create");
+  const savedBefore = await ImageModel.countDocuments({ userId: user._id, deletedAt: null });
   const sidebar = page.locator(".studio-sidebar .usage-card");
   await sidebar.getByText("0 / 5", { exact: true }).waitFor();
   const storedCount = sidebar.locator(".usage-card__metrics > div").filter({ hasText: "Số ảnh" }).locator("dd");
-  await storedCount.getByText("44", { exact: true }).waitFor();
+  await storedCount.getByText(String(savedBefore), { exact: true }).waitFor();
   await page.locator("#create-prompt").fill("Synthetic refresh regression; no inference");
   await page.getByRole("button", { name: "Tạo ảnh", exact: true }).click();
   await sidebar.getByText("1 / 5", { exact: true }).waitFor();
@@ -210,7 +292,7 @@ try {
   } });
   await UserModel.updateOne({ _id: user._id }, { $set: { activeGenerationId: null } });
   await page.getByRole("heading", { name: "Ảnh đã được lưu", exact: true }).waitFor();
-  await storedCount.getByText("45", { exact: true }).waitFor();
+  await storedCount.getByText(String(savedBefore + 1), { exact: true }).waitFor();
   assert.equal(generationPosts, 1, "only the explicit test CTA may create a job");
   assert.equal(providerCalls, 0);
   assert.deepEqual(errors, []);
@@ -218,7 +300,7 @@ try {
     imageSource: "synthetic fixture served by storage stub; no Cloudflare/Cloudinary calls",
     libraryGenerationPosts, intentionalCreatePosts: generationPosts, providerCalls,
     terminalResult: "synthetic DB fixture, no worker/inference",
-    consoleErrors: errors, checks: ["login", "cursor refresh", "scroll return", "rename persistence", "private download", "modal focus trap", "Escape/focus", "file fallback/retry", "job deep link", "soft-delete/history", "sidebar refresh on accept and terminal"] };
+    consoleErrors: errors, checks: ["register/login", "cursor refresh", "scroll return", "detail and library rename persistence", "logout revocation", "protected-route redirect", "relogin persistence", "private download exact bytes", "two-account ownership read/write/file/job", "modal focus trap", "Escape/focus", "library and detail file fallback/retry", "job deep link", "detail and library soft-delete/history", "sidebar refresh on accept and terminal"] };
   await writeFile(resolve(output, "report.json"), JSON.stringify(report, null, 2));
   console.info(JSON.stringify(report, null, 2));
 } finally {
