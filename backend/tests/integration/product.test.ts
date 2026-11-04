@@ -552,6 +552,66 @@ test(
         assert.equal((await request("/generations", "POST", { prompt: "A house", ...invalid })).status, 400);
 
       const actualCooldownUser = await UserModel.create({
+        displayName: "Prompt meaning", email: "meaning@example.test", passwordHash: "test-hash",
+      });
+      const meaningPrompt = "tạo giúp tôi một cậu bé đang cưỡi trên con trâu Việt Nam và thổi sáo trên 1 cánh đồng lúa chín";
+      let meaningCalls = 0, meaningInferences = 0, omitMeaning = true, expectCyclo = false;
+      const meaningService = new GenerationService({ async generate(prompt) {
+        meaningInferences++;
+        if (expectCyclo) {
+          assert.match(prompt, /monkey is pedaling a Vietnamese cyclo/);
+          assert.match(prompt, /passenger seat in front/);
+          assert.doesNotMatch(prompt, /walking on a chain/);
+        } else {
+          assert.match(prompt, /riding a water buffalo/); assert.match(prompt, /playing a flute/);
+          assert.match(prompt, /field of ripe rice/);
+        }
+        assert.doesNotMatch(prompt, /FLUXTERM|beetle|blasting/);
+        return png;
+      } }, storage, { userLimit: 5, appLimit: 20, cooldownMs: 0, checkpointDir: temp }, undefined, true,
+      new CloudflarePromptTranslator("test-account", "test-token", async (_url, init) => {
+        meaningCalls++;
+        const markers = JSON.parse(String(init?.body)).text.match(/FLUXTERM[A-F0-9]{8}X\d+END/g);
+        assert.equal(markers.length, expectCyclo ? 1 : 3);
+        return new Response(JSON.stringify({ success: true, result: { translated_text: omitMeaning
+          ? (expectCyclo ? "A monkey walking on a chain." : "A boy riding a beetle and blasting.")
+          : (expectCyclo ? `One monkey is ${markers[0]}.` : `A boy is ${markers[0]} in Vietnam, ${markers[1]} in one ${markers[2]}.`) } }));
+      }), true);
+      const appBeforeMeaning = (await DailyUsageModel.findOne({ scopeType: "application", scopeId: "app", dateKey: new Date().toISOString().slice(0, 10) }))!.reservedRequests;
+      await assert.rejects(meaningService.accept(actualCooldownUser._id, "meaning-request-key-1", meaningPrompt),
+        (error: unknown) => error instanceof AppError && error.code === "PROMPT_TRANSLATION_INCOMPLETE" && error.statusCode === 422);
+      assert.equal(await GenerationModel.countDocuments({ userId: actualCooldownUser._id }), 0);
+      assert.equal(await DailyUsageModel.countDocuments({ scopeId: String(actualCooldownUser._id) }), 0);
+      assert.equal((await UserModel.findById(actualCooldownUser._id))!.activeGenerationId, null);
+      assert.equal((await DailyUsageModel.findOne({ scopeType: "application", scopeId: "app", dateKey: new Date().toISOString().slice(0, 10) }))!.reservedRequests, appBeforeMeaning);
+      assert.equal(meaningInferences, 0);
+      omitMeaning = false;
+      const meaningful = await meaningService.accept(actualCooldownUser._id, "meaning-request-key-1", meaningPrompt);
+      await meaningService.accept(actualCooldownUser._id, "meaning-request-key-1", meaningPrompt);
+      assert.equal(meaningCalls, 2);
+      assert.equal(meaningful!.originalPrompt, meaningPrompt);
+      assert.equal((meaningful!.settings.promptTranslation as { revision: string }).revision, "visual-terms-v2");
+      assert.equal((meaningful!.settings.promptTranslation as { model: string }).model, "@cf/meta/m2m100-1.2b");
+      await meaningService.runOnce(); assert.equal(meaningInferences, 1);
+      assert.equal((await GenerationModel.findById(meaningful!._id))!.status, "succeeded");
+
+      expectCyclo = true; omitMeaning = true;
+      const cycloPrompt = "giúp tôi tạo 1 bức ảnh về 1 con khỉ đang đạp xích lô";
+      await assert.rejects(meaningService.accept(actualCooldownUser._id, "cyclo-request-key-123", cycloPrompt),
+        (error: unknown) => error instanceof AppError && error.code === "PROMPT_TRANSLATION_INCOMPLETE");
+      assert.equal(await GenerationModel.countDocuments({ userId: actualCooldownUser._id }), 1);
+      assert.equal((await DailyUsageModel.findOne({ scopeId: String(actualCooldownUser._id) }))!.reservedRequests, 1);
+      assert.equal(meaningInferences, 1);
+      omitMeaning = false;
+      const cycloJob = await meaningService.accept(actualCooldownUser._id, "cyclo-request-key-123", cycloPrompt);
+      await meaningService.accept(actualCooldownUser._id, "cyclo-request-key-123", cycloPrompt);
+      assert.equal(cycloJob!.originalPrompt, cycloPrompt);
+      assert.equal(meaningCalls, 4);
+      await meaningService.runOnce(); assert.equal(meaningInferences, 2);
+      assert.equal((await GenerationModel.findById(cycloJob!._id))!.status, "succeeded");
+      assert.equal((await DailyUsageModel.findOne({ scopeId: String(actualCooldownUser._id) }))!.reservedRequests, 2);
+
+      const cooldownAccount = await UserModel.create({
         displayName: "Cooldown",
         email: "cooldown@example.test",
         passwordHash: "test-hash",
@@ -561,10 +621,10 @@ test(
         storage,
         { userLimit: 5, appLimit: 20, cooldownMs: 15000, checkpointDir: temp },
       );
-      await cooldownService.accept(actualCooldownUser._id, "cooldown-request-key-1", "first");
-      await UserModel.updateOne({ _id: actualCooldownUser._id }, { $set: { activeGenerationId: null } });
+      await cooldownService.accept(cooldownAccount._id, "cooldown-request-key-1", "first");
+      await UserModel.updateOne({ _id: cooldownAccount._id }, { $set: { activeGenerationId: null } });
       await assert.rejects(
-        cooldownService.accept(actualCooldownUser._id, "cooldown-request-key-2", "second"),
+        cooldownService.accept(cooldownAccount._id, "cooldown-request-key-2", "second"),
         (error: unknown) => error instanceof Error && "code" in error && error.code === "GENERATION_IN_PROGRESS",
       );
 

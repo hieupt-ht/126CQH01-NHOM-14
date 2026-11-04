@@ -152,7 +152,10 @@ export class GenerationService {
               submittedPrompt,
               provider: "cloudflare",
               model: "@cf/black-forest-labs/flux-1-schnell",
-              settings: { steps: 4, ...presentation },
+              settings: { steps: 4, ...presentation,
+                ...(this.promptTranslationEnabled && containsVietnameseText(prompt) && this.promptTranslator?.revision
+                  ? { promptTranslation: { model: this.promptTranslator.model ?? "unknown", revision: this.promptTranslator.revision } } : {}),
+              },
               quotaReservation: {
                 dateKey,
                 userReserved: true,
