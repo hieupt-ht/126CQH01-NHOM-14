@@ -6,6 +6,16 @@
 
 # Thiết kế MongoDB đề xuất
 
+## Avatar theo yêu cầu chủ dự án — 04/11/2026 (CONFIRMED)
+
+`users.avatar` nullable, default null: storage descriptor (provider/accountAlias/
+container/key/version/deliveryMode=private), revision32 hex do server sinh, bytes
+của WebP chuẩn hóa. `users.avatarPendingDeletion` default[] giữ descriptor ảnh cũ
+cùng atomic update để không mất dấu khi cleanup lỗi. Không lưu file/base64/URL ký.
+DTO chỉ có backend avatarUrl. Không thêm collection/index hoặc chạy migration;
+user cũ tương thích. Avatar không tính vào images/generations/quota tạo ảnh.
+Xem contract chung về giới hạn, CAS/recovery và cleanup ở upload tiếp theo.
+
 **Trạng thái:** thiết kế tài liệu, chưa tạo database/schema/model/index. Không có dữ liệu thật hoặc migration trong task này.
 
 ## 1. Nguyên tắc thiết kế

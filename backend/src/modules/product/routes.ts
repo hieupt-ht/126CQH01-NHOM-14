@@ -1,4 +1,6 @@
-import { Router, type Response } from "express";
+import { Router, raw, type Response } from "express";
+import { AvatarService, MAX_AVATAR_BYTES } from "../profile/avatar.js";
+import { avatarUrl } from "../profile/dto.js";
 import { Types } from "mongoose";
 import { z } from "zod";
 import { pipeline } from "node:stream/promises";
@@ -24,6 +26,7 @@ import { ASPECT_RATIOS, IMAGE_STYLES } from "../generations/presentation.js";
 import type { StorageRegistry } from "../../storage/storage.js";
 
 export type ProductDependencies = {
+  avatars?: AvatarService;
   generations?: GenerationService;
   registry?: StorageRegistry;
   userLimit?: number;
@@ -130,6 +133,26 @@ export function createProductRouter(
       : requireCsrf(request, response, next),
   );
   const owner = (response: Response) => principal(response).user._id;
+  const avatarAttempts = new Map<string, { count: number; resetAt: number }>();
+  router.put("/users/me/avatar", raw({ type: ["image/png", "image/jpeg", "image/webp"], limit: MAX_AVATAR_BYTES, inflate: false }), async (request, response) => {
+    if (!dependencies.avatars) throw new AppError(503, "STORAGE_NOT_CONFIGURED", "Chưa cấu hình kho ảnh đại diện.");
+    const mime = request.get("Content-Type")?.split(";")[0].toLowerCase() ?? "";
+    if (!["image/png", "image/jpeg", "image/webp"].includes(mime)) throw new AppError(415, "INVALID_AVATAR", "Chọn ảnh PNG, JPEG hoặc WebP.");
+    const now = Date.now();
+    for (const [key, attempt] of avatarAttempts) if (attempt.resetAt <= now) avatarAttempts.delete(key);
+    const key = String(owner(response));
+    const attempt = avatarAttempts.get(key) ?? { count: 0, resetAt: now + 15 * 60_000 };
+    if (attempt.count >= 10 || (!avatarAttempts.has(key) && avatarAttempts.size >= 10000)) throw new AppError(429, "RATE_LIMITED", "Bạn thay ảnh quá nhanh. Vui lòng thử lại sau.");
+    attempt.count++; avatarAttempts.set(key, attempt);
+    const user = await dependencies.avatars.replace(owner(response), request.body, mime);
+    response.json({ success: true, data: { user: { id: String(user._id), displayName: user.displayName, email: user.email, createdAt: user.createdAt, avatarUrl: avatarUrl(user) } } });
+  });
+  router.get("/users/me/avatar", async (_request, response) => {
+    if (!dependencies.avatars) throw new AppError(503, "STORAGE_NOT_CONFIGURED", "Chưa cấu hình kho ảnh đại diện.");
+    const file = await dependencies.avatars.open(owner(response));
+    response.set({ "Content-Type": "image/webp", "Content-Length": String(file.bytes), "Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff", "Content-Disposition": 'inline; filename="avatar.webp"' });
+    await pipeline(file.stream, response);
+  });
   async function ownedImage(id: unknown, response: Response) {
     const image = await ImageModel.findOne({
       _id: objectId(id),
@@ -390,6 +413,7 @@ export function createProductRouter(
           displayName: user.displayName,
           email: user.email,
           createdAt: user.createdAt,
+          avatarUrl: avatarUrl(user),
         },
       },
     });

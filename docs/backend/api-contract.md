@@ -6,6 +6,13 @@
 
 # REST API Contract — bản thiết kế đề xuất
 
+**CONFIRMED — profile/avatar 04/11/2026:** bổ sung PUT/GET
+`/api/v1/users/me/avatar` theo yêu cầu chủ dự án; PUT nhận binary PNG/JPEG/WebP
+tĩnh tối đa2MiB và4096px, session/Origin/CSRF, lưu WebP riêng tư. GET scope theo
+session, private/no-store. User DTO thêm avatarUrl backend hoặc null; không trả
+storage descriptor/URL ký. PATCH users/me vẫn chỉ đổi displayName; email chỉ đọc.
+Chi tiết CAS, rate limit, cleanup và lỗi trong contract FE/BE hiện hành.
+
 **Trạng thái:** tài liệu contract; auth hiện được triển khai. API prefix `/api/v1`, JWT HS256 trong HttpOnly cookie cùng MongoDB session revocation, FLUX/Cloudflare và Cloudinary authenticated image storage là **CONFIRMED** (JWT decision 01/11/2026). PRD cũ giữ lại các yêu cầu nghiệp vụ gốc.
 
 ## 1. Quy ước chung

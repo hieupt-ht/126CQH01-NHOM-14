@@ -190,6 +190,7 @@ export const requireCsrf: RequestHandler = (request, response, next) => {
   } else next();
 };
 function userDto(user: {
+  avatar?: { revision: string } | null;
   _id: unknown;
   displayName: string;
   email: string;
@@ -200,6 +201,7 @@ function userDto(user: {
     displayName: user.displayName,
     email: user.email,
     createdAt: user.createdAt,
+    avatarUrl: user.avatar ? "/api/v1/users/me/avatar?v=" + user.avatar.revision : null,
   };
 }
 export function createAuthRouter(config: AuthConfig): Router {

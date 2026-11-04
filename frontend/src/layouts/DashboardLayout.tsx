@@ -6,6 +6,7 @@ import { useResource, type UsageRecord, type StatsRecord } from "../services/res
 import UsageCard from "../components/dashboard/UsageCard";
 import Brand from "../components/dashboard/Brand";
 import Icon from "../components/ui/Icon";
+import ProfileAvatar from "../components/ui/ProfileAvatar";
 import { useTheme } from "../services/theme";
 import "./DashboardLayout.css";
 
@@ -19,6 +20,7 @@ type Props = {
   activeItem?: "home" | "create" | "library" | "history" | "settings";
   showSearch?: boolean;
   usageRefreshKey?: number;
+  profileRefreshKey?: number;
 };
 type SidebarProps = Pick<
   Props,
@@ -155,6 +157,7 @@ export default function DashboardLayout({
   activeItem = "home",
   showSearch = true,
   usageRefreshKey = 0,
+  profileRefreshKey = 0,
 }: Props) {
   const { theme, toggleTheme } = useTheme();
   const usage = useResource<UsageRecord>("/usage/me", usageRefreshKey);
@@ -163,10 +166,12 @@ export default function DashboardLayout({
   const [accountError, setAccountError] = useState("");
   const [loggingOut, setLoggingOut] = useState(false);
   useEffect(() => {
-    void api<{ user: UserProfile }>("/auth/me")
-      .then((result) => setUser(result.user))
-      .catch(() => setAccountError("Không tải được hồ sơ."));
-  }, []);
+    const controller = new AbortController();
+    void api<{ user: UserProfile }>("/auth/me", { signal: controller.signal })
+      .then((result) => { if (!controller.signal.aborted) setUser(result.user); })
+      .catch(() => { if (!controller.signal.aborted) setAccountError("Không tải được hồ sơ."); });
+    return () => controller.abort();
+  }, [profileRefreshKey]);
   const logout = async () => {
     setLoggingOut(true);
     setAccountError("");
@@ -285,12 +290,9 @@ export default function DashboardLayout({
                 className="account-menu__trigger"
                 aria-label="Thông tin không gian cá nhân"
               >
-                <span className="account-avatar">
-                  {user?.displayName.slice(0, 2).toLocaleUpperCase("vi-VN") ??
-                    "…"}
-                </span>
+                <ProfileAvatar className="account-avatar" displayName={user?.displayName ?? null} avatarUrl={user?.avatarUrl} />
                 <span className="account-menu__name">
-                  <strong>{user?.displayName ?? "Tài khoản"}</strong>
+                  <strong title={user?.displayName}>{user?.displayName ?? "Tài khoản"}</strong>
                   <small>Không gian cá nhân</small>
                 </span>
                 <Icon name="chevron" size={16} />
