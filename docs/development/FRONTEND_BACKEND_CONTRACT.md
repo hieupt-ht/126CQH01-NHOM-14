@@ -6,6 +6,13 @@
 
 # Frontend/Backend Contract
 
+## Hạn mức cá nhân — 04/11/2026 (CONFIRMED)
+
+Theo yêu cầu chủ dự án, `DAILY_USER_LIMIT` mặc định20 lượt/người/ngày UTC.
+`DAILY_APP_LIMIT` giữ20 lượt/ngày cho toàn ứng dụng, không phải20 lượt dành
+riêng cho từng người. Backend kiểm tra cả hai; quota đã dùng hôm nay giữ nguyên,
+không reset hoặc hoàn lượt. Giá trị môi trường có thể ghi đè các mặc định này.
+
 ## Prompt tiếng Việt — thử nghiệm local 04/11/2026 (CONFIRMED)
 
 Theo yêu cầu sửa prompt tiếng Việt của chủ dự án, bật thử bản dịch ở local.
