@@ -159,6 +159,43 @@ giữ nguyên prompt gốc. Xem contract hiện hành cho enum, fingerprint, gi�
 khôi phục request; các đoạn hoãn light mode/style/ratio cũ không áp dụng cho yêu
 cầu bổ sung này. Độ bám phong cách vẫn cần đánh giá ảnh thật.
 
+**CONFIRMED — 07/11/2026:** chủ dự án yêu cầu chuyển bộ chọn phong cách xuống
+dưới ô mô tả, dùng 8 thẻ ảnh minh họa, bố trí 4 cột × 2 hàng trên desktop và
+2 cột trên mobile. Giữ năm phong cách đã có (Màu nước, Điện ảnh, Ảnh chân thực,
+Minh họa, Anime), bổ sung Sơn dầu, 3D và Truyện tranh theo lựa chọn trực tiếp.
+“Theo mô tả của tôi” vẫn là lựa chọn riêng, mặc định không thêm preset.
+Chọn thẻ không gọi API; giữ payload, khóa và khôi phục lựa chọn cùng job/pending intent.
+
+**CONFIRMED — điều chỉnh tiếp theo cùng ngày:** thanh công cụ dưới khung nhập
+gồm Ví dụ, Phong cách, Khung hình và một nút Tạo ảnh. Hai bảng chọn chỉ mở khi
+bấm nút tương ứng; phong cách đã chọn hiện thành thẻ ảnh trong khung nhập và
+có thể bỏ chọn, không chèn/sửa văn bản prompt. Bộ đếm ký tự chuyển lên phía trên.
+Khung hình và nút tạo được chuyển khỏi panel bên phải, không tạo CTA thứ hai.
+
+**CONFIRMED — sửa bố cục theo ảnh mẫu tiếp theo:** vùng ảnh phong cách mở rộng
+trong luồng bố cục, phía trên khung nhập, không nổi đè lên textarea. Giữ vùng này
+mở khi chọn phong cách hoặc nhập mô tả để người dùng xem ảnh và gõ đồng thời.
+Danh sách cuộn riêng; nút Phong cách, nút đóng và Escape vẫn đóng được vùng chọn.
+
+**CONFIRMED — tinh chỉnh tiếp theo:** ô mô tả gọn 3 dòng mặc định, vẫn resize dọc;
+ảnh phong cách có chuyển động phóng/dịch nhẹ, chậm. Dừng khi hover/focus thẻ,
+tắt theo prefers-reduced-motion; không thay đổi prompt hoặc phát sinh inference.
+
+**CONFIRMED — 08/11/2026:** theo phản hồi tiếp theo, rút textarea còn 2 dòng
+mặc định. Bấm chọn phong cách (kể cả chọn lại hoặc chọn không preset) tự đóng
+bảng và giữ chip đã chọn. Tăng hiệu ứng pan/zoom ảnh cho rõ hơn, chu kỳ 6–8 giây,
+không dừng khi hover/focus thẻ; vẫn tôn trọng prefers-reduced-motion.
+
+**CONFIRMED — bổ sung 08/11:** hover ảnh phong cách zoom thêm nhẹ trong khung,
+không phóng thẻ hoặc làm dịch bố cục. Khi mở bảng, tự căn vùng soạn dưới topbar
+và giới hạn chiều cao danh sách theo viewport để giữ ô nhập/CTA trong tầm nhìn;
+danh sách cuộn riêng, cập nhật khi resize và tôn trọng giảm chuyển động.
+
+**CONFIRMED — Khung hình cùng cách trình bày 08/11:** thay danh sách dọc hẹp
+bằng 6 thẻ tỷ lệ trong bảng rộng bằng khung nhập, 3 cột × 2 hàng. Hình khung
+phóng nhẹ khi hover/focus, giữ đúng tỷ lệ; dùng chung cơ chế tự căn/giới hạn
+chiều cao với Phong cách. Chọn tỷ lệ tự đóng bảng và cập nhật nút Khung hình.
+
 ### 6.1. Xử lý prompt mặc định
 
 **CONFIRMED — ngoại lệ local 04/11/2026:** theo yêu cầu trực tiếp của chủ dự án

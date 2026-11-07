@@ -118,7 +118,7 @@ try {
       await page.setViewportSize({ width, height: 900 });
       for (const route of accountRoutes) {
         await page.goto(origin + route);
-        await page.locator(".account-avatar").waitFor();
+        await page.locator(".account-menu__trigger .account-avatar").waitFor();
         const placement = await page.locator(".studio-topbar").evaluate((header: HTMLElement) => {
           const group = header.querySelector(".studio-topbar__right")!.getBoundingClientRect();
           return { actual: group.right, expected: header.getBoundingClientRect().right - parseFloat(getComputedStyle(header).paddingRight), overflow: document.documentElement.scrollWidth > innerWidth };
@@ -146,7 +146,7 @@ try {
   await page.getByRole("button", { name: "Lưu thay đổi", exact: true }).click();
   await page.getByText("Đã lưu hồ sơ.", { exact: true }).waitFor();
   await page.locator(".account-menu__name strong").getByText(updatedDisplayName, { exact: true }).waitFor();
-  assert.equal(await page.locator(".account-avatar").textContent(), "NA");
+  assert.equal(await page.locator(".account-menu__trigger .account-avatar").textContent(), "NA");
   assert.equal((await UserModel.findById(user._id))!.displayName, updatedDisplayName);
   const avatarFile = page.getByLabel("Thay ảnh avatar", { exact: true });
   await avatarFile.setInputFiles({ name: "invalid.svg", mimeType: "image/svg+xml", buffer: Buffer.from("<svg/>") });
@@ -156,16 +156,16 @@ try {
   assert.equal(avatarObjects.size, 0, "selecting a file must not upload it");
   await page.getByRole("button", { name: "Lưu ảnh đại diện", exact: true }).click();
   await page.getByText("Đã cập nhật ảnh đại diện.", { exact: true }).waitFor();
-  await page.locator(".account-avatar img").waitFor();
+  await page.locator(".account-menu__trigger .account-avatar img").waitFor();
   await page.waitForFunction(() => {
-    const image = document.querySelector(".account-avatar img") as HTMLImageElement;
+    const image = document.querySelector(".account-menu__trigger .account-avatar img") as HTMLImageElement;
     return image?.complete && image.naturalWidth > 0;
   });
   assert.equal(avatarObjects.size, 1);
   await page.reload();
   await page.waitForFunction(() => (document.querySelector("#settings-display-name") as HTMLInputElement)?.value === "Nguyễn Minh An");
   await page.screenshot({ path: resolve(output, "profile-settings-1280.png"), fullPage: true });
-  await page.locator(".account-avatar img").waitFor();
+  await page.locator(".account-menu__trigger .account-avatar img").waitFor();
   await page.setViewportSize({ width: 360, height: 900 });
   await page.screenshot({ path: resolve(output, "profile-settings-360.png"), fullPage: true });
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
@@ -361,12 +361,26 @@ try {
   }
   await page.setViewportSize({ width: 1280, height: 900 });
   const wide = page.getByRole("radio", { name: "16:9 Ngang", exact: true });
-  await wide.check();
+  const ratioTrigger = page.getByRole("button", { name: /^Khung hình/ });
+  const styleTrigger = page.getByRole("button", { name: "Phong cách", exact: true });
+  await ratioTrigger.click();
+  await wide.click();
+  await ratioTrigger.click();
   await wide.focus();
   await page.keyboard.press("ArrowRight");
   assert.equal(await page.getByRole("radio", { name: "9:16 Dọc", exact: true }).isChecked(), true);
-  await wide.check();
-  await page.getByLabel("Chủ đề / phong cách").selectOption("watercolor");
+  await wide.click();
+  await styleTrigger.click();
+  assert.equal(await page.locator(".style-card").count(), 8);
+  await page.keyboard.press("Escape");
+  for (const name of ["Sơn dầu", "3D", "Truyện tranh"]) {
+    if (await styleTrigger.getAttribute("aria-expanded") !== "true") await styleTrigger.click();
+    const option = page.getByRole("radio", { name, exact: true });
+    await option.click();
+    await page.getByLabel(`Phong cách đã chọn: ${name}`, { exact: true }).waitFor();
+  }
+  if (await styleTrigger.getAttribute("aria-expanded") !== "true") await styleTrigger.click();
+  await page.getByRole("radio", { name: "Màu nước", exact: true }).click();
   assert.equal(generationPosts, 0);
   await page.locator("#create-prompt").fill("Synthetic refresh regression; no inference");
   await page.getByRole("button", { name: "Tạo ảnh", exact: true }).click();
@@ -379,11 +393,11 @@ try {
   assert.equal(accepted.settings.style, "watercolor");
   assert.equal(accepted.originalPrompt, "Synthetic refresh regression; no inference");
   assert.match(accepted.submittedPrompt, /^Hand-painted watercolor illustration/);
-  assert.equal(await wide.isDisabled(), true);
+  assert.equal(await ratioTrigger.isDisabled(), true);
+  assert.equal(await styleTrigger.isDisabled(), true);
   await page.reload();
-  await page.getByRole("radio", { name: "16:9 Ngang", exact: true }).waitFor();
-  await page.waitForFunction(() => (document.querySelector('input[value="16:9"]') as HTMLInputElement)?.checked);
-  assert.equal(await page.getByLabel("Chủ đề / phong cách").inputValue(), "watercolor");
+  await page.getByRole("button", { name: /^Khung hình 16:9/ }).waitFor();
+  await page.getByLabel("Phong cách đã chọn: Màu nước", { exact: true }).waitFor();
   // Synthetic persisted result, not FLUX output: only tests FE terminal refresh.
   const syntheticResult = await ImageModel.create({
     userId: user._id, generationId: accepted._id, title: "Synthetic refresh fixture",

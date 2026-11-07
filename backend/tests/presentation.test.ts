@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import sharp from "sharp";
-import { padImageToRatio, applyImageStyle, ASPECT_RATIOS } from "../src/modules/generations/presentation.js";
+import { padImageToRatio, applyImageStyle, ASPECT_RATIOS, IMAGE_STYLES } from "../src/modules/generations/presentation.js";
 
 test("selected ratios preserve every original pixel and add centered white borders", async () => {
   // A varied pattern catches resampling/cropping that a solid-color fixture cannot.
@@ -29,4 +29,19 @@ test("style presets retain scene text and enforce the final prompt limit", () =>
   assert.match(applyImageStyle("A house", "watercolor"), /^Hand-painted watercolor illustration/);
   assert.ok(applyImageStyle("A house", "cinematic").endsWith("A house"));
   assert.throws(() => applyImageStyle("x".repeat(2048), "anime"));
+});
+
+test("every selectable preset preserves scene, applies once and enforces provider limit", () => {
+  const scene = "A boy riding a water buffalo while playing a flute in a rice field.";
+  assert.equal(IMAGE_STYLES.length, 9); // Eight visual styles plus no preset.
+  for (const style of IMAGE_STYLES.filter(value => value !== "none")) {
+    const submitted = applyImageStyle(scene, style);
+    assert.ok(submitted.length > scene.length);
+    assert.ok(submitted.endsWith(scene));
+    assert.equal(applyImageStyle(submitted, style), submitted);
+    assert.throws(() => applyImageStyle("x".repeat(2048), style));
+  }
+  assert.match(applyImageStyle(scene, "oil-painting"), /impasto brush strokes/);
+  assert.match(applyImageStyle(scene, "3d"), /3D render/);
+  assert.match(applyImageStyle(scene, "comic"), /bold ink outlines/);
 });

@@ -13,6 +13,9 @@ export const styleOptions = [
   { value: "photographic", label: "Ảnh chân thực" },
   { value: "illustration", label: "Minh họa" },
   { value: "anime", label: "Anime" },
+  { value: "oil-painting", label: "Sơn dầu" },
+  { value: "3d", label: "3D" },
+  { value: "comic", label: "Truyện tranh" },
 ] as const;
 export type AspectRatio = typeof aspectOptions[number]["value"];
 export type ImageStyle = typeof styleOptions[number]["value"];

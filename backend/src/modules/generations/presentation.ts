@@ -3,7 +3,7 @@ import { AppError } from "../../errors/app-error.js";
 import { WATERCOLOR_DIRECTION } from "../../providers/prompt-translation.js";
 
 export const ASPECT_RATIOS = ["auto", "1:1", "16:9", "9:16", "4:3", "3:4"] as const;
-export const IMAGE_STYLES = ["none", "watercolor", "cinematic", "photographic", "illustration", "anime"] as const;
+export const IMAGE_STYLES = ["none", "watercolor", "cinematic", "photographic", "illustration", "anime", "oil-painting", "3d", "comic"] as const;
 export type Presentation = { aspectRatio: typeof ASPECT_RATIOS[number]; style: typeof IMAGE_STYLES[number] };
 export const DEFAULT_PRESENTATION: Presentation = { aspectRatio: "auto", style: "none" };
 const directions: Record<Presentation["style"], string> = {
@@ -12,6 +12,9 @@ const directions: Record<Presentation["style"], string> = {
   photographic: "Photographic style, realistic textures and depth. ",
   illustration: "Hand-drawn storybook illustration, expressive lines and painted colors. ",
   anime: "Anime illustration, expressive line art and cel shading. ",
+  "oil-painting": "Oil painting on canvas, rich layered pigments, visible impasto brush strokes and painterly edges throughout the scene. ",
+  "3d": "Stylized 3D render, sculpted forms, dimensional materials, soft global illumination and ambient occlusion. ",
+  comic: "Comic book illustration, bold ink outlines, expressive panels of color, halftone shading and dynamic composition, without added text or speech bubbles. ",
 };
 export function applyImageStyle(prompt: string, style: Presentation["style"]): string {
   const direction = directions[style];

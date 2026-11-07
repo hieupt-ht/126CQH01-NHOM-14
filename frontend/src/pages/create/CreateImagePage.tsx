@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type RefObject } from "react";
 import { aspectOptions, styleOptions, type AspectRatio, type ImageStyle } from "../../domain/generationOptions";
+import StylePicker, { StyleArtwork } from "../../components/create/StylePicker";
 import DashboardLayout from "../../layouts/DashboardLayout";
 import Icon from "../../components/ui/Icon";
 import StudioHero from "../../components/dashboard/StudioHero";
@@ -56,6 +57,8 @@ function PromptEditor({
   onExamples,
   error,
   locked,
+  style, onStyle,
+  aspectRatio, onAspectRatio, state, onGenerate, disabled,
 }: {
   prompt: string;
   onPrompt: (value: string) => void;
@@ -63,10 +66,81 @@ function PromptEditor({
   onExamples: () => void;
   error: string;
   locked: boolean;
+  style: ImageStyle;
+  onStyle: (value: ImageStyle) => void;
+  aspectRatio: AspectRatio;
+  onAspectRatio: (value: AspectRatio) => void;
+  state: GenerationState;
+  onGenerate: () => void;
+  disabled: boolean;
 }) {
+  const [picker, setPicker] = useState<"style" | "ratio" | null>(null);
+  const composer = useRef<HTMLElement>(null);
+  const panel = useRef<HTMLDivElement>(null);
+  const styleTrigger = useRef<HTMLButtonElement>(null);
+  const ratioTrigger = useRef<HTMLButtonElement>(null);
+  const busy = ["queued", "processing", "saving"].includes(state);
+  const closePicker = () => {
+    setPicker(null);
+    (picker === "style" ? styleTrigger : ratioTrigger).current?.focus();
+  };
+  useEffect(() => {
+    if (!picker || locked) { setPicker(null); return; }
+    const host = composer.current;
+    const pickerPanel = panel.current;
+    if (!host || !pickerPanel) return;
+    const viewport = window.visualViewport;
+    const viewportEdges = () => ({
+      top: Math.max(viewport?.offsetTop ?? 0, document.querySelector(".studio-topbar")?.getBoundingClientRect().bottom ?? 0) + 12,
+      bottom: (viewport?.offsetTop ?? 0) + (viewport?.height ?? window.innerHeight) - 12,
+    });
+    const fitPanel = () => {
+      const edges = viewportEdges();
+      const otherHeight = host.getBoundingClientRect().height - pickerPanel.getBoundingClientRect().height;
+      // Reserve space for the prompt and toolbar; scroll only the choices when needed.
+      const height = Math.min(pickerPanel.scrollHeight + 2, Math.max(160, edges.bottom - edges.top - otherHeight));
+      const maxHeight = `${Math.floor(height)}px`;
+      if (pickerPanel.style.maxHeight !== maxHeight) pickerPanel.style.maxHeight = maxHeight;
+    };
+    const revealComposer = () => {
+      fitPanel();
+      const box = host.getBoundingClientRect();
+      const edges = viewportEdges();
+      if (box.top < edges.top || box.bottom > edges.bottom) {
+        window.scrollBy({ top: box.top - edges.top, behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+      }
+    };
+    pickerPanel.querySelector<HTMLInputElement>('input:checked')?.focus({ preventScroll: true });
+    const frame = requestAnimationFrame(revealComposer);
+    const observer = new ResizeObserver(fitPanel);
+    observer.observe(host);
+    window.addEventListener("resize", revealComposer);
+    viewport?.addEventListener("resize", revealComposer);
+    const outside = (event: PointerEvent) => {
+      if (event.target instanceof Node && !composer.current?.contains(event.target)) setPicker(null);
+    };
+    const escape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        setPicker(null);
+        (picker === "style" ? styleTrigger : ratioTrigger).current?.focus();
+      }
+    };
+    document.addEventListener("pointerdown", outside);
+    document.addEventListener("keydown", escape);
+    return () => {
+      cancelAnimationFrame(frame);
+      observer.disconnect();
+      window.removeEventListener("resize", revealComposer);
+      viewport?.removeEventListener("resize", revealComposer);
+      document.removeEventListener("pointerdown", outside);
+      document.removeEventListener("keydown", escape);
+    };
+  }, [picker, locked]);
   return (
     <section
       className="create-card create-prompt"
+      ref={composer}
       aria-labelledby="prompt-title"
     >
       <div className="create-card__heading">
@@ -82,11 +156,31 @@ function PromptEditor({
             </p>
           </div>
         </div>
-        <span className="create-card__label">PROMPT</span>
+        <span className="create-prompt__count">{prompt.length}/{MAX_PROMPT_LENGTH} ký tự</span>
       </div>
+        {picker && <div ref={panel} id={picker === "style" ? "create-style-popover" : "create-ratio-popover"} className={`create-picker-popover create-picker-popover--${picker}`} role="region" aria-label={picker === "style" ? "Chọn phong cách" : "Chọn khung hình"}
+          onKeyDown={event => { if (event.key === "Enter") { event.preventDefault(); closePicker(); } }}>
+          <div className="create-picker-popover__header"><strong>{picker === "style" ? "Chọn phong cách" : "Tỷ lệ khung hình"}</strong><button type="button" className="studio-icon-button" aria-label="Đóng bảng chọn" onClick={closePicker}><Icon name="close" size={16} /></button></div>
+          {picker === "style" ? <StylePicker value={style} onChange={onStyle} disabled={locked} onCommit={closePicker} /> :
+            <fieldset className="create-ratio-menu" disabled={locked}><legend className="sr-only">Khung hình</legend>
+              {aspectOptions.map(option => <label key={option.value}>
+                <input type="radio" name="aspectRatio" value={option.value} checked={aspectRatio === option.value} onChange={event => { onAspectRatio(option.value); if ((event.nativeEvent as MouseEvent).detail > 0) closePicker(); }} onClick={event => { if (event.detail > 0 && aspectRatio === option.value) closePicker(); }} />
+                <span className="create-ratio-menu__preview" aria-hidden="true"><span className="create-ratio__shape" style={{ aspectRatio: option.ratio, width: option.value === "9:16" ? 26 : option.value === "3:4" ? 34 : 44 }} /></span>
+                <span>{option.value === "auto" ? "Ảnh gốc" : option.value} <small>{option.value === "auto" ? "Tự động" : option.label}</small></span>
+                {aspectRatio === option.value && <Icon name="check" size={15} />}
+              </label>)}
+              <p>Giữ toàn bộ ảnh, thêm viền trắng để vừa tỷ lệ đã chọn.</p>
+            </fieldset>}
+        </div>}
       <label className="sr-only" htmlFor="create-prompt">
         Mô tả hình ảnh muốn tạo
       </label>
+      <div className="create-prompt__input">
+      {style !== "none" && <div className="create-style-chip" aria-label={`Phong cách đã chọn: ${styleOptions.find(option => option.value === style)?.label}`}>
+        <StyleArtwork style={style} />
+        <strong>{styleOptions.find(option => option.value === style)?.label}</strong>
+        <button type="button" aria-label="Bỏ phong cách đã chọn" disabled={locked} onClick={() => onStyle("none")}><Icon name="close" size={14} /></button>
+      </div>}
       <textarea
         ref={inputRef}
         id="create-prompt"
@@ -96,21 +190,34 @@ function PromptEditor({
         placeholder="Ví dụ: Một căn phòng tối giản với cửa sổ lớn nhìn ra cực quang, ánh sáng xanh tím dịu..."
         aria-describedby={error ? "create-prompt-error" : "create-prompt-note"}
         aria-invalid={Boolean(error)}
-        rows={6}
+        rows={2}
       />
+      </div>
       <div className="create-prompt__footer">
+        <div className="create-prompt__tools">
         <button
           type="button"
           className="studio-button studio-button--subtle create-example-button"
-          onClick={onExamples}
+          onClick={() => { setPicker(null); onExamples(); }}
           disabled={locked}
         >
           <Icon name="book" size={15} />
           Ví dụ
         </button>
-        <span className="create-prompt__count">
-          {prompt.length}/{MAX_PROMPT_LENGTH} ký tự
-        </span>
+        <button ref={styleTrigger} type="button" className="studio-button studio-button--subtle create-example-button" disabled={locked}
+          aria-expanded={picker === "style"} aria-controls="create-style-popover" onClick={() => setPicker(picker === "style" ? null : "style")}>
+          <Icon name="image" size={15} />Phong cách<Icon name="chevron" size={13} />
+        </button>
+        <button ref={ratioTrigger} type="button" className="studio-button studio-button--subtle create-example-button" disabled={locked}
+          aria-expanded={picker === "ratio"} aria-controls="create-ratio-popover" onClick={() => setPicker(picker === "ratio" ? null : "ratio")}>
+          <Icon name="grid" size={15} />Khung hình <span>{aspectRatio === "auto" ? "Gốc" : aspectRatio}</span><Icon name="chevron" size={13} />
+        </button>
+        </div>
+        <button type="button" className="studio-button studio-button--primary create-compose-submit" onClick={onGenerate} disabled={disabled} aria-busy={busy}>
+          {busy ? <span className="create-spinner" aria-hidden="true" /> : <Icon name="sparkles" size={17} />}
+          {busy ? "Đang xử lý…" : "Tạo ảnh"}
+        </button>
+
       </div>
       {error ? (
         <p
@@ -134,24 +241,10 @@ function PromptEditor({
 }
 
 function GenerationPanel({
-  state,
-  onGenerate,
-  disabled,
   usage,
-  aspectRatio, style, onAspectRatio, onStyle, locked,
 }: {
-  state: GenerationState;
-  onGenerate: () => void;
-  disabled: boolean;
   usage: UsageRecord | null;
-  aspectRatio: AspectRatio;
-  style: ImageStyle;
-  onAspectRatio: (value: AspectRatio) => void;
-  onStyle: (value: ImageStyle) => void;
-  locked: boolean;
 }) {
-  const busy =
-    state === "queued" || state === "processing" || state === "saving";
   return (
     <aside
       className="create-card create-generation"
@@ -162,12 +255,12 @@ function GenerationPanel({
           <span className="create-card__icon">
             <Icon name="sparkles" size={17} />
           </span>
-          <h2 id="generation-title">Thiết lập tạo ảnh</h2>
+          <h2 id="generation-title">Thông tin tạo ảnh</h2>
         </div>
         <span className="create-card__label">FLUX</span>
       </div>
       <p className="create-generation__intro">
-        Chọn khung hình và phong cách cho ý tưởng của bạn.
+        Chọn phong cách và khung hình ngay dưới ô mô tả, rồi nhấn Tạo ảnh để bắt đầu.
       </p>
       <div className="create-generation__field">
         <span>Model</span>
@@ -177,46 +270,12 @@ function GenerationPanel({
           <span className="create-readonly__dot" />
         </div>
       </div>
-      <fieldset className="create-ratios" disabled={locked}>
-        <legend>Khung hình</legend>
-        <div className="create-ratios__grid">
-          {aspectOptions.map(option => <label key={option.value} className={`create-ratio ${aspectRatio === option.value ? "create-ratio--selected" : ""}`}>
-            <input type="radio" name="aspectRatio" value={option.value} checked={aspectRatio === option.value}
-              onChange={() => onAspectRatio(option.value)} />
-            <span className="create-ratio__shape" aria-hidden="true" style={{ aspectRatio: option.ratio, width: option.value === "9:16" ? 14 : option.value === "3:4" ? 18 : 25 }} />
-            <strong>{option.value === "auto" ? "Gốc" : option.value}</strong><small>{option.label}</small>
-          </label>)}
-        </div>
-        <p>Giữ toàn bộ ảnh, thêm viền trắng để vừa tỷ lệ đã chọn.</p>
-      </fieldset>
-      <div className="create-style">
-        <label htmlFor="create-style">Chủ đề / phong cách <span>Tùy chọn</span></label>
-        <select id="create-style" value={style} onChange={event => onStyle(event.target.value as ImageStyle)} disabled={locked}>
-          {styleOptions.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
-        </select>
-        <p>Phong cách được áp dụng khi tạo ảnh. Chọn “Theo mô tả của tôi” để dùng ý tưởng tự do.</p>
-      </div>
       <div className="create-generation__note">
         <Icon name="shield" size={17} />
         <p>
           {usage ? `Còn ${usage.remainingToday} lượt tạo hôm nay.` : "Đang tải lượt tạo…"}
         </p>
       </div>
-      <button
-        type="button"
-        className="studio-button studio-button--primary create-generation__submit"
-        onClick={onGenerate}
-        disabled={disabled}
-        aria-busy={busy}
-      >
-        {busy ? (
-          <span className="create-spinner" aria-hidden="true" />
-        ) : (
-          <Icon name="sparkles" size={17} />
-        )}
-        {busy ? "Đang xử lý..." : "Tạo ảnh"}
-        {!busy && <Icon name="arrow" size={17} />}
-      </button>
     </aside>
   );
 }
@@ -554,6 +613,10 @@ export default function CreateImagePage() {
         <CreateHero />
         <div className="create-workspace">
           <PromptEditor
+            aspectRatio={aspectRatio} onAspectRatio={setAspectRatio}
+            state={state} onGenerate={() => { void generate(); }}
+            disabled={posting || active || state === "not_found" || !profile.data}
+            style={style} onStyle={setStyle}
             prompt={prompt}
             onPrompt={(value) => {
               setPrompt(value);
@@ -565,13 +628,6 @@ export default function CreateImagePage() {
             locked={posting || active || Boolean(pending.current)}
           />
           <GenerationPanel
-            aspectRatio={aspectRatio} style={style} onAspectRatio={setAspectRatio} onStyle={setStyle}
-            locked={posting || active || Boolean(pending.current)}
-            state={state}
-            onGenerate={() => {
-              void generate();
-            }}
-            disabled={posting || active || state === "not_found" || !profile.data}
             usage={usage.data}
           />
         {job?.status === "succeeded" && job.imageId ? (

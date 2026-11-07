@@ -70,7 +70,19 @@ tiếp, thay phần hoãn các control này trong tài liệu cũ.
 
 - `POST /api/v1/generations` nhận `{prompt, aspectRatio?, style?}`. Tỷ lệ:
   `auto` (mặc định), `1:1`, `16:9`, `9:16`, `4:3`, `3:4`. Chủ đề/phong cách:
-  `none` (mặc định), `watercolor`, `cinematic`, `photographic`, `illustration`, `anime`.
+  `none` (mặc định), `watercolor`, `cinematic`, `photographic`, `illustration`, `anime`,
+  `oil-painting`, `3d`, `comic`. **CONFIRMED 07/11/2026:** chủ dự án bổ sung Sơn dầu,
+  3D, Truyện tranh và chuyển bộ chọn xuống dưới ô mô tả: 8 thẻ có ảnh minh họa,
+  desktop 4 cột × 2 hàng, mobile 2 cột; `none` là radio riêng. Ảnh thẻ là reference/demo,
+  không phải kết quả prompt. Chọn thẻ không gọi API; style vẫn đi trong payload hiện có,
+  khôi phục/khóa cùng pending request và job. Ba preset mới thêm chỉ dẫn tiếng Anh
+  tương ứng trên backend trước kiểm tra độ dài/quota, không đổi model hoặc thêm inference.
+  Cập nhật UI tiếp theo cùng ngày: bảng phong cách/khung hình mở từ thanh công cụ
+  cạnh Ví dụ; phong cách hiện thành thẻ ảnh trong khung nhập, không sửa prompt gốc.
+  Một CTA Tạo ảnh chuyển về thanh này, bộ đếm lên góc trên; không đổi payload API.
+  Theo ảnh mẫu cập nhật, bảng phong cách là vùng mở rộng phía trên khung nhập,
+  đẩy bố cục thay vì overlay textarea, giữ mở trong lúc chọn/gõ. Đây chỉ là thay
+  đổi bố cục/focus; không phát sinh request khi chọn hoặc nhập.
   Field lạ, enum sai và số lượng ảnh đều bị từ chối400.
 - Job DTO trả `aspectRatio` và `style`; record cũ thiếu settings tương ứng đọc
   thành `auto`/`none`. Lưu lựa chọn trong `generations.settings` hiện có, không
