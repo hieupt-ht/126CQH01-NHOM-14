@@ -1,10 +1,10 @@
 .register-page .register-showcase h1 span {
-  color: var(--accent-cyan);
+  color: var(--artwork-accent);
 }
 
 .register-panel {
   min-height: 0;
-  overflow: hidden;
+  overflow-y: auto;
 }
 
 .register-card {
@@ -61,8 +61,17 @@
   cursor: wait;
 }
 
+.register-card .register-login {
+  justify-content: flex-start;
+  margin-top: 12px;
+  font-size: 12px;
+}
+
 .register-login-link {
-  text-decoration: none;
+  color: var(--accent-primary-hover);
+  font-weight: 650;
+  text-decoration: underline;
+  text-underline-offset: 3px;
   transition: color var(--transition-fast);
 }
 
