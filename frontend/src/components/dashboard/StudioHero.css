@@ -8,6 +8,12 @@
 .studio-hero h1 span { color: var(--text-accent); }
 .studio-hero__content > p { max-width: 420px; margin: 0; color: var(--text-secondary); font-size: 13px; line-height: 1.8; }
 .studio-hero__caption { position: absolute; right: 10px; bottom: 8px; padding: 3px 6px; color: var(--artwork-text); background: var(--artwork-overlay); border-radius: var(--radius-sm); font-size: 9px; letter-spacing: .6px; pointer-events: none; }
+:root[data-theme="light"] .studio-hero { display: grid; grid-template-columns: 1fr 1fr; align-items: center; background: var(--gradient-hero); }
+:root[data-theme="light"] .studio-hero__content { grid-column: 1; grid-row: 1; width: 100%; }
+:root[data-theme="light"] .studio-hero__art { position: relative; grid-column: 2; grid-row: 1; width: calc(100% - 32px); min-width: 0; margin: 16px; right: auto; top: auto; transform: none; border-radius: var(--radius-lg); }
+/* Match the animated canvas to the artwork without washing out either layer. */
+:root[data-theme="light"] .studio-hero > .artwork-motion { border-radius: var(--radius-lg); }
+:root[data-theme="light"] .studio-hero__blend { display: none; }
 @media (min-width: 1700px) { .studio-hero { min-height: 320px; } .studio-hero__content { padding: 35px; } .studio-hero h1 { font-size: 50px; } }
 @media (max-width: 1100px) { .studio-hero__content { width: 72%; padding: 24px; } .studio-hero__art { right: -70px; } }
 @media (max-width: 767px) {
@@ -17,4 +23,7 @@
   .studio-hero__content { width: 100%; padding: 24px 20px 36px; }
   .studio-hero h1 { font-size: clamp(28px, 7.7vw, 36px); }
   .studio-hero__content > p { max-width: 90%; font-size: 12px; }
+  :root[data-theme="light"] .studio-hero { grid-template-columns: 1fr; }
+  :root[data-theme="light"] .studio-hero__art { grid-column: 1; grid-row: 2; margin: 0 16px 36px; }
+  :root[data-theme="light"] .studio-hero__content { padding-bottom: 20px; }
 }
