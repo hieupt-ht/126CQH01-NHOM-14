@@ -1,0 +1,2 @@
+.artwork-motion { position: absolute; z-index: -2; pointer-events: none; opacity: 0; transition: opacity var(--transition-slow); }
+@media (prefers-reduced-motion: reduce) { .artwork-motion { transition: none; } }
