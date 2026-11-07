@@ -7,7 +7,7 @@ import UsageCard from "../components/dashboard/UsageCard";
 import Brand from "../components/dashboard/Brand";
 import Icon from "../components/ui/Icon";
 import ProfileAvatar from "../components/ui/ProfileAvatar";
-import { useTheme } from "../services/theme";
+import ThemeToggle from "../components/ui/ThemeToggle";
 import "./DashboardLayout.css";
 
 type Props = {
@@ -159,7 +159,6 @@ export default function DashboardLayout({
   usageRefreshKey = 0,
   profileRefreshKey = 0,
 }: Props) {
-  const { theme, toggleTheme } = useTheme();
   const usage = useResource<UsageRecord>("/usage/me", usageRefreshKey);
   const stats = useResource<StatsRecord>("/stats/me", usageRefreshKey);
   const [user, setUser] = useState<UserProfile | null>(null);
@@ -275,11 +274,7 @@ export default function DashboardLayout({
             </div>
           )}
           <div className="studio-topbar__right">
-            <button type="button" className="studio-icon-button" onClick={toggleTheme}
-              aria-label={theme === "dark" ? "Chuyển sang chế độ sáng" : "Chuyển sang chế độ tối"}
-              title={theme === "dark" ? "Chế độ sáng" : "Chế độ tối"}>
-              <Icon name={theme === "dark" ? "sun" : "moon"} />
-            </button>
+            <ThemeToggle />
             <span className="preview-badge">
               <span className="status-dot" />
               {UI_PREVIEW ? "XEM THỬ UI" : "FLUX STUDIO"}
@@ -298,17 +293,25 @@ export default function DashboardLayout({
                 <Icon name="chevron" size={16} />
               </summary>
               <div className="account-menu__panel">
-                <strong>Chào mừng đến FLUX STUDIO</strong>
-                <p>{user?.email}</p>
-                <a href="/app/settings">Cài đặt tài khoản</a>
+                <div className="account-menu__identity">
+                  <ProfileAvatar className="account-avatar account-menu__avatar" displayName={user?.displayName ?? null} avatarUrl={user?.avatarUrl} />
+                  <div className="account-menu__identity-text">
+                    <strong title={user?.displayName}>{user?.displayName ?? "Tài khoản"}</strong>
+                    <p title={user?.email}>{user?.email}</p>
+                  </div>
+                </div>
+                <div className="account-menu__actions">
+                <a className="account-menu__action" href="/app/settings"><Icon name="settings" size={18} /> Cài đặt tài khoản</a>
                 <button
-                  className="studio-button studio-button--subtle"
+                  className="account-menu__action account-menu__logout"
                   disabled={loggingOut}
                   onClick={logout}
                 >
+                  <Icon name="arrow" size={18} />
                   {loggingOut ? "Đang đăng xuất…" : "Đăng xuất"}
                 </button>
-                {accountError && <p role="alert">{accountError}</p>}
+                </div>
+                {accountError && <p className="account-menu__error" role="alert">{accountError}</p>}
               </div>
             </details>
           </div>

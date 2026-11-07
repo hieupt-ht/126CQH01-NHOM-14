@@ -1,5 +1,5 @@
 .studio-shell { min-height: 100vh; font-size: 14px; line-height: 1.5; }
-.skip-link { position: fixed; top: -80px; left: 20px; z-index: 100; padding: 12px 20px; background: var(--accent-primary); border-radius: var(--radius-md); }
+.skip-link { position: fixed; top: -80px; left: 20px; z-index: 100; padding: 12px 20px; background: var(--accent-primary); color: var(--text-on-primary); border-radius: var(--radius-md); }
 .skip-link:focus { top: 12px; }
 .studio-sidebar { position: fixed; inset: 0 auto 0 0; z-index: 30; width: 248px; overflow-y: auto; display: flex; flex-direction: column; background: var(--gradient-sidebar); border-right: 1px solid var(--border-subtle); }
 .studio-sidebar__brand { padding: 30px 24px 35px; }
@@ -19,9 +19,9 @@
 .inspiration-card p { margin: 0 0 20px; font-size: 11px; line-height: 1.8; color: var(--text-secondary); }
 .studio-button { display: inline-flex; justify-content: center; align-items: center; gap: 9px; min-height: 40px; padding: 10px 14px; border: 1px solid var(--border-primary); border-radius: var(--radius-md); font-size: 12px; font-weight: 600; transition: box-shadow var(--transition-normal), background var(--transition-normal), transform var(--transition-normal); }
 .studio-button--primary { color: var(--text-on-primary); background: var(--gradient-primary); border: 0; box-shadow: var(--shadow-button); }
-.studio-button--primary:hover { box-shadow: var(--glow-neon); transform: translateY(-1px); }
+.studio-button--primary:not(:disabled):hover { box-shadow: var(--glow-neon); transform: translateY(-1px); }
 .studio-button--subtle { color: var(--text-secondary); background: var(--surface-secondary); border-color: var(--border-secondary); }
-.studio-button--subtle:hover { color: var(--text-primary); background: var(--surface-hover); }
+.studio-button--subtle:not(:disabled):hover { color: var(--text-primary); background: var(--surface-hover); }
 .inspiration-card .studio-button { width: 100%; font-size: 11px; padding-inline: 8px; }
 .usage-card { margin-top: 16px; padding: 17px 15px; border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); background: var(--bg-primary); }
 .usage-card__heading { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; font-weight: 600; }
@@ -50,9 +50,20 @@
 .account-menu__name strong { font-size: 11px; font-weight: 500; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .account-menu__name small { width: fit-content; color: var(--text-secondary); background: var(--surface-secondary); border-radius: 4px; font-size: 9px; padding: 1px 5px; }
 .account-menu__trigger > svg { margin-left: 10px; color: var(--text-secondary); }
-.account-menu__panel { position: absolute; right: 0; top: calc(100% + 17px); width: 270px; padding: 18px; background: var(--surface-elevated); border: 1px solid var(--border-primary); border-radius: var(--radius-lg); box-shadow: var(--shadow-card); }
-.account-menu__panel strong { font-size: 12px; }
-.account-menu__panel p { color: var(--text-secondary); font-size: 12px; line-height: 1.7; margin: 8px 0 0; }
+.account-menu__panel { position: absolute; right: 0; top: calc(100% + 17px); width: min(290px, calc(100vw - 32px)); padding: 8px; background: var(--surface-elevated); border: 1px solid var(--border-secondary); border-radius: var(--radius-lg); box-shadow: var(--shadow-card); }
+.account-menu__identity { display: flex; align-items: center; gap: 12px; padding: 12px 10px 16px; border-bottom: 1px solid var(--border-subtle); }
+.account-menu__avatar { flex: 0 0 40px; width: 40px; height: 40px; }
+.account-menu__identity-text { min-width: 0; }
+.account-menu__identity-text strong, .account-menu__identity-text p { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.account-menu__identity-text strong { color: var(--text-primary); font-size: 13px; }
+.account-menu__identity-text p { margin: 3px 0 0; color: var(--text-secondary); font-size: 12px; }
+.account-menu__actions { display: grid; gap: 2px; padding-top: 8px; }
+.account-menu__action { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 42px; padding: 10px; border: 0; border-radius: var(--radius-md); background: transparent; color: var(--text-primary); text-align: left; text-decoration: none; font-size: 13px; font-weight: 500; transition: background var(--transition-fast), color var(--transition-fast); }
+.account-menu__action svg { flex-shrink: 0; color: var(--text-secondary); }
+.account-menu__action:not(:disabled):hover { background: var(--surface-hover); }
+.account-menu__action:focus-visible { outline: 2px solid var(--border-focus); outline-offset: -2px; }
+.account-menu__action:disabled { opacity: .6; cursor: wait; }
+.account-menu__error { margin: 8px 10px; color: var(--danger); font-size: 12px; overflow-wrap: anywhere; }
 .studio-main { max-width: 1640px; margin-inline: auto; padding: 24px 30px 34px; }
 .studio-icon-button { display: inline-grid; place-items: center; min-width: 34px; min-height: 34px; padding: 6px; color: var(--text-secondary); border: 0; border-radius: var(--radius-sm); background: var(--bg-navbar); }
 .studio-icon-button:hover { color: var(--text-primary); background: var(--surface-hover); }
@@ -91,7 +102,7 @@
   .account-avatar { width: 32px; height: 32px; }
   .studio-footer { padding: 18px 16px; flex-direction: column; gap: 5px; font-size: 9px; }
   .studio-search input { font-size: 10px; }
-  .account-menu__panel { right: -2px; width: 260px; }
+  .account-menu__panel { right: -2px; }
 }
 
 .usage-card__metrics { display: grid; gap: 9px; margin: 14px 0 0; }
