@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type RefObject } from "react";
 import { aspectOptions, styleOptions, type AspectRatio, type ImageStyle } from "../../domain/generationOptions";
 import DashboardLayout from "../../layouts/DashboardLayout";
 import Icon from "../../components/ui/Icon";
-import ReferenceArtwork from "../../components/dashboard/ReferenceArtwork";
+import StudioHero from "../../components/dashboard/StudioHero";
 import { MAX_PROMPT_LENGTH, validatePrompt } from "../../domain/prompt";
 import "./CreateImagePage.css";
 import {
@@ -38,34 +38,14 @@ const promptExamples = [
 
 function CreateHero() {
   return (
-    <section className="create-hero" aria-labelledby="create-page-title">
-      <div className="create-hero__copy">
-        <span className="section-eyebrow">AI IMAGE STUDIO</span>
-        <h1 id="create-page-title">
+    <StudioHero id="create-page-title" eyebrow="AI IMAGE STUDIO" title={<>
           Biến ý tưởng của bạn
           <br />
           <span>thành hình ảnh.</span>
-        </h1>
-        <p>
+        </>} description={<>
           Mô tả điều bạn đang hình dung. FLUX STUDIO sẽ giúp bạn bắt đầu từ một
           khung hình đầy cảm hứng.
-        </p>
-      </div>
-      <ReferenceArtwork
-        region={{ x: 788, y: 72, width: 391, height: 283 }}
-        label="Ảnh minh họa không gian sáng tạo AI"
-        className="create-hero__art"
-        loading="eager"
-      />
-      <span
-        className="create-hero__orb create-hero__orb--one"
-        aria-hidden="true"
-      />
-      <span
-        className="create-hero__orb create-hero__orb--two"
-        aria-hidden="true"
-      />
-    </section>
+        </>} />
   );
 }
 

@@ -1,4 +1,5 @@
 import reference from '../../assets/reference/dashboard-reference.jpg';
+import './ReferenceArtwork.css';
 export type ArtworkRegion = { x: number; y: number; width: number; height: number };
 
 // CSS shows only artwork regions from the supplied reference. Replace with

@@ -1,0 +1,2 @@
+.reference-art { position: relative; overflow: hidden; background: var(--surface-secondary); }
+.reference-art > img { display: block; position: absolute; height: auto; pointer-events: none; user-select: none; }

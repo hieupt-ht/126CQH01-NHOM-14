@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import Brand from "../../components/dashboard/Brand";
 import Icon from "../../components/ui/Icon";
+import ArtworkMotion from "../../components/ui/ArtworkMotion";
+import ThemeToggle from "../../components/ui/ThemeToggle";
 import loginArtwork from "../../assets/auth/login-aurora.png";
 import "./LoginPage.css";
 import "./RegisterPage.css";
@@ -142,6 +144,7 @@ export default function RegisterPage() {
           alt=""
           fetchPriority="high"
         />
+        <ArtworkMotion variant="auth" />
         <div className="login-showcase__scrim" aria-hidden="true" />
 
         <div className="login-showcase__brand">
@@ -190,6 +193,7 @@ export default function RegisterPage() {
         aria-labelledby="register-title"
       >
         <div className="login-panel__topbar">
+          <ThemeToggle />
           <span className="login-preview">
             <span />
             FLUX STUDIO
@@ -213,6 +217,13 @@ export default function RegisterPage() {
               Tham gia FLUX STUDIO và bắt đầu biến những ý tưởng thành hình ảnh.
             </p>
           </header>
+
+          <div className="login-register register-login">
+            <span>Đã có tài khoản?</span>
+            <a className="login-register__upcoming register-login-link" href="/login">
+              Đăng nhập
+            </a>
+          </div>
 
           <form
             className="register-form"
@@ -298,16 +309,6 @@ export default function RegisterPage() {
               </div>
             )}
           </form>
-
-          <div className="login-register">
-            <span>Đã có tài khoản?</span>
-            <a
-              className="login-register__upcoming register-login-link"
-              href="/login"
-            >
-              Đăng nhập
-            </a>
-          </div>
 
           <div className="login-card__closing">
             <span />
