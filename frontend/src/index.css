@@ -3,8 +3,20 @@
 
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; scroll-padding-top: 100px; }
-body { margin: 0; min-width: 320px; background: var(--bg-primary); color: var(--text-primary); }
-button, input, textarea { font: inherit; }
+body { margin: 0; min-width: 320px; background: var(--bg-primary); color: var(--text-primary); font-family: var(--font-sans); font-size: 14px; line-height: 1.6; }
+button, input, textarea, select { font: inherit; }
+h1, h2, h3, h4 { font-weight: 650; text-wrap: balance; }
+button { color: inherit; }
+input, textarea { caret-color: var(--text-primary); }
+input::placeholder, textarea::placeholder { opacity: 1; }
+select, option { color: var(--text-primary); background-color: var(--surface-input); }
+input::file-selector-button { margin-right: 12px; padding: 8px 12px; border: 1px solid var(--border-primary); border-radius: var(--radius-sm); background: var(--surface-secondary); color: var(--text-primary); font: inherit; cursor: pointer; }
+.studio-button:disabled, .login-submit:disabled, .settings-save:disabled { opacity: 1; background: var(--surface-secondary); color: var(--text-secondary); border: 1px solid var(--border-secondary); box-shadow: none; transform: none; }
+.create-spinner, .settings-spinner { border-color: currentColor; border-right-color: transparent; }
+.studio-shell :is(.section-eyebrow, .history-status--saving) { color: var(--accent-label); }
+/* Keep secondary metadata legible and use one family throughout all routes. */
+.studio-shell :is(.create-card__label, .create-result__state, .create-generation__footnote, .generation-panel__footnote, .creation-card__tag, .detail-meta dt, .history-drawer__metadata dt, .library-image-card__body time, .history-table th) { font-size: 10px; }
+.studio-shell :is(.create-card__heading p, .create-prompt__note, .create-message, .create-result__empty p, .create-result__copy p, .history-state p, .detail-state p, .library-state p) { font-size: 12px; }
 button, a, input, textarea { -webkit-tap-highlight-color: var(--border-subtle); }
 button { cursor: pointer; }
 button:disabled { cursor: not-allowed; }
