@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import Brand from "../../components/dashboard/Brand";
 import Icon from "../../components/ui/Icon";
+import ArtworkMotion from "../../components/ui/ArtworkMotion";
+import ThemeToggle from "../../components/ui/ThemeToggle";
 import loginArtwork from "../../assets/auth/login-aurora.png";
 import "./LoginPage.css";
 import { api } from "../../services/api";
@@ -92,6 +94,7 @@ export default function LoginPage() {
           alt=""
           fetchPriority="high"
         />
+        <ArtworkMotion variant="auth" />
         <div className="login-showcase__scrim" aria-hidden="true" />
 
         <div className="login-showcase__brand">
@@ -137,6 +140,7 @@ export default function LoginPage() {
 
       <section className="login-panel" aria-labelledby="login-title">
         <div className="login-panel__topbar">
+          <ThemeToggle />
           <span className="login-preview">
             <span />
             FLUX STUDIO
