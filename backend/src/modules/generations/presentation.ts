@@ -3,7 +3,7 @@ import { AppError } from "../../errors/app-error.js";
 import { WATERCOLOR_DIRECTION } from "../../providers/prompt-translation.js";
 
 export const ASPECT_RATIOS = ["auto", "1:1", "16:9", "9:16", "4:3", "3:4"] as const;
-export const IMAGE_STYLES = ["none", "watercolor", "cinematic", "photographic", "illustration", "anime"] as const;
+export const IMAGE_STYLES = ["none", "watercolor", "cinematic", "photographic", "illustration", "anime", "oil-painting", "3d", "comic"] as const;
 export type Presentation = { aspectRatio: typeof ASPECT_RATIOS[number]; style: typeof IMAGE_STYLES[number] };
 export const DEFAULT_PRESENTATION: Presentation = { aspectRatio: "auto", style: "none" };
 const directions: Record<Presentation["style"], string> = {
@@ -12,6 +12,9 @@ const directions: Record<Presentation["style"], string> = {
   photographic: "Photographic style, realistic textures and depth. ",
   illustration: "Hand-drawn storybook illustration, expressive lines and painted colors. ",
   anime: "Anime illustration, expressive line art and cel shading. ",
+  "oil-painting": "Oil painting on textured canvas, with rich layered pigments, visible impasto brush strokes and hand-painted edges. Apply this oil-painted medium to the entire scene, preserving the subjects, actions, composition and any requested lettering. ",
+  "3d": "Stylized 3D rendered illustration, with clearly modeled three-dimensional forms, dimensional materials, soft global illumination and contact shadows. Apply this 3D treatment to the entire scene, preserving the subjects, actions, composition and any requested lettering. ",
+  comic: "Comic book illustration, with bold ink outlines, flat color blocks, halftone shading and expressive drawn forms. Apply this comic-book treatment to the entire scene, preserving the subjects, actions, composition and any requested lettering or dialogue. ",
 };
 export function applyImageStyle(prompt: string, style: Presentation["style"]): string {
   const direction = directions[style];

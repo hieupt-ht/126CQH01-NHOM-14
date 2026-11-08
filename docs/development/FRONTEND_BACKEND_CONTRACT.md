@@ -70,7 +70,19 @@ tiếp, thay phần hoãn các control này trong tài liệu cũ.
 
 - `POST /api/v1/generations` nhận `{prompt, aspectRatio?, style?}`. Tỷ lệ:
   `auto` (mặc định), `1:1`, `16:9`, `9:16`, `4:3`, `3:4`. Chủ đề/phong cách:
-  `none` (mặc định), `watercolor`, `cinematic`, `photographic`, `illustration`, `anime`.
+  `none` (mặc định), `watercolor`, `cinematic`, `photographic`, `illustration`, `anime`,
+  `oil-painting`, `3d`, `comic`. **CONFIRMED 07/11/2026:** chủ dự án bổ sung Sơn dầu,
+  3D, Truyện tranh và chuyển bộ chọn xuống dưới ô mô tả: 8 thẻ có ảnh minh họa,
+  desktop 4 cột × 2 hàng, mobile 2 cột; `none` là radio riêng. Ảnh thẻ là reference/demo,
+  không phải kết quả prompt. Chọn thẻ không gọi API; style vẫn đi trong payload hiện có,
+  khôi phục/khóa cùng pending request và job. Ba preset mới thêm chỉ dẫn tiếng Anh
+  tương ứng trên backend trước kiểm tra độ dài/quota, không đổi model hoặc thêm inference.
+  Cập nhật UI tiếp theo cùng ngày: bảng phong cách/khung hình mở từ thanh công cụ
+  cạnh Ví dụ; phong cách hiện thành thẻ ảnh trong khung nhập, không sửa prompt gốc.
+  Một CTA Tạo ảnh chuyển về thanh này, bộ đếm lên góc trên; không đổi payload API.
+  Theo ảnh mẫu cập nhật, bảng phong cách là vùng mở rộng phía trên khung nhập,
+  đẩy bố cục thay vì overlay textarea, giữ mở trong lúc chọn/gõ. Đây chỉ là thay
+  đổi bố cục/focus; không phát sinh request khi chọn hoặc nhập.
   Field lạ, enum sai và số lượng ảnh đều bị từ chối400.
 - Job DTO trả `aspectRatio` và `style`; record cũ thiếu settings tương ứng đọc
   thành `auto`/`none`. Lưu lựa chọn trong `generations.settings` hiện có, không
@@ -99,6 +111,22 @@ Theo yêu cầu chủ dự án, `DAILY_USER_LIMIT` mặc định20 lượt/ngư�
 `DAILY_APP_LIMIT` giữ20 lượt/ngày cho toàn ứng dụng, không phải20 lượt dành
 riêng cho từng người. Backend kiểm tra cả hai; quota đã dùng hôm nay giữ nguyên,
 không reset hoặc hoàn lượt. Giá trị môi trường có thể ghi đè các mặc định này.
+
+## Backend Sơn dầu, 3D, Truyện tranh — 08/11/2026 (CONFIRMED)
+
+> **CONFIRMED — backend preset 08/11/2026:** `oil-painting`, `3d`, `comic`
+> sử dụng cùng luồng `{prompt, style, aspectRatio}` đã chốt, không phải model hoặc
+> endpoint riêng. Chỉ dẫn phong cách được ghép **sau bản dịch**, áp dụng cho toàn
+> cảnh và giữ chủ thể/hành động/bố cục/chữ được yêu cầu. Sơn dầu dùng chất liệu
+> canvas, pigment/impasto; 3D dùng hình khối có chiều sâu, vật liệu/ánh sáng/bóng
+> tiếp xúc; Truyện tranh dùng nét mực, mảng màu và halftone. Preset Truyện tranh
+> không cấm chữ/bong bóng thoại được người dùng yêu cầu và không tự ép bố cục panel.
+> Tổng submittedPrompt tối đa 2048 UTF-16 được kiểm tra trước transaction/quota;
+> lỗi dịch/ghép quá dài không tạo job. originalPrompt/fingerprint không bị rewrite.
+> Job/history DTO giữ `style`/`aspectRatio`; replay giữ submittedPrompt đã lưu,
+> không dịch/ghép/gọi AI lại. Cùng key đổi prompt/style/tỷ lệ trả409 như trước.
+> Saving retry dùng checkpoint gốc, không render/dịch lại. Đây là contract/pipeline
+> backend; không cam kết FLUX bám chất liệu hoặc chữ 100% khi chưa thử ảnh thật.
 
 ## Prompt tiếng Việt — thử nghiệm local 04/11/2026 (CONFIRMED)
 
