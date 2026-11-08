@@ -30,9 +30,11 @@ for (const style of ["oil-painting", "3d", "comic"] as const) {
   test(`${style}: preserves explicit subjects, framing, lettering and UTF-16 limit`, () => {
     const scene = 'One person walking one dog beside a house, full-body view. A speech bubble reads "Xin chào!".';
     const submitted = applyImageStyle(scene, style);
-    assert.ok(submitted.endsWith(scene));
-    assert.match(submitted.slice(0, -scene.length), /entire scene/);
-    assert.match(submitted.slice(0, -scene.length), /requested lettering/);
+    assert.ok(submitted.includes(scene));
+    const direction = submitted.slice(0, submitted.indexOf(scene));
+    assert.match(direction, /entire scene/);
+    assert.match(direction, /requested lettering/);
+    if (style !== "oil-painting") assert.ok(submitted.endsWith(scene));
     assert.doesNotMatch(submitted, /without added text|without.*speech bubbles/);
     assert.equal(applyImageStyle(submitted, style), submitted);
 
@@ -57,11 +59,58 @@ test("every selectable preset preserves scene, applies once and enforces provide
   for (const style of IMAGE_STYLES.filter(value => value !== "none")) {
     const submitted = applyImageStyle(scene, style);
     assert.ok(submitted.length > scene.length);
-    assert.ok(submitted.endsWith(scene));
+    assert.ok(submitted.includes(scene));
+    if (style !== "oil-painting") assert.ok(submitted.endsWith(scene));
     assert.equal(applyImageStyle(submitted, style), submitted);
     assert.throws(() => applyImageStyle("x".repeat(2048), style));
   }
   assert.match(applyImageStyle(scene, "oil-painting"), /impasto brush strokes/);
   assert.match(applyImageStyle(scene, "3d"), /3D render/);
   assert.match(applyImageStyle(scene, "comic"), /bold ink outlines/);
+});
+
+test("oil replaces the reported medium directive while preserving subjects and quoted lettering", () => {
+  const scene = 'Black hair girl between glowing butterflies pink and purple, anime portraits, virtual lighting and nighttime background. A sign reads "anime".';
+  const paintedScene = scene.replace(", anime portraits,", ", oil-painted portraits,");
+  const submitted = applyImageStyle(scene, "oil-painting");
+  assert.ok(submitted.startsWith("Oil painting on textured canvas"));
+  assert.match(submitted.slice(0, submitted.indexOf(paintedScene)), /Broad impasto brush strokes/);
+  assert.doesNotMatch(submitted.slice(0, submitted.indexOf(paintedScene)), /\banime\b/i);
+  assert.match(submitted.slice(submitted.indexOf(paintedScene) + paintedScene.length), /^ Rendering medium:.*large visible brush marks/);
+  assert.equal(submitted.split(paintedScene).length, 2);
+  assert.ok(submitted.includes('A sign reads "anime".'));
+  assert.ok(!submitted.includes(", anime portraits,"));
+  assert.equal(submitted.split("Rendering medium:").length, 2);
+  assert.equal(applyImageStyle(submitted, "oil-painting"), submitted);
+  assert.equal(applyImageStyle(scene, "none"), scene);
+  assert.ok(applyImageStyle(scene, "anime").endsWith(scene));
+});
+
+test("oil normalizes only explicit standalone medium clauses in English and Vietnamese", () => {
+  for (const [scene, painted] of [
+    ["A girl, anime portraits, pink butterflies.", "A girl, oil-painted portraits, pink butterflies."],
+    ["Cô gái tóc đen, chân dung anime, nền đêm.", "Cô gái tóc đen, chân dung vẽ sơn dầu, nền đêm."],
+    ["A girl; in anime style; a night background.", "A girl; in oil painting style; a night background."],
+    ["anime-style portrait\nof a girl", "oil-painted portrait\nof a girl"],
+    ['A girl\'s sign reads "anime portraits", anime style, two butterflies.', 'A girl\'s sign reads "anime portraits", oil painting style, two butterflies.'],
+  ]) {
+    const submitted = applyImageStyle(scene, "oil-painting");
+    assert.ok(submitted.includes(painted), scene);
+    assert.equal(applyImageStyle(submitted, "oil-painting"), submitted);
+    assert.equal(applyImageStyle(scene, "none"), scene);
+    assert.ok(applyImageStyle(scene, "anime").endsWith(scene));
+  }
+});
+
+test("oil medium normalization leaves quoted text, negations and subject references intact", () => {
+  for (const scene of [
+    'A sign reads "anime portraits".',
+    'A sign reads “anime style”.',
+    "A girl's sign reads 'anime portraits'.",
+    'A sign reads "anime portraits, anime style',
+    "not an anime portrait, one person holding a dog.",
+    "A girl at an anime convention, two butterflies.",
+    "An anime character holding a paint brush.",
+    "Three anime portraits hanging on a wall.",
+  ]) assert.ok(applyImageStyle(scene, "oil-painting").includes(scene), scene);
 });

@@ -128,6 +128,18 @@ không reset hoặc hoàn lượt. Giá trị môi trường có thể ghi đè 
 > Saving retry dùng checkpoint gốc, không render/dịch lại. Đây là contract/pipeline
 > backend; không cam kết FLUX bám chất liệu hoặc chữ 100% khi chưa thử ảnh thật.
 
+**CONFIRMED — sửa Sơn dầu 08/11:** khi `style=oil-painting`, chất liệu Sơn dầu
+được ưu tiên cho cách render. Theo phản hồi và ảnh mẫu tiếp theo, chỉ trong bản
+gửi model, thay các clause medium đứng riêng như `anime portraits`, `anime style`,
+`chân dung anime` bằng nhãn Sơn dầu tương ứng. Không áp dụng cho chữ trong quote,
+câu phủ định, địa điểm hoặc thiết kế chủ thể như `anime character`. Đây là tập
+clause hữu hạn, không phải bộ rewrite toàn cảnh. Prompt gốc/fingerprint giữ nguyên;
+chỉ dẫn impasto/canvas/vệt cọ lớn ghép trước scene, nhắc lại sau scene, không tự
+chèn chủ thể/màu/cảnh từ ảnh mẫu. Kiểm tra
+2048 UTF-16 bao gồm cả hai phần chỉ dẫn, trước quota; helper không ghép lặp khi
+áp dụng lại. `none`, các preset khác và submittedPrompt của job đã nhận không đổi.
+Job cũ/replay vẫn dùng prompt đã lưu; cần một yêu cầu tạo mới để dùng chỉ dẫn mới.
+
 ## Prompt tiếng Việt — thử nghiệm local 04/11/2026 (CONFIRMED)
 
 Theo yêu cầu của chủ dự án, Docker Compose local luôn bật bản dịch cho nhóm,
