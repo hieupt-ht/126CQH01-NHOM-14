@@ -111,7 +111,7 @@ Thông tin được kiểm tra ngày 20/10/2026:
 | Thư viện | `/app/library` | Grid ảnh, phân trang, mở chi tiết | P0 |
 | Chi tiết ảnh | `/app/images/:id` | Ảnh lớn, prompt, thời gian, đổi tên, tải, xóa | P0 |
 | Lịch sử | `/app/history` | Các lần tạo thành công, lỗi, đang chạy | P0 |
-| Tổng quan | `/app` | Ảnh gần đây, thống kê hoạt động | P1 |
+| Tổng quan | `/app` | Ảnh gần đây, thống kê hoạt động và composer tạo ảnh ngay tại trang | P1 |
 | Hồ sơ | `/app/settings` | Xem email, đổi tên hiển thị | P1 |
 
 Layout gồm điều hướng, tên người dùng và đăng xuất. Loading, chưa có dữ liệu, hết phiên, hết lượt, lỗi mạng là trạng thái ngay trong màn hình; không cần các trang riêng.
@@ -121,7 +121,7 @@ Layout gồm điều hướng, tên người dùng và đăng xuất. Loading, c
 - Người dùng chỉ cần nhập một đoạn văn; không phải chia chủ thể, hành động, phong cách.
 - Placeholder đưa ví dụ; hướng dẫn chỉ mang tính hỗ trợ.
 - Hiển thị số ký tự và lỗi vượt giới hạn trước khi gửi; backend vẫn kiểm tra lại.
-- Chỉ nhấn “Tạo ảnh” mới gửi yêu cầu; không tự gọi AI khi đang gõ.
+- Chỉ nút “Tạo ảnh” hoặc Enter trong ô mô tả mới gửi yêu cầu; Shift+Enter xuống dòng. Không tự gọi AI khi đang gõ.
 - Trong lúc xử lý, hiển thị trạng thái và cho phép chuyển trang; không hiển thị phần trăm tiến độ giả.
 - Khi thành công, hiển thị ảnh và nút mở chi tiết, tải xuống, tạo ảnh mới.
 - Khi lỗi, mô tả nguyên nhân có thể hành động; không trả stack trace hoặc secret.
@@ -129,7 +129,7 @@ Layout gồm điều hướng, tên người dùng và đăng xuất. Loading, c
 
 ### 4.2. Ảnh tham chiếu — bổ sung theo yêu cầu 08/11/2026 (CONFIRMED)
 
-- Cho phép chọn một ảnh PNG/JPEG/WebP hoặc dán ảnh đã sao chép vào ô mô tả; có preview, bỏ ảnh và lỗi file rõ ràng.
+- Composer tại `/app/create` và `/app` cho phép chọn một ảnh PNG/JPEG/WebP hoặc dán ảnh đã sao chép vào ô mô tả; có preview, bỏ ảnh và lỗi file rõ ràng. Enter gửi yêu cầu; Shift+Enter xuống dòng. Trang Tổng quan dùng cùng API và tùy chọn phong cách/khung hình, sau khi nhận job chuyển đến trang theo dõi kết quả. Đây là một lần tạo ảnh, không phải hội thoại nhiều lượt.
 - Người dùng nhập mô tả chỉnh sửa và chủ động nhấn Tạo ảnh; một yêu cầu vẫn tạo tối đa một ảnh mới.
 - Ảnh và prompt được gửi đến Cloudflare. Ảnh được kiểm tra, bỏ metadata và thu nhỏ tối đa 511×511 trước khi gửi model; không cam kết giữ nguyên mọi chi tiết.
 - Chỉ yêu cầu có ảnh tham chiếu dùng FLUX.2 Klein 4B; yêu cầu chỉ có văn bản giữ FLUX.1 Schnell. Model được chọn phía backend.

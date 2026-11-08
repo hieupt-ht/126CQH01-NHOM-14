@@ -5,17 +5,33 @@
 .dashboard-hero__features svg { color: var(--accent-blue); }
 .prompt-composer { padding: 16px 18px 12px; border: 1px solid var(--border-secondary); border-radius: var(--radius-xl); background: var(--gradient-card); box-shadow: var(--shadow-card); flex-grow: 1; }
 .prompt-composer__heading { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
-.prompt-composer__heading label { display: inline-flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 500; }
+.prompt-composer__heading label { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; }
 .prompt-composer__heading label svg { color: var(--accent-primary-hover); }
-.prompt-composer__heading > span { color: var(--text-muted); font-size: 8px; letter-spacing: 1.2px; }
-.prompt-composer textarea { display: block; width: 100%; min-height: 91px; max-height: 260px; resize: vertical; padding: 13px 15px; border: 1px solid var(--border-primary); border-radius: var(--radius-md); background: var(--surface-input); color: var(--text-primary); font-size: 12px; line-height: 1.8; transition: border-color var(--transition-fast); }
+.prompt-composer__count { color: var(--text-secondary); font-size: 10px; white-space: nowrap; }
+.prompt-composer textarea { display: block; width: 100%; min-height: 112px; max-height: 260px; resize: vertical; padding: 13px 15px; border: 1px solid var(--border-primary); border-radius: var(--radius-md); background: var(--surface-input); color: var(--text-primary); font-size: 13px; line-height: 1.8; transition: border-color var(--transition-fast); }
 .prompt-composer textarea::placeholder { color: var(--text-secondary); }
 .prompt-composer textarea:focus-visible { outline: 1px solid var(--border-focus); outline-offset: 1px; border-color: var(--border-focus); }
 .prompt-composer__footer { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; gap: 12px; }
-.prompt-composer__footer .studio-button { min-height: 32px; padding: 5px 10px; font-size: 10px; border-radius: var(--radius-full); }
-.prompt-composer__count { color: var(--text-secondary); font-size: 10px; white-space: nowrap; }
-.prompt-composer__hint { margin: 9px 0 0; color: var(--text-muted); font-size: 9px; }
-.prompt-composer__notice { margin-top: 12px; padding: 11px 13px; border: 1px solid var(--info); border-radius: var(--radius-md); background: var(--surface-secondary); color: var(--text-primary); font-size: 12px; line-height: 1.7; }
+.prompt-composer__tools { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; min-width: 0; }
+.prompt-composer__tools .studio-button { min-height: 38px; padding: 7px 12px; font-size: 11px; border-radius: var(--radius-full); }
+.prompt-composer__select { display: inline-flex; align-items: center; gap: 7px; min-height: 38px; max-width: 190px; padding: 6px 10px; border: 1px solid var(--border-secondary); border-radius: var(--radius-full); background: var(--surface-secondary); color: var(--text-secondary); }
+.prompt-composer__select:focus-within { border-color: var(--border-focus); }
+.prompt-composer__select > svg { flex: 0 0 auto; }
+.prompt-composer__select select { min-width: 0; max-width: 145px; border: 0; outline: 0; appearance: none; background: transparent; color: var(--text-secondary); font: inherit; font-size: 11px; cursor: pointer; }
+.prompt-composer__select select:disabled { cursor: default; }
+.prompt-composer__select option { background: var(--surface-elevated); color: var(--text-primary); }
+.prompt-composer__submit { flex: 0 0 auto; min-height: 42px; padding-inline: 20px; }
+.prompt-composer__hint { margin: 10px 0 0; color: var(--text-secondary); font-size: 10px; line-height: 1.7; }
+.prompt-composer__notice { margin-top: 10px; padding: 9px 12px; border: 1px solid var(--info); border-radius: var(--radius-md); background: var(--surface-secondary); color: var(--text-primary); font-size: 11px; line-height: 1.7; }
+.prompt-composer__notice--error { border-color: var(--danger); }
+.prompt-composer__image { display: flex; align-items: center; gap: 10px; max-width: 360px; margin-top: 10px; padding: 8px; border: 1px solid var(--border-secondary); border-radius: var(--radius-md); background: var(--surface-secondary); }
+.prompt-composer__image > img { width: 48px; height: 48px; flex: 0 0 auto; object-fit: cover; border-radius: var(--radius-sm); }
+.prompt-composer__image > span { display: grid; min-width: 0; gap: 3px; }
+.prompt-composer__image strong, .prompt-composer__image small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.prompt-composer__image strong { color: var(--text-primary); font-size: 10px; font-weight: 550; }
+.prompt-composer__image small { color: var(--text-secondary); font-size: 9px; }
+.prompt-composer__image .studio-icon-button { margin-inline-start: auto; }
+.prompt-composer__recovery { margin: 9px 0 0; color: var(--warning); font-size: 10px; line-height: 1.7; }
 .generation-panel { display: flex; flex-direction: column; padding: 19px; border: 1px solid var(--border-secondary); border-radius: var(--radius-xl); background: var(--bg-navbar); box-shadow: var(--shadow-card); }
 .generation-panel__heading { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding-bottom: 19px; margin-bottom: 21px; border-bottom: 1px solid var(--border-subtle); }
 .generation-panel__heading > span:first-child { display: flex; align-items: center; gap: 7px; font-size: 10px; font-weight: 600; letter-spacing: .9px; }
@@ -37,10 +53,6 @@
 .generation-panel__facts svg { color: var(--accent-cyan); }
 .generation-panel__note { display: flex; align-items: center; gap: 9px; margin-top: auto; padding: 12px 10px; border: 1px solid var(--border-secondary); border-radius: var(--radius-md); background: var(--surface-secondary); color: var(--accent-blue); }
 .generation-panel__note p { margin: 0; color: var(--text-secondary); font-size: 10px; line-height: 1.8; }
-.generation-panel__submit { width: 100%; min-height: 46px; margin-top: 18px; font-size: 13px; }
-.generation-panel__submit svg:last-child { margin-left: auto; }
-.generation-panel__submit svg:first-child { margin-right: auto; }
-.generation-panel__footnote { margin-top: 11px; color: var(--text-muted); font-size: 8px; text-align: center; }
 .creation-gallery { margin-top: 27px; scroll-margin-top: 95px; }
 .creation-gallery__header { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
 .section-eyebrow { color: var(--accent-primary-hover); font-size: 8px; font-weight: 600; letter-spacing: 1.6px; text-transform: uppercase; }
@@ -105,14 +117,16 @@
   .dashboard-hero__features > span:last-child { display: none; }
   .prompt-composer { padding: 16px 14px 12px; }
   .prompt-composer__heading label { font-size: 11px; }
-  .prompt-composer__heading > span { font-size: 7px; letter-spacing: .6px; }
+  .prompt-composer__count { font-size: 9px; }
   .prompt-composer textarea { font-size: 13px; min-height: 110px; }
+  .prompt-composer__footer { align-items: stretch; flex-direction: column; }
+  .prompt-composer__tools { gap: 7px; }
+  .prompt-composer__submit { align-self: flex-end; }
   .generation-panel { padding: 17px; }
   .generation-panel__heading { padding-bottom: 12px; margin-bottom: 15px; }
   .generation-panel__intro { margin-bottom: 15px; }
   .generation-panel__facts { gap: 13px; margin-block: 18px; }
   .generation-panel__note { margin-top: 0; }
-  .generation-panel__submit { min-height: 48px; }
   .creation-gallery { margin-top: 30px; }
   .creation-gallery__header { align-items: flex-start; gap: 10px; flex-wrap: wrap; }
   .creation-gallery h2 { font-size: 17px; }

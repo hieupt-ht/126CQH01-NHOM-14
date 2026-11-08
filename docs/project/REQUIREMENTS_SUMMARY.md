@@ -20,13 +20,14 @@ FLUX STUDIO lets an authenticated user submit one free-form description, create 
 - `/login`: email/password authentication with field errors and safe request states.
 - `/register`: display name, email, password, confirmation and duplicate-email handling.
 - `/app/create`: prompt editor, character count, fixed server-selected model, one image per request, usage status, CTA and result states.
+- `/app` (P1): the same prompt composer, attachment, style and aspect-ratio controls; Enter submits and Shift+Enter inserts a newline. A successful job submission opens its status in `/app/create`.
 - `/app/library`: responsive paginated grid containing only saved images of the current user.
 - `/app/images/:id`: image, metadata, prompt, download, rename, delete and safe missing/forbidden states.
 - `/app/history`: all generation jobs including queued, processing, saving, succeeded, failed and needs_review.
 
 ## Confirmed product invariants
 
-- Only the explicit create CTA starts a generation request.
+- Only the explicit create CTA or Enter in the prompt field starts a generation request; Shift+Enter inserts a newline.
 - Repeated submission with the same idempotency key must not create a duplicate job or consume quota twice.
 - Backend owns authentication, authorization, ownership, quota, provider configuration and secrets.
 - Success is shown only after image storage and metadata persistence are complete.

@@ -8,10 +8,11 @@
 
 ## Ảnh tham chiếu trong trình soạn mô tả — 08/11/2026 (CONFIRMED)
 
-- Composer tại `/app/create` cho phép chọn hoặc dán đúng một ảnh PNG/JPEG/WebP; giới hạn upload 10 MiB, ảnh tĩnh tối đa4096px mỗi cạnh. FE preview bằng object URL và thu hồi URL khi bỏ/thay ảnh.
+- Composer tại `/app/create` và `/app` cho phép chọn hoặc dán đúng một ảnh PNG/JPEG/WebP; giới hạn upload 10 MiB, ảnh tĩnh tối đa4096px mỗi cạnh. FE preview bằng object URL và thu hồi URL khi bỏ/thay ảnh.
 - POST `/api/v1/generations` không ảnh tiếp tục nhận JSON `{prompt,aspectRatio?,style?}`. Có ảnh thì nhận `multipart/form-data`: `prompt`, `aspectRatio`, `style`, `referenceImageSha256` (SHA-256 bytes gốc) và `referenceImage` (binary). Cả hai dùng cùng `Idempotency-Key`, session, Origin, CSRF, quota và giới hạn một job đang chạy.
 - Retry sau khi reload có thể gửi JSON kèm `referenceImageSha256` nhưng không có bytes: nếu job cùng key/hash đã tồn tại, trả lại cùng DTO; nếu chưa tồn tại, trả400 `REFERENCE_IMAGE_REQUIRED` để người dùng chọn/dán lại đúng ảnh. Hash được tính phía FE chỉ để nhận diện intent; BE luôn băm bytes và xác minh lại.
 - BE xác thực signature/decoded image, MIME, số trang và kích thước; xoay theo orientation, bỏ metadata, chuẩn hóa PNG <=511×511 để đáp ứng model. Không lưu ảnh trong MongoDB/Cloudinary hoặc thư viện; file tạm được lưu mode0600 trong checkpoint dir dùng cho worker, tên dẫn xuất từ ObjectId server và xóa sau khi output inference được checkpoint, hoặc khi job terminal trước đó. History DTO chỉ thêm `usedReferenceImage`.
+- Từ Tổng quan, composer gửi cùng contract và Idempotency-Key như trang Tạo ảnh; Enter gửi yêu cầu, Shift+Enter xuống dòng. Khi nhận HTTP 202, frontend chuyển đến `/app/create?job=<id>` để theo dõi cùng job. Không tạo luồng chat nhiều lượt.
 - Có ảnh: backend chọn `@cf/black-forest-labs/flux-2-klein-4b` và multipart `input_image_0`; không ảnh tiếp tục `@cf/black-forest-labs/flux-1-schnell`. Frontend không chọn model. Model mới chưa được gọi live trong thay đổi này.
 - UI phải thông báo ảnh và prompt được gửi đến Cloudflare. Tác vụ vẫn là một lượt, một ảnh kết quả; không tạo hội thoại nhiều lượt, không gọi AI lúc chọn/dán ảnh.
 

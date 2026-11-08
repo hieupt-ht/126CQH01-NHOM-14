@@ -8,11 +8,11 @@ import { MAX_PROMPT_LENGTH, validatePrompt } from "../../domain/prompt";
 import "./CreateImagePage.css";
 import {
   restorePending,
-  persistPending,
   clearPending,
   type PendingGeneration,
 } from "../../services/pendingGeneration";
 import { api, ApiError, type UserProfile } from "../../services/api";
+import { REFERENCE_IMAGE_TYPES, referenceImageSha256, submitGeneration, validateReferenceImage } from "../../services/generationSubmission";
 import { UI_PREVIEW } from "../../services/uiPreview";
 import { useResource } from "../../services/resources";
 import type { UsageRecord } from "../../services/resources";
@@ -29,19 +29,6 @@ type GenerationState =
   | "preview"
   | "not_found"
   | "status_error";
-
-const promptExamples = [
-  "Một con mèo cam ngồi cạnh cửa sổ, nắng buổi sáng, phong cách màu nước.",
-  "Thành phố tương lai trong đêm mưa, ánh đèn neon xanh tím phản chiếu trên mặt đường, điện ảnh.",
-  "Một căn nhà gỗ nhỏ giữa rừng thông phủ sương, ánh sáng xanh dịu, phong cách minh họa sách.",
-  "Nhân vật phi hành gia đứng trên hành tinh xa lạ, bầu trời đầy tinh vân tím, chi tiết điện ảnh.",
-];
-const REFERENCE_IMAGE_TYPES = ["image/png", "image/jpeg", "image/webp"];
-const MAX_REFERENCE_IMAGE_BYTES = 10 * 1024 * 1024;
-async function referenceImageSha256(file: File) {
-  const bytes = await crypto.subtle.digest("SHA-256", await file.arrayBuffer());
-  return Array.from(new Uint8Array(bytes), (value) => value.toString(16).padStart(2, "0")).join("");
-}
 
 function CreateHero() {
   return (
@@ -60,7 +47,6 @@ function PromptEditor({
   prompt,
   onPrompt,
   inputRef,
-  onExamples,
   error,
   locked,
   style, onStyle,
@@ -70,7 +56,6 @@ function PromptEditor({
   prompt: string;
   onPrompt: (value: string) => void;
   inputRef: RefObject<HTMLTextAreaElement | null>;
-  onExamples: () => void;
   error: string;
   locked: boolean;
   style: ImageStyle;
@@ -216,6 +201,12 @@ function PromptEditor({
         readOnly={locked}
         onChange={(event) => onPrompt(event.target.value)}
         onPaste={capturePastedImage}
+        onKeyDown={(event) => {
+          if (event.key === "Enter" && !event.shiftKey && !event.altKey && !event.ctrlKey && !event.metaKey && !event.nativeEvent.isComposing) {
+            event.preventDefault();
+            onGenerate();
+          }
+        }}
         placeholder="Ví dụ: Một căn phòng tối giản với cửa sổ lớn nhìn ra cực quang, ánh sáng xanh tím dịu..."
         aria-describedby={error ? "create-prompt-error" : "create-prompt-note"}
         aria-invalid={Boolean(error)}
@@ -235,16 +226,7 @@ function PromptEditor({
       <div className="create-prompt__footer">
         <div className="create-prompt__tools">
         <input ref={imageInput} className="sr-only" type="file" accept="image/png,image/jpeg,image/webp" aria-label="Chọn ảnh tham chiếu" disabled={!canAttachImage} onChange={(event) => { const file = event.currentTarget.files?.[0]; event.currentTarget.value = ""; if (file) onAttachImage(file); }} />
-        <button type="button" className="studio-button studio-button--subtle create-example-button" disabled={!canAttachImage} onClick={() => imageInput.current?.click()}><Icon name="image" size={15} />Thêm ảnh</button>
-        <button
-          type="button"
-          className="studio-button studio-button--subtle create-example-button"
-          onClick={() => { setPicker(null); onExamples(); }}
-          disabled={locked}
-        >
-          <Icon name="book" size={15} />
-          Ví dụ
-        </button>
+        <button type="button" className="studio-button studio-button--subtle create-example-button" disabled={!canAttachImage} onClick={() => imageInput.current?.click()}><Icon name="image" size={15} />Đính kèm</button>
         <button ref={styleTrigger} type="button" className="studio-button studio-button--subtle create-example-button" disabled={locked}
           aria-expanded={picker === "style"} aria-controls="create-style-popover" onClick={() => setPicker(picker === "style" ? null : "style")}>
           <Icon name="image" size={15} />Phong cách<Icon name="chevron" size={13} />
@@ -479,11 +461,9 @@ export default function CreateImagePage() {
   const [promptError, setPromptError] = useState("");
   const [referenceImage, setReferenceImage] = useState<File | null>(null);
   const [posting, setPosting] = useState(false);
-  const [examplesOpen, setExamplesOpen] = useState(false);
   const [pollAttempt, setPollAttempt] = useState(0);
   const [usageRefreshKey, setUsageRefreshKey] = useState(0);
-  const promptInput = useRef<HTMLTextAreaElement>(null),
-    examplesDialog = useRef<HTMLDialogElement>(null);
+  const promptInput = useRef<HTMLTextAreaElement>(null);
   const pending = useRef<PendingGeneration | null>(null);
   useEffect(() => {
     if (UI_PREVIEW) {
@@ -522,12 +502,9 @@ export default function CreateImagePage() {
   const referenceRecovery = Boolean(pending.current?.referenceImageSha256 && !referenceImage);
   const canAttachImage = !posting && !active && (!pending.current || referenceRecovery);
   const attachImage = async (file: File) => {
-    if (!REFERENCE_IMAGE_TYPES.includes(file.type)) {
-      setPromptError("Chọn ảnh PNG, JPEG hoặc WebP.");
-      return;
-    }
-    if (file.size === 0 || file.size > MAX_REFERENCE_IMAGE_BYTES) {
-      setPromptError("Ảnh tham chiếu phải tối đa 10 MiB.");
+    const validationError = validateReferenceImage(file);
+    if (validationError) {
+      setPromptError(validationError);
       return;
     }
     try {
@@ -544,10 +521,6 @@ export default function CreateImagePage() {
       setPromptError("Không thể đọc ảnh tham chiếu trong trình duyệt.");
     }
   };
-  useEffect(() => {
-    if (examplesOpen) examplesDialog.current?.showModal();
-    else examplesDialog.current?.close();
-  }, [examplesOpen]);
   useEffect(() => {
     if (!jobId) return;
     if (UI_PREVIEW || !/^[a-f0-9]{24}$/i.test(jobId)) {
@@ -609,48 +582,17 @@ export default function CreateImagePage() {
       setState("preview");
       return;
     }
-    let referenceHash = pending.current?.referenceImageSha256;
-    if (referenceImage) {
-      try {
-        referenceHash = await referenceImageSha256(referenceImage);
-      } catch {
-        setPromptError("Không thể kiểm tra ảnh tham chiếu trong trình duyệt.");
-        return;
-      }
-      if (pending.current?.referenceImageSha256 && pending.current.referenceImageSha256 !== referenceHash) {
-        setPromptError("Ảnh tham chiếu không khớp yêu cầu đang khôi phục.");
-        return;
-      }
-    }
-    if (!pending.current)
-      pending.current = { key: crypto.randomUUID(), prompt, aspectRatio, style, ...(referenceHash ? { referenceImageSha256: referenceHash } : {}) };
-    try {
-      persistPending(profile.data.user.id, pending.current);
-    } catch {
-      setPromptError(
-        "Chưa lưu được mã yêu cầu trên trình duyệt. Chưa gửi đến backend.",
-      );
-      return;
-    }
     setPosting(true);
     setPromptError("");
     try {
-      let requestBody: BodyInit;
-      if (referenceImage && referenceHash) {
-        const form = new FormData();
-        form.set("prompt", pending.current.prompt);
-        form.set("aspectRatio", pending.current.aspectRatio ?? "auto");
-        form.set("style", pending.current.style ?? "none");
-        form.set("referenceImageSha256", referenceHash);
-        form.set("referenceImage", referenceImage, referenceImage.name || "reference-image");
-        requestBody = form;
-      } else {
-        requestBody = JSON.stringify({ prompt: pending.current.prompt, aspectRatio: pending.current.aspectRatio ?? "auto", style: pending.current.style ?? "none", ...(referenceHash ? { referenceImageSha256: referenceHash } : {}) });
-      }
-      const result = await api<GenerationRecord>("/generations", {
-        method: "POST",
-        headers: { "Idempotency-Key": pending.current.key },
-        body: requestBody,
+      const result = await submitGeneration({
+        userId: profile.data.user.id,
+        prompt,
+        aspectRatio,
+        style,
+        referenceImage,
+        pending: pending.current,
+        onPendingChange: (value) => { pending.current = value; },
       });
       setJob(result);
       setReferenceImage(null);
@@ -658,22 +600,11 @@ export default function CreateImagePage() {
       setState(result.status);
       setUsageRefreshKey((value) => value + 1);
       pending.current = null;
-      clearPending(profile.data.user.id);
       const url = new URL(window.location.href);
       url.searchParams.delete("prompt");
       url.searchParams.set("job", result.id);
       window.history.replaceState(null, "", url);
     } catch (reason) {
-      // On network/5xx keep key+payload for an explicit retry, preventing duplicate jobs.
-      if (
-        reason instanceof ApiError &&
-        reason.code !== "REFERENCE_IMAGE_REQUIRED" &&
-        ((reason.status >= 400 && reason.status < 500) ||
-          reason.code === "GENERATION_NOT_CONFIGURED")
-      ) {
-        pending.current = null;
-        clearPending(profile.data.user.id);
-      }
       setPromptError(
         (reason instanceof Error ? reason.message : "Không gửi được yêu cầu.") +
           (pending.current
@@ -720,7 +651,6 @@ export default function CreateImagePage() {
               setPromptError("");
             }}
             inputRef={promptInput}
-            onExamples={() => setExamplesOpen(true)}
             error={promptError}
             locked={posting || active || Boolean(pending.current)}
             referenceImage={referenceImage}
@@ -779,34 +709,6 @@ export default function CreateImagePage() {
         )}
         </div>
       </div>
-      <dialog
-        className="create-examples-dialog"
-        ref={examplesDialog}
-        onCancel={() => setExamplesOpen(false)}
-        onClose={() => setExamplesOpen(false)}
-      >
-        <h2>Ví dụ mô tả</h2>
-        {promptExamples.map((example) => (
-          <button
-            className="create-example-card"
-            key={example}
-            onClick={() => {
-              if (!prompt.trim() || window.confirm("Thay mô tả đang soạn?")) {
-                setPrompt(example);
-                setExamplesOpen(false);
-              }
-            }}
-          >
-            {example}
-          </button>
-        ))}
-        <button
-          className="studio-button studio-button--subtle"
-          onClick={() => setExamplesOpen(false)}
-        >
-          Đóng
-        </button>
-      </dialog>
     </DashboardLayout>
   );
 }

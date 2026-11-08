@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { type AspectRatio, type ImageStyle } from "../../domain/generationOptions";
 import DashboardLayout from "../../layouts/DashboardLayout";
 import DashboardHero from "../../components/dashboard/DashboardHero";
 import PromptComposer from "../../components/dashboard/PromptComposer";
@@ -8,6 +9,9 @@ import ReferenceArtwork from "../../components/dashboard/ReferenceArtwork";
 import Icon from "../../components/ui/Icon";
 import { demoArtworks, type DemoArtwork } from "./dashboardData";
 import { UI_PREVIEW } from "../../services/uiPreview";
+import { restorePending, type PendingGeneration } from "../../services/pendingGeneration";
+import type { UserProfile } from "../../services/api";
+import { referenceImageSha256, submitGeneration, validateReferenceImage } from "../../services/generationSubmission";
 import { validatePrompt } from "../../domain/prompt";
 import "./DashboardPage.css";
 import {
@@ -42,15 +46,48 @@ function RecentImage({ image }: { image: ImageRecord }) {
 export default function DashboardPage() {
   const recent = useResource<Page<ImageRecord>>("/images?limit=4");
   const stats = useResource<StatsRecord>("/stats/me");
+  const profile = useResource<{ user: UserProfile }>("/auth/me");
   const [prompt, setPrompt] = useState("");
+  const [aspectRatio, setAspectRatio] = useState<AspectRatio>("auto");
+  const [style, setStyle] = useState<ImageStyle>("none");
+  const [referenceImage, setReferenceImage] = useState<File | null>(null);
+  const [posting, setPosting] = useState(false);
+  const [pendingRequest, setPendingRequest] = useState<PendingGeneration | null>(null);
   const [search, setSearch] = useState("");
   const [favorites, setFavorites] = useState<string[]>([]);
   const [favoritesOnly, setFavoritesOnly] = useState(false);
   const [notice, setNotice] = useState("");
+  const [noticeIsError, setNoticeIsError] = useState(false);
   const [selected, setSelected] = useState<DemoArtwork | null>(null);
   const [copyNotice, setCopyNotice] = useState("");
   const promptInput = useRef<HTMLTextAreaElement>(null);
+  const pendingRef = useRef<PendingGeneration | null>(null);
+  const restoredPendingUser = useRef("");
   const artworkDialog = useRef<HTMLDialogElement>(null);
+  const referenceRecovery = Boolean(pendingRequest?.referenceImageSha256 && !referenceImage);
+  const canAttachImage = !posting && (!pendingRequest || referenceRecovery);
+  const locked = posting || Boolean(pendingRequest);
+
+  useEffect(() => {
+    const userId = profile.data?.user.id;
+    if (!userId || UI_PREVIEW || restoredPendingUser.current === userId) return;
+    restoredPendingUser.current = userId;
+    try {
+      const saved = restorePending(userId);
+      if (!saved) return;
+      pendingRef.current = saved;
+      setPendingRequest(saved);
+      setPrompt(saved.prompt);
+      setAspectRatio(saved.aspectRatio ?? "auto");
+      setStyle(saved.style ?? "none");
+      setNotice(saved.referenceImageSha256
+        ? "Có yêu cầu ảnh đính kèm chưa xác định. Hãy nhấn Enter để kiểm tra cùng mã; nếu ảnh chưa được nhận, hãy đính kèm lại đúng ảnh."
+        : "Có yêu cầu chưa xác định sau lần gửi trước. Nhấn Enter để kiểm tra cùng mã, không tạo mã mới.");
+    } catch {
+      setNotice("Trình duyệt không cho lưu trạng thái gửi. Hãy cho phép session storage trước khi tạo ảnh.");
+      setNoticeIsError(true);
+    }
+  }, [profile.data]);
   useEffect(() => {
     if (selected) artworkDialog.current?.showModal();
     else artworkDialog.current?.close();
@@ -76,14 +113,71 @@ export default function DashboardPage() {
       (!favoritesOnly || favorites.includes(artwork.id)),
   );
 
-  const submit = () => {
+  const setPending = (value: PendingGeneration | null) => {
+    pendingRef.current = value;
+    setPendingRequest(value);
+  };
+
+  const attachImage = async (file: File) => {
+    const validationError = validateReferenceImage(file);
+    if (validationError) {
+      setNotice(validationError);
+      setNoticeIsError(true);
+      return;
+    }
+    try {
+      if (pendingRef.current?.referenceImageSha256) {
+        const hash = await referenceImageSha256(file);
+        if (hash !== pendingRef.current.referenceImageSha256) {
+          setNotice("Ảnh này khác ảnh của yêu cầu đang khôi phục. Hãy chọn đúng ảnh đã gửi.");
+          setNoticeIsError(true);
+          return;
+        }
+      }
+      setReferenceImage(file);
+      setNotice("");
+      setNoticeIsError(false);
+    } catch {
+      setNotice("Không thể đọc ảnh đính kèm trong trình duyệt.");
+      setNoticeIsError(true);
+    }
+  };
+
+  const submit = async () => {
+    if (posting || !profile.data) return;
     const error = validatePrompt(prompt);
-    if (error) {
+    if (error && !pendingRef.current) {
       setNotice(error);
+      setNoticeIsError(true);
       compose();
       return;
     }
-    window.location.assign(`/app/create?prompt=${encodeURIComponent(prompt)}`);
+    if (UI_PREVIEW) {
+      setNotice("Tạo ảnh trực tiếp từ Tổng quan cần kết nối backend.");
+      return;
+    }
+    setPosting(true);
+    setNotice("");
+    setNoticeIsError(false);
+    try {
+      const job = await submitGeneration({
+        userId: profile.data.user.id,
+        prompt,
+        aspectRatio,
+        style,
+        referenceImage,
+        pending: pendingRef.current,
+        onPendingChange: setPending,
+      });
+      setReferenceImage(null);
+      window.location.assign(`/app/create?job=${encodeURIComponent(job.id)}`);
+    } catch (reason) {
+      setNotice((reason instanceof Error ? reason.message : "Không gửi được yêu cầu.") +
+        (pendingRef.current ? " Nhấn Enter để kiểm tra lại cùng yêu cầu." : ""));
+      setNoticeIsError(true);
+    } finally {
+      setPosting(false);
+    }
   };
 
   const toggleFavorite = (id: string) =>
@@ -104,6 +198,7 @@ export default function DashboardPage() {
     setNotice(
       "Đã điền mô tả từ ảnh mẫu. Bạn có thể chỉnh sửa theo ý tưởng của mình.",
     );
+    setNoticeIsError(false);
     artworkDialog.current?.close();
     setSelected(null);
     requestAnimationFrame(compose);
@@ -137,14 +232,28 @@ export default function DashboardPage() {
             onPrompt={(value) => {
               setPrompt(value);
               setNotice("");
+              setNoticeIsError(false);
             }}
             inputRef={promptInput}
             formId="dashboard-prompt"
             notice={notice}
-            onSubmit={submit}
+            noticeIsError={noticeIsError}
+            onSubmit={() => { void submit(); }}
+            aspectRatio={aspectRatio}
+            onAspectRatio={setAspectRatio}
+            style={style}
+            onStyle={setStyle}
+            referenceImage={referenceImage}
+            onAttachImage={(file) => { void attachImage(file); }}
+            onRemoveImage={() => setReferenceImage(null)}
+            canAttachImage={canAttachImage}
+            locked={locked}
+            submitting={posting}
+            disabled={posting || !profile.data}
+            referenceRecovery={referenceRecovery}
           />
         </div>
-        <GenerationPanel formId="dashboard-prompt" />
+        <GenerationPanel />
       </div>
 
       <section className="creation-gallery" aria-labelledby="recent-live-title">

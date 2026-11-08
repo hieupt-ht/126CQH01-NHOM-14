@@ -11,4 +11,3 @@ export const demoArtworks: DemoArtwork[] = [
   { id: 'castle', title: 'Tòa thành trên những tầng mây', category: 'Fantasy', prompt: 'Lâu đài cổ tích trên hòn đảo nổi giữa biển mây, ánh hoàng hôn vàng hồng và thác nước huyền ảo.', region: { x: 916, y: 851, width: 289, height: 164 } },
   { id: 'butterfly', title: 'Khi những cánh bướm phát sáng', category: 'Anime', prompt: 'Cô gái tóc đen giữa những cánh bướm phát sáng tím hồng, chân dung anime, ánh sáng huyền ảo và nền đêm.', region: { x: 1225, y: 851, width: 291, height: 164 } },
 ];
-export const promptExamples = [demoArtworks[0].prompt, demoArtworks[2].prompt, demoArtworks[3].prompt];
