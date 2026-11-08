@@ -150,6 +150,14 @@ Không có tính năng chọn userId tự do từ frontend. Backend lấy danh t
 
 ## 6. Chính sách prompt và chất lượng ảnh
 
+**CONFIRMED — sửa ưu tiên chất liệu Sơn dầu 08/11/2026:** chọn Sơn dầu quyết
+định medium render, kể cả khi mô tả có thiết kế nhân vật anime. Giữ nguyên prompt
+gốc/chữ được yêu cầu; theo phản hồi ảnh mẫu tiếp theo, bản gửi model đổi có giới
+hạn các clause medium anime đứng riêng sang Sơn dầu, bảo vệ quote/phủ định và
+thiết kế/chủ thể/địa điểm. Tăng chỉ dẫn texture/impasto/vệt cọ lớn và nhắc lại medium
+ở cuối submittedPrompt, kiểm tra tổng độ dài trước quota. Không thay ảnh/prompt
+đã lưu, không tự tạo lại job hoặc thêm inference; `none` và preset khác giữ hành vi.
+
 **CONFIRMED — hoàn thiện backend preset 08/11/2026:** Sơn dầu, 3D, Truyện tranh
 được áp dụng bằng chỉ dẫn chất liệu toàn cảnh sau bước dịch trên luồng FLUX hiện có.
 Giữ nguyên prompt gốc, số lượng/chủ thể/hành động/bố cục và yêu cầu chữ/thoại;

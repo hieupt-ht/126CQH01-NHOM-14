@@ -35,15 +35,19 @@ test("three presets: real HTTP/replica set, translation, replay, private deliver
     const objects = new Map<string, Buffer>();
     const uploads = new Map<string, number>();
     let failTranslation = false;
-    const original = 'Một ngôi nhà cạnh cây táo, một người dắt một con chó. Biển ghi "Xin chào!".';
+    const baseOriginal = 'Một ngôi nhà cạnh cây táo, một người dắt một con chó. Biển ghi "Xin chào!".';
     // Translation fixture, not evidence about live M2M100 translation quality.
-    const translated = 'A house beside an apple tree, one person walking one dog. A sign reads "Xin chào!".';
+    const baseTranslated = 'A house beside an apple tree, one person walking one dog. A sign reads "Xin chào!".';
+    const oilOriginal = 'Cô gái tóc đen giữa những cánh bướm phát sáng tím hồng, chân dung anime, ánh sáng huyền ảo và nền đêm.';
+    const oilTranslated = 'Black hair girl between glowing butterflies pink and purple, anime portraits, virtual lighting and nighttime background.';
     const translator = {
       model: "test/translator", revision: "isolated-preset-test",
       async translateVietnameseToEnglish(prompt: string) {
         translatedInputs.push(prompt);
         if (failTranslation) throw new AppError(502, "GENERATION_FAILED", "Isolated translation failure");
-        return translated;
+        if (prompt === oilOriginal) return oilTranslated;
+        assert.equal(prompt, baseOriginal);
+        return baseTranslated;
       },
     };
     const provider = { async generate(prompt: string) { inferencePrompts.push(prompt); return bytes; } };
@@ -95,6 +99,8 @@ test("three presets: real HTTP/replica set, translation, replay, private deliver
     const other = await account("other@presets.example.test");
     for (const style of ["oil-painting", "3d", "comic"] as const) {
       await context.test(style, async () => {
+        const original = style === "oil-painting" ? oilOriginal : baseOriginal;
+        const translated = style === "oil-painting" ? oilTranslated : baseTranslated;
         const user = await account(`${style}@presets.example.test`);
         const body = { prompt: original, style, aspectRatio: "16:9" };
         const key = `preset-${style}-request-0001`;
@@ -129,6 +135,12 @@ test("three presets: real HTTP/replica set, translation, replay, private deliver
         assert.ok(job);
         assert.equal(job.originalPrompt, original);
         assert.equal(job.submittedPrompt, applyImageStyle(translated, style));
+        if (style === "oil-painting") {
+          const paintedScene = oilTranslated.replace(", anime portraits,", ", oil-painted portraits,");
+          assert.ok(job.submittedPrompt.includes(paintedScene));
+          assert.doesNotMatch(job.submittedPrompt, /\banime\b/i);
+          assert.match(job.submittedPrompt.slice(job.submittedPrompt.indexOf(paintedScene) + paintedScene.length), /^ Rendering medium:.*oil painting/);
+        }
         assert.equal(job.settings.style, style);
         assert.equal(translatedInputs.length, translationsBefore + 2);
 
