@@ -150,6 +150,13 @@ Không có tính năng chọn userId tự do từ frontend. Backend lấy danh t
 
 ## 6. Chính sách prompt và chất lượng ảnh
 
+**CONFIRMED — hoàn thiện backend preset 08/11/2026:** Sơn dầu, 3D, Truyện tranh
+được áp dụng bằng chỉ dẫn chất liệu toàn cảnh sau bước dịch trên luồng FLUX hiện có.
+Giữ nguyên prompt gốc, số lượng/chủ thể/hành động/bố cục và yêu cầu chữ/thoại;
+không tự đổi model, ép chia panel hoặc cấm chữ đã được yêu cầu. Kiểm tra độ dài
+cuối trước quota; lưu lựa chọn cùng job, replay/saving recovery không tạo inference
+thứ hai. Nghiệm thu chất lượng ảnh thật vẫn tách khỏi kiểm thử API/DB giả lập cloud.
+
 **CONFIRMED — bổ sung theo yêu cầu chủ dự án 04/11/2026:** trang Tạo ảnh có
 chọn tỷ lệ và chủ đề/phong cách, vẫn một ảnh/lượt, không có bộ chọn số lượng.
 Thêm chế độ sáng/tối toàn giao diện. Theo xác nhận của chủ dự án, tỷ lệ thực hiện

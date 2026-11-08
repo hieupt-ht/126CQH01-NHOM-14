@@ -1,5 +1,28 @@
 # Bộ chọn phong cách có ảnh minh họa — 07/11/2026
 
+## Bộ ảnh thay thế do chủ dự án cung cấp — 08/11 (CONFIRMED)
+
+Theo yêu cầu trực tiếp, thay cả 8 preview theo thứ tự ảnh đính kèm: Màu nước,
+Điện ảnh, Ảnh chân thực, Minh họa, Anime, Sơn dầu, 3D, Truyện tranh. Cả grid và
+chip trong khung nhập dùng cùng bộ PNG mới. Copy nguyên file, SHA-256 đối chiếu
+khớp nguồn; không chỉnh pixel, không gọi cloud hoặc tạo ảnh mới. Nguồn/kích thước
+được ghi tại [manifest asset](../../frontend/src/assets/styles/README.md).
+Anime căn focal point về bên phải để giữ nhân vật trong thumbnail. Giữ pan/zoom,
+hover zoom, reduced-motion, tự đóng bảng và lựa chọn hiện có. Không sửa token/API.
+Ảnh tiếp tục được gắn nhãn minh họa, không phải output của prompt hiện tại.
+
+Kiểm tra thay ảnh: frontend build/diff check đạt; browser QA sáng/tối ở
+360/768/1280/1536px chọn lần lượt cả 8 phong cách, xác nhận src và kích thước
+ảnh gốc đúng mapping, chip dùng ảnh tương ứng, tự đóng/giữ prompt và không
+overflow. 0 POST khi chọn/gõ, 0 page errors. Đã xem grid desktop với bộ ảnh mới.
+Không chạy lại backend/cloud vì lần thay ảnh không đổi luồng API.
+
+![Bộ ảnh phong cách mới do người dùng cung cấp](../design-system/evidence/style-user-assets-dark-1536.png)
+
+> Cập nhật backend 08/11: đã tiếp tục hoàn thiện chỉ dẫn và kiểm chứng pipeline
+> cho ba preset theo yêu cầu mới. Xem [báo cáo backend](STYLE_PRESETS_BACKEND_2026-11-08.md).
+> Các ghi chú bàn giao bên dưới là lịch sử; chất lượng cloud thật vẫn chưa được nghiệm thu.
+
 ## Điểm bàn giao để tiếp tục — 08/11/2026
 
 Theo yêu cầu chủ dự án, commit/push bản đang làm lên nhánh riêng

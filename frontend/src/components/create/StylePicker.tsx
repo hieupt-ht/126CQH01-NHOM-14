@@ -1,24 +1,23 @@
 import { styleOptions, type ImageStyle } from "../../domain/generationOptions";
-import ReferenceArtwork from "../dashboard/ReferenceArtwork";
 import Icon from "../ui/Icon";
-import portrait from "../../assets/images/home/showcase-cinematic-portrait.jpg";
-import glass from "../../assets/images/home/hero-3d-glass.jpg";
-import watercolor from "../../assets/styles/watercolor.svg";
-import oil from "../../assets/styles/oil-painting.svg";
-import comic from "../../assets/styles/comic.svg";
+import watercolor from "../../assets/styles/watercolor-reference.png";
+import cinematic from "../../assets/styles/cinematic-reference.png";
+import photographic from "../../assets/styles/photographic-reference.png";
+import illustration from "../../assets/styles/illustration-reference.png";
+import anime from "../../assets/styles/anime-reference.png";
+import oil from "../../assets/styles/oil-painting-reference.png";
+import threeD from "../../assets/styles/3d-reference.png";
+import comic from "../../assets/styles/comic-reference.png";
 import "./StylePicker.css";
 
-const images: Partial<Record<ImageStyle, string>> = {
-  watercolor, photographic: portrait, "oil-painting": oil, "3d": glass, comic,
+const images: Record<Exclude<ImageStyle, "none">, string> = {
+  watercolor, cinematic, photographic, illustration, anime, "oil-painting": oil, "3d": threeD, comic,
 };
 
 export function StyleArtwork({ style }: { style: Exclude<ImageStyle, "none"> }) {
   return <span className="style-card__media" aria-hidden="true">
     <span className="style-card__motion">
-    {style === "anime" || style === "illustration" || style === "cinematic" ?
-      <ReferenceArtwork className="style-card__art" label="Ảnh minh họa phong cách"
-        region={style === "anime" ? { x: 1225, y: 851, width: 291, height: 164 } : style === "cinematic" ? { x: 294, y: 617, width: 292, height: 165 } : { x: 916, y: 851, width: 289, height: 164 }} /> :
-      <img className="style-card__art" src={images[style]} alt="" loading="lazy" />}
+      <img className={`style-card__art style-card__art--${style}`} src={images[style]} alt="" loading="lazy" />
     </span>
   </span>;
 }

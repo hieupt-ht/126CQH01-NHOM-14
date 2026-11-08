@@ -112,6 +112,22 @@ Theo yêu cầu chủ dự án, `DAILY_USER_LIMIT` mặc định20 lượt/ngư�
 riêng cho từng người. Backend kiểm tra cả hai; quota đã dùng hôm nay giữ nguyên,
 không reset hoặc hoàn lượt. Giá trị môi trường có thể ghi đè các mặc định này.
 
+## Backend Sơn dầu, 3D, Truyện tranh — 08/11/2026 (CONFIRMED)
+
+> **CONFIRMED — backend preset 08/11/2026:** `oil-painting`, `3d`, `comic`
+> sử dụng cùng luồng `{prompt, style, aspectRatio}` đã chốt, không phải model hoặc
+> endpoint riêng. Chỉ dẫn phong cách được ghép **sau bản dịch**, áp dụng cho toàn
+> cảnh và giữ chủ thể/hành động/bố cục/chữ được yêu cầu. Sơn dầu dùng chất liệu
+> canvas, pigment/impasto; 3D dùng hình khối có chiều sâu, vật liệu/ánh sáng/bóng
+> tiếp xúc; Truyện tranh dùng nét mực, mảng màu và halftone. Preset Truyện tranh
+> không cấm chữ/bong bóng thoại được người dùng yêu cầu và không tự ép bố cục panel.
+> Tổng submittedPrompt tối đa 2048 UTF-16 được kiểm tra trước transaction/quota;
+> lỗi dịch/ghép quá dài không tạo job. originalPrompt/fingerprint không bị rewrite.
+> Job/history DTO giữ `style`/`aspectRatio`; replay giữ submittedPrompt đã lưu,
+> không dịch/ghép/gọi AI lại. Cùng key đổi prompt/style/tỷ lệ trả409 như trước.
+> Saving retry dùng checkpoint gốc, không render/dịch lại. Đây là contract/pipeline
+> backend; không cam kết FLUX bám chất liệu hoặc chữ 100% khi chưa thử ảnh thật.
+
 ## Prompt tiếng Việt — thử nghiệm local 04/11/2026 (CONFIRMED)
 
 Theo yêu cầu của chủ dự án, Docker Compose local luôn bật bản dịch cho nhóm,

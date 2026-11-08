@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import sharp from "sharp";
+import { AppError } from "../src/errors/app-error.js";
 import { padImageToRatio, applyImageStyle, ASPECT_RATIOS, IMAGE_STYLES } from "../src/modules/generations/presentation.js";
 
 test("selected ratios preserve every original pixel and add centered white borders", async () => {
@@ -24,6 +25,25 @@ test("selected ratios preserve every original pixel and add centered white borde
     }
   }
 });
+
+for (const style of ["oil-painting", "3d", "comic"] as const) {
+  test(`${style}: preserves explicit subjects, framing, lettering and UTF-16 limit`, () => {
+    const scene = 'One person walking one dog beside a house, full-body view. A speech bubble reads "Xin chào!".';
+    const submitted = applyImageStyle(scene, style);
+    assert.ok(submitted.endsWith(scene));
+    assert.match(submitted.slice(0, -scene.length), /entire scene/);
+    assert.match(submitted.slice(0, -scene.length), /requested lettering/);
+    assert.doesNotMatch(submitted, /without added text|without.*speech bubbles/);
+    assert.equal(applyImageStyle(submitted, style), submitted);
+
+    const overhead = submitted.length - scene.length;
+    const remaining = 2048 - overhead;
+    const boundary = "😀".repeat(Math.floor(remaining / 2)) + "x".repeat(remaining % 2);
+    assert.equal(applyImageStyle(boundary, style).length, 2048);
+    assert.throws(() => applyImageStyle(boundary + "x", style),
+      (error: unknown) => error instanceof AppError && error.statusCode === 400 && error.code === "INVALID_PROMPT");
+  });
+}
 test("style presets retain scene text and enforce the final prompt limit", () => {
   assert.equal(applyImageStyle("A house", "none"), "A house");
   assert.match(applyImageStyle("A house", "watercolor"), /^Hand-painted watercolor illustration/);
