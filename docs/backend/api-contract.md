@@ -6,6 +6,14 @@
 
 # REST API Contract — bản thiết kế đề xuất
 
+## Ảnh tham chiếu cho generation — CONFIRMED 08/11/2026
+
+`POST /api/v1/generations` tiếp tục nhận JSON `{prompt, aspectRatio?, style?}` cho text-only. Với một ảnh đầu vào, nhận `multipart/form-data` gồm `prompt`, `aspectRatio`, `style`, `referenceImageSha256` và `referenceImage` binary. File tối đa 10 MiB, PNG/JPEG/WebP tĩnh, cạnh tối đa4096px. Request cùng dùng session + Origin + CSRF + `Idempotency-Key`; prompt/options/hash là fingerprint của intent và cùng một key với payload khác trả409.
+
+BE xác thực bytes/hash/MIME/decoded image, xoay orientation, bỏ metadata và chuẩn hóa PNG tối đa511×511. Model của intent ảnh tham chiếu là `@cf/black-forest-labs/flux-2-klein-4b`; text-only giữ FLUX.1 Schnell. Source chỉ nằm trong checkpoint dir private, đặt file theo ObjectId server và giữ đến khi output inference được checkpoint; không lưu bytes/Base64 trong MongoDB hoặc Cloudinary. Generation lưu hash/width/height/format; DTO chỉ trả `usedReferenceImage`. Ảnh nguồn không vào thư viện; output theo lifecycle ảnh hiện có.
+
+Retry cùng key sau reload có thể gửi JSON với `referenceImageSha256` và không gửi lại bytes. Chỉ replay nếu job cùng user/key/hash đã có; nếu chưa có, trả400 `REFERENCE_IMAGE_REQUIRED`, giữ pending intent để FE yêu cầu chọn/dán lại ảnh. Không gọi inference thứ hai do retry. Lỗi file trả `400/413/415`; file input sai hoặc thiếu không tạo job/quota.
+
 **CONFIRMED — profile/avatar 04/11/2026:** bổ sung PUT/GET
 `/api/v1/users/me/avatar` theo yêu cầu chủ dự án; PUT nhận binary PNG/JPEG/WebP
 tĩnh tối đa2MiB và4096px, session/Origin/CSRF, lưu WebP riêng tư. GET scope theo

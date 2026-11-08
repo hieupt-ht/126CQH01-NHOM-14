@@ -24,6 +24,8 @@ import {
 import type { GenerationService } from "../generations/service.js";
 import { ASPECT_RATIOS, IMAGE_STYLES } from "../generations/presentation.js";
 import type { StorageRegistry } from "../../storage/storage.js";
+import { digest } from "../../storage/storage.js";
+import { MAX_REFERENCE_IMAGE_BYTES, normalizeReferenceImage } from "../generations/reference-image.js";
 
 export type ProductDependencies = {
   avatars?: AvatarService;
@@ -53,6 +55,7 @@ function jobDto(job: GenerationDocument) {
     prompt: job.originalPrompt,
     aspectRatio: job.settings.aspectRatio ?? "auto",
     style: job.settings.style ?? "none",
+    usedReferenceImage: Boolean(job.referenceImage),
     status: job.status,
     model: job.model,
     createdAt: job.createdAt,
@@ -163,21 +166,64 @@ export function createProductRouter(
       throw new AppError(404, "NOT_FOUND", "Không tìm thấy hình ảnh.");
     return image;
   }
-  router.post("/generations", async (request, response) => {
-    const { prompt, aspectRatio, style } = parseInput(
-      z
-        .object({
-          aspectRatio: z.enum(ASPECT_RATIOS).default("auto"),
-          style: z.enum(IMAGE_STYLES).default("none"),
-          prompt: z
-            .string()
-            .min(1)
-            .refine((value) => value.length <= 2048, "Prompt không được vượt quá 2048 UTF-16 code units.")
-            .refine((value) => value.trim().length > 0),
-        })
-        .strict(),
-      request.body,
-    );
+  router.post(
+    "/generations",
+    raw({ type: ["multipart/form-data"], limit: MAX_REFERENCE_IMAGE_BYTES + 64 * 1024, inflate: false }),
+    async (request, response) => {
+    const promptSchema = z.string().min(1)
+      .refine((value) => value.length <= 2048, "Prompt không được vượt quá 2048 UTF-16 code units.")
+      .refine((value) => value.trim().length > 0);
+    const contentType = request.get("Content-Type") ?? "";
+    const mime = contentType.split(";")[0].trim().toLowerCase();
+    const jsonInputSchema = z.object({
+      aspectRatio: z.enum(ASPECT_RATIOS).default("auto"),
+      style: z.enum(IMAGE_STYLES).default("none"),
+      prompt: promptSchema,
+      referenceImageSha256: z.string().regex(/^[a-f0-9]{64}$/i).optional(),
+    }).strict();
+    let prompt: string;
+    let aspectRatio: (typeof ASPECT_RATIOS)[number];
+    let style: (typeof IMAGE_STYLES)[number];
+    let referenceImage;
+    let expectedHash: string | undefined;
+    if (mime === "multipart/form-data") {
+      if (!Buffer.isBuffer(request.body))
+        throw new AppError(400, "INVALID_REFERENCE_IMAGE", "Ảnh tham chiếu bị thiếu.");
+      let form: FormData;
+      try {
+        form = await new Request("http://flux.local", {
+          method: "POST",
+          headers: { "Content-Type": contentType },
+          body: new Uint8Array(request.body as Buffer),
+        }).formData();
+      } catch {
+        throw new AppError(400, "INVALID_REFERENCE_IMAGE", "Dữ liệu ảnh đính kèm không hợp lệ.");
+      }
+      const allowedFields = new Set(["prompt", "aspectRatio", "style", "referenceImage", "referenceImageSha256"]);
+      if ([...form.keys()].some((field) => !allowedFields.has(field)) ||
+          [...allowedFields].some((field) => form.getAll(field).length > 1))
+        throw new AppError(400, "INVALID_REFERENCE_IMAGE", "Thông tin ảnh đính kèm không hợp lệ.");
+      const uploadedFile = form.get("referenceImage");
+      if (!uploadedFile || typeof uploadedFile === "string" || typeof uploadedFile.arrayBuffer !== "function")
+        throw new AppError(400, "INVALID_REFERENCE_IMAGE", "Ảnh tham chiếu bị thiếu.");
+      const rawImage = Buffer.from(await uploadedFile.arrayBuffer());
+      const rawHash = digest(rawImage);
+      expectedHash = parseInput(z.string().regex(/^[a-f0-9]{64}$/i), form.get("referenceImageSha256")).toLowerCase();
+      if (rawHash !== expectedHash)
+        throw new AppError(400, "INVALID_REFERENCE_IMAGE", "Không xác minh được ảnh tham chiếu.");
+      prompt = parseInput(promptSchema, form.get("prompt"));
+      aspectRatio = parseInput(z.enum(ASPECT_RATIOS).default("auto"), form.get("aspectRatio") ?? undefined);
+      style = parseInput(z.enum(IMAGE_STYLES).default("none"), form.get("style") ?? undefined);
+      referenceImage = await normalizeReferenceImage(rawImage, uploadedFile.type.toLowerCase(), rawHash);
+    } else if (mime === "application/json") {
+      const input = parseInput(jsonInputSchema, request.body);
+      prompt = input.prompt;
+      aspectRatio = input.aspectRatio;
+      style = input.style;
+      expectedHash = input.referenceImageSha256?.toLowerCase();
+    } else {
+      throw new AppError(415, "INVALID_REQUEST_CONTENT_TYPE", "Yêu cầu phải là JSON hoặc ảnh đính kèm dạng multipart.");
+    }
     const key = parseInput(
       z.string().regex(/^[a-zA-Z0-9_-]{16,100}$/),
       request.get("Idempotency-Key"),
@@ -193,6 +239,8 @@ export function createProductRouter(
       key,
       prompt,
       { aspectRatio, style },
+      referenceImage,
+      expectedHash,
     );
     response.status(202).json({ success: true, data: jobDto(job!) });
   });

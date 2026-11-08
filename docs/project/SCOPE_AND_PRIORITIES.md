@@ -20,10 +20,16 @@
 
 ## Explicitly out of scope
 
-- AI image editing, input-image upload, stories/comics and consistent characters.
+- Stories/comics and consistent characters.
 - Multiple output images per request.
 - Payments, community, public sharing and provider selection in the UI.
 - Automatic prompt rewriting or translation.
 - Admin UI unless a later approved requirement adds it.
 
-Any change to this list is an OPEN QUESTION until the team records it in the issue and updates the source documents.
+## Approved scope update — 08/11/2026
+
+**CONFIRMED by the project owner in this implementation request:** the existing prompt composer accepts one reference image by file selection or paste, previews/removes it, then submits it with the prompt to create one new result. This does not add editing of a saved library image or a multi-turn chat.
+
+Issue [#36](https://github.com/hieupt-ht/126CQH01-NHOM-14/issues/36) still describes the feature as research-only. Its tracking status needs alignment with this explicit implementation decision before the issue is treated as closed/accepted evidence. See `PRD.md` §4.2 and `docs/development/FRONTEND_BACKEND_CONTRACT.md` for the approved implementation scope.
+
+The excluded scope remains: stories/comics, consistent characters, multiple output images per request, payments, community, public sharing, provider selection and admin UI.

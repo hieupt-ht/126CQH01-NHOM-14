@@ -20,6 +20,13 @@
 .create-card__heading .create-prompt__count { flex: 0 0 auto; padding-top: 3px; font-size: 9px; white-space: nowrap; }
 .create-prompt__input { border: 1px solid var(--border-primary); border-radius: var(--radius-lg); background: var(--surface-input); }
 .create-prompt__input:focus-within { border-color: var(--border-focus); box-shadow: var(--shadow-primary); }
+.create-reference-image { display: flex; align-items: center; gap: 10px; width: fit-content; max-width: 100%; margin: 4px 12px 12px; padding: 8px; border: 1px solid var(--border-secondary); border-radius: var(--radius-md); background: var(--surface-secondary); }
+.create-reference-image > img { width: 54px; height: 54px; flex: 0 0 auto; border-radius: var(--radius-sm); object-fit: cover; }
+.create-reference-image > div { display: grid; min-width: 0; gap: 4px; }
+.create-reference-image strong { overflow: hidden; max-width: 220px; color: var(--text-primary); font-size: 10px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.create-reference-image span, .create-reference-image__recovery { color: var(--text-secondary); font-size: 9px; }
+.create-reference-image .studio-icon-button { flex: 0 0 auto; }
+.create-reference-image__recovery { margin: 0; padding: 10px 12px; line-height: 1.6; }
 .create-prompt .create-prompt__input textarea { border: 0; background: none; box-shadow: none; border-radius: var(--radius-lg); }
 .create-prompt .create-prompt__input textarea:focus-visible { outline: 2px solid var(--accent-cyan); outline-offset: -3px; }
 .create-style-chip { position: relative; width: 108px; margin: 12px 12px 0; overflow: hidden; border-radius: var(--radius-md); border: 1px solid var(--border-secondary); }

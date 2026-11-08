@@ -15,6 +15,7 @@ export type ImageRecord = {
   model?: string;
 };
 export type GenerationRecord = {
+  usedReferenceImage?: boolean;
   aspectRatio?: import("../domain/generationOptions").AspectRatio;
   style?: import("../domain/generationOptions").ImageStyle;
   id: string;

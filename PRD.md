@@ -52,8 +52,8 @@ Xây dựng website cho phép đăng ký, đăng nhập, nhập mô tả, tạo 
 | Mức | Nội dung |
 |---|---|
 | P0 — bắt buộc | Auth; một ô prompt; tạo một ảnh; trạng thái tác vụ; lưu file và metadata; thư viện; chi tiết; tải xuống; đổi tên; xóa; lịch sử gồm cả lỗi; phân quyền; hạn mức; chống gửi trùng; báo cáo MongoDB |
-| P1 — sau khi P0 chạy ổn | Yêu thích; tìm theo tiêu đề; lọc theo ngày; dashboard thống kê; hồ sơ tên hiển thị/avatar (bổ sung theo yêu cầu chủ dự án04/11); phản hồi chất lượng ảnh |
-| Ngoài MVP | Chỉnh sửa ảnh bằng AI; upload ảnh đầu vào; tạo truyện; nhân vật nhất quán; nhiều ảnh mỗi yêu cầu; thanh toán; cộng đồng; lựa chọn nhiều nhà cung cấp trên giao diện; AI viết lại prompt tự động |
+| P1 — sau khi P0 chạy ổn | Yêu thích; tìm theo tiêu đề; lọc theo ngày; dashboard thống kê; hồ sơ tên hiển thị/avatar (bổ sung theo yêu cầu chủ dự án04/11); phản hồi chất lượng ảnh; ảnh tham chiếu và prompt để tạo phiên bản ảnh mới (bổ sung theo yêu cầu 08/11) |
+| Ngoài MVP | Tạo truyện; nhân vật nhất quán; nhiều ảnh mỗi yêu cầu; thanh toán; cộng đồng; lựa chọn nhiều nhà cung cấp trên giao diện; AI viết lại prompt tự động |
 
 Tài liệu thiết kế có thể dự trù mở rộng, nhưng không tạo trước toàn bộ collection truyện tranh hoặc hệ thống thanh toán.
 
@@ -126,6 +126,15 @@ Layout gồm điều hướng, tên người dùng và đăng xuất. Loading, c
 - Khi thành công, hiển thị ảnh và nút mở chi tiết, tải xuống, tạo ảnh mới.
 - Khi lỗi, mô tả nguyên nhân có thể hành động; không trả stack trace hoặc secret.
 - Thông báo ngắn rằng mô tả được gửi đến dịch vụ AI để tạo ảnh.
+
+### 4.2. Ảnh tham chiếu — bổ sung theo yêu cầu 08/11/2026 (CONFIRMED)
+
+- Cho phép chọn một ảnh PNG/JPEG/WebP hoặc dán ảnh đã sao chép vào ô mô tả; có preview, bỏ ảnh và lỗi file rõ ràng.
+- Người dùng nhập mô tả chỉnh sửa và chủ động nhấn Tạo ảnh; một yêu cầu vẫn tạo tối đa một ảnh mới.
+- Ảnh và prompt được gửi đến Cloudflare. Ảnh được kiểm tra, bỏ metadata và thu nhỏ tối đa 511×511 trước khi gửi model; không cam kết giữ nguyên mọi chi tiết.
+- Chỉ yêu cầu có ảnh tham chiếu dùng FLUX.2 Klein 4B; yêu cầu chỉ có văn bản giữ FLUX.1 Schnell. Model được chọn phía backend.
+- Ảnh nguồn chỉ nằm tạm trong thư mục checkpoint riêng của backend đến khi kết quả inference được checkpoint; sau đó xóa. MongoDB chỉ lưu hash/kích thước/định dạng để lịch sử biết đã dùng ảnh, không lưu bytes hoặc Base64.
+- Ảnh nguồn không xuất hiện trong thư viện; chỉ ảnh kết quả được lưu theo luồng hiện có. Không tạo hội thoại nhiều lượt hoặc thêm collection.
 
 ## 5. Yêu cầu chức năng và tiêu chí nghiệm thu
 
@@ -424,7 +433,7 @@ Tất cả API dưới đây, ngoại trừ đăng ký/đăng nhập, yêu cầu
 | GET | `/api/usage/me` | Số lượt còn và thời điểm reset |
 | GET | `/api/stats/me` | P1: thống kê cá nhân |
 
-Request tạo ảnh chỉ cần `{ "prompt": "..." }`. Frontend không được tự truyền API key hoặc mở rộng model, steps, số ảnh tùy ý.
+Request tạo ảnh văn bản dùng `{ "prompt": "..." }`. Nếu có ảnh tham chiếu, dùng multipart với `prompt`, `aspectRatio`, `style`, `referenceImageSha256` và một field `referenceImage`. Frontend không được tự truyền API key, provider/model, steps hoặc số ảnh tùy ý.
 
 Response tạo job: HTTP 202, `{ "success": true, "data": { "id": "...", "status": "queued" } }`.
 

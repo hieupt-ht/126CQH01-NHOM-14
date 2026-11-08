@@ -132,6 +132,7 @@ Nếu phát hiện DB cũ có `name`, cần kiểm kê và thống nhất task m
 | `requestFingerprint` | string | Có | Hash canonical validated input; phát hiện dùng lại key với body khác |
 | `originalPrompt` | string | Có | Prompt người dùng sau trim biên; giữ nội dung/dấu/ý phủ định |
 | `submittedPrompt` | string | Có | Prompt thực sự gửi provider; bằng original nếu không có xử lý được duyệt |
+| `referenceImage` | object | null | Có | `null` nếu chỉ dùng text; nếu có ảnh thì `{sha256,width,height,format}` metadata đã chuẩn hóa; binary chỉ ở checkpoint tạm và được xóa sau inference |
 | `provider`, `model` | string | Có | Snapshot server-side đã dùng; không lấy từ client |
 | `settings` | object | Có | Tham số đã kiểm chứng, ví dụ `steps`; snapshot không nhận tùy ý từ body |
 | `status` | string enum | Có | `queued` mặc định; `processing`, `saving`, `succeeded`, `failed`, `needs_review` |

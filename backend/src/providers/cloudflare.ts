@@ -1,26 +1,37 @@
 import { AppError } from "../errors/app-error.js";
 export interface ImageProvider {
-  generate(prompt: string): Promise<Buffer>;
+  generate(prompt: string, referenceImage?: Buffer): Promise<Buffer>;
 }
+const TEXT_MODEL = "@cf/black-forest-labs/flux-1-schnell";
+const REFERENCE_MODEL = "@cf/black-forest-labs/flux-2-klein-4b";
 export class CloudflareProvider implements ImageProvider {
   constructor(
     private accountId: string,
     private token: string,
     private transport: typeof fetch = fetch,
   ) {}
-  async generate(prompt: string): Promise<Buffer> {
+  async generate(prompt: string, referenceImage?: Buffer): Promise<Buffer> {
     // No automatic retry: a network timeout may occur after provider accepted inference.
+    const model = referenceImage ? REFERENCE_MODEL : TEXT_MODEL;
+    let body: BodyInit;
+    const headers: Record<string, string> = { Authorization: "Bearer " + this.token };
+    if (referenceImage) {
+      const form = new FormData();
+      form.append("prompt", prompt);
+      form.append("input_image_0", new Blob([new Uint8Array(referenceImage)], { type: "image/png" }), "reference.png");
+      body = form;
+    } else {
+      headers["Content-Type"] = "application/json";
+      body = JSON.stringify({ prompt, steps: 4 });
+    }
     const response = await this.transport(
       "https://api.cloudflare.com/client/v4/accounts/" +
         this.accountId +
-        "/ai/run/@cf/black-forest-labs/flux-1-schnell",
+        "/ai/run/" + model,
       {
         method: "POST",
-        headers: {
-          Authorization: "Bearer " + this.token,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ prompt, steps: 4 }),
+        headers,
+        body,
         signal: AbortSignal.timeout(90000),
       },
     );

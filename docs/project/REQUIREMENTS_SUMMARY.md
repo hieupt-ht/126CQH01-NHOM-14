@@ -35,4 +35,6 @@ FLUX STUDIO lets an authenticated user submit one free-form description, create 
 
 ## P1 and exclusions
 
-P1 includes overview, account settings, title search, date filtering, favorites and quality feedback after P0 is stable. AI editing, input-image upload, stories, consistent characters, multi-image generation, payments, community and user-selected providers are outside the current MVP.
+P1 includes overview, account settings, title search, date filtering, favorites and quality feedback after P0 is stable. **CONFIRMED 08/11/2026:** one reference image may be attached/pasted into the existing prompt composer to create one new image; details are in `PRD.md` §4.2. This does not add saved-image editing or a chat thread. Stories, consistent characters, multi-image generation, payments, community and user-selected providers remain outside MVP.
+
+**OPEN QUESTION:** GitHub Issue #36 still labels this feature research-only; align its tracking status before using that issue as acceptance evidence.

@@ -280,6 +280,10 @@ function HistoryDetail({ id, onClose }: { id: string; onClose: () => void }) {
                 <dd>{job.model}</dd>
               </div>
               <div>
+                <dt>Ảnh tham chiếu</dt>
+                <dd>{job.usedReferenceImage ? "Có" : "Không"}</dd>
+              </div>
+              <div>
                 <dt>Thời điểm</dt>
                 <dd>{new Date(job.createdAt).toLocaleString("vi-VN")}</dd>
               </div>

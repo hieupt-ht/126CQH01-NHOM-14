@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type RefObject } from "react";
+import { useEffect, useRef, useState, type ClipboardEvent, type RefObject } from "react";
 import { aspectOptions, styleOptions, type AspectRatio, type ImageStyle } from "../../domain/generationOptions";
 import StylePicker, { StyleArtwork } from "../../components/create/StylePicker";
 import DashboardLayout from "../../layouts/DashboardLayout";
@@ -36,6 +36,12 @@ const promptExamples = [
   "Một căn nhà gỗ nhỏ giữa rừng thông phủ sương, ánh sáng xanh dịu, phong cách minh họa sách.",
   "Nhân vật phi hành gia đứng trên hành tinh xa lạ, bầu trời đầy tinh vân tím, chi tiết điện ảnh.",
 ];
+const REFERENCE_IMAGE_TYPES = ["image/png", "image/jpeg", "image/webp"];
+const MAX_REFERENCE_IMAGE_BYTES = 10 * 1024 * 1024;
+async function referenceImageSha256(file: File) {
+  const bytes = await crypto.subtle.digest("SHA-256", await file.arrayBuffer());
+  return Array.from(new Uint8Array(bytes), (value) => value.toString(16).padStart(2, "0")).join("");
+}
 
 function CreateHero() {
   return (
@@ -59,6 +65,7 @@ function PromptEditor({
   locked,
   style, onStyle,
   aspectRatio, onAspectRatio, state, onGenerate, disabled,
+  referenceImage, onAttachImage, onRemoveImage, canAttachImage, referenceRecovery,
 }: {
   prompt: string;
   onPrompt: (value: string) => void;
@@ -73,12 +80,33 @@ function PromptEditor({
   state: GenerationState;
   onGenerate: () => void;
   disabled: boolean;
+  referenceImage: File | null;
+  onAttachImage: (file: File) => void;
+  onRemoveImage: () => void;
+  canAttachImage: boolean;
+  referenceRecovery: boolean;
 }) {
   const [picker, setPicker] = useState<"style" | "ratio" | null>(null);
   const composer = useRef<HTMLElement>(null);
   const panel = useRef<HTMLDivElement>(null);
   const styleTrigger = useRef<HTMLButtonElement>(null);
   const ratioTrigger = useRef<HTMLButtonElement>(null);
+  const imageInput = useRef<HTMLInputElement>(null);
+  const [previewUrl, setPreviewUrl] = useState("");
+  useEffect(() => {
+    if (!referenceImage) { setPreviewUrl(""); return; }
+    const url = URL.createObjectURL(referenceImage);
+    setPreviewUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [referenceImage]);
+  const capturePastedImage = (event: ClipboardEvent<HTMLTextAreaElement>) => {
+    const image = Array.from(event.clipboardData.items)
+      .find((item) => item.kind === "file" && REFERENCE_IMAGE_TYPES.includes(item.type))
+      ?.getAsFile();
+    if (!image) return;
+    event.preventDefault();
+    onAttachImage(image);
+  };
   const busy = ["queued", "processing", "saving"].includes(state);
   const closePicker = () => {
     setPicker(null);
@@ -187,14 +215,27 @@ function PromptEditor({
         value={prompt}
         readOnly={locked}
         onChange={(event) => onPrompt(event.target.value)}
+        onPaste={capturePastedImage}
         placeholder="Ví dụ: Một căn phòng tối giản với cửa sổ lớn nhìn ra cực quang, ánh sáng xanh tím dịu..."
         aria-describedby={error ? "create-prompt-error" : "create-prompt-note"}
         aria-invalid={Boolean(error)}
         rows={2}
       />
+      {referenceImage && (
+        <div className="create-reference-image" aria-label="Ảnh tham chiếu đã chọn">
+          <img src={previewUrl} alt="Xem trước ảnh tham chiếu" />
+          <div><strong>{referenceImage.name || "Ảnh đã dán"}</strong><span>{(referenceImage.size / 1024 / 1024).toFixed(2)} MiB</span></div>
+          <button type="button" className="studio-icon-button" aria-label="Bỏ ảnh tham chiếu" disabled={!canAttachImage} onClick={onRemoveImage}><Icon name="close" size={16} /></button>
+        </div>
+      )}
+      {referenceRecovery && !referenceImage && (
+        <p className="create-reference-image__recovery" role="status">Yêu cầu trước có ảnh tham chiếu. Hãy chọn hoặc dán lại đúng ảnh để khôi phục nếu yêu cầu chưa được nhận.</p>
+      )}
       </div>
       <div className="create-prompt__footer">
         <div className="create-prompt__tools">
+        <input ref={imageInput} className="sr-only" type="file" accept="image/png,image/jpeg,image/webp" aria-label="Chọn ảnh tham chiếu" disabled={!canAttachImage} onChange={(event) => { const file = event.currentTarget.files?.[0]; event.currentTarget.value = ""; if (file) onAttachImage(file); }} />
+        <button type="button" className="studio-button studio-button--subtle create-example-button" disabled={!canAttachImage} onClick={() => imageInput.current?.click()}><Icon name="image" size={15} />Thêm ảnh</button>
         <button
           type="button"
           className="studio-button studio-button--subtle create-example-button"
@@ -233,7 +274,7 @@ function PromptEditor({
           <Icon name="info" size={14} />
           {UI_PREVIEW
             ? "Viết mô tả để xem thử thao tác trên giao diện."
-            : "Mô tả được gửi đến Cloudflare khi bạn nhấn Tạo ảnh."}
+            : "Mô tả và ảnh đính kèm (nếu có) được gửi đến Cloudflare khi bạn nhấn Tạo ảnh. Ảnh tham chiếu được giữ tạm trên máy chủ trong lúc gửi xử lý."}
         </p>
       )}
     </section>
@@ -242,8 +283,10 @@ function PromptEditor({
 
 function GenerationPanel({
   usage,
+  model,
 }: {
   usage: UsageRecord | null;
+  model: string;
 }) {
   return (
     <aside
@@ -266,7 +309,7 @@ function GenerationPanel({
         <span>Model</span>
         <div className="create-readonly">
           <Icon name="bolt" size={16} />
-          <strong>FLUX.1 Schnell</strong>
+          <strong>{model}</strong>
           <span className="create-readonly__dot" />
         </div>
       </div>
@@ -434,6 +477,7 @@ export default function CreateImagePage() {
     () => new URLSearchParams(window.location.search).get("job") ?? "",
   );
   const [promptError, setPromptError] = useState("");
+  const [referenceImage, setReferenceImage] = useState<File | null>(null);
   const [posting, setPosting] = useState(false);
   const [examplesOpen, setExamplesOpen] = useState(false);
   const [pollAttempt, setPollAttempt] = useState(0);
@@ -460,9 +504,9 @@ export default function CreateImagePage() {
         setPrompt(saved.prompt);
         setAspectRatio(saved.aspectRatio ?? "auto");
         setStyle(saved.style ?? "none");
-        setPromptError(
-          "Có yêu cầu chưa xác định sau lần gửi trước. Nhấn Tạo ảnh để kiểm tra cùng mã; không tạo mã mới.",
-        );
+        setPromptError(saved.referenceImageSha256
+          ? "Có yêu cầu ảnh tham chiếu chưa xác định. Nhấn Tạo ảnh để kiểm tra cùng mã; nếu chưa được nhận, hãy đính kèm lại đúng ảnh."
+          : "Có yêu cầu chưa xác định sau lần gửi trước. Nhấn Tạo ảnh để kiểm tra cùng mã; không tạo mã mới.");
       }
     } catch {
       setPromptError(
@@ -475,6 +519,31 @@ export default function CreateImagePage() {
       state !== "not_found" &&
       (!job || ["queued", "processing", "saving"].includes(job.status)),
   );
+  const referenceRecovery = Boolean(pending.current?.referenceImageSha256 && !referenceImage);
+  const canAttachImage = !posting && !active && (!pending.current || referenceRecovery);
+  const attachImage = async (file: File) => {
+    if (!REFERENCE_IMAGE_TYPES.includes(file.type)) {
+      setPromptError("Chọn ảnh PNG, JPEG hoặc WebP.");
+      return;
+    }
+    if (file.size === 0 || file.size > MAX_REFERENCE_IMAGE_BYTES) {
+      setPromptError("Ảnh tham chiếu phải tối đa 10 MiB.");
+      return;
+    }
+    try {
+      if (pending.current?.referenceImageSha256) {
+        const hash = await referenceImageSha256(file);
+        if (hash !== pending.current.referenceImageSha256) {
+          setPromptError("Ảnh này khác ảnh của yêu cầu đang khôi phục. Hãy chọn đúng ảnh đã gửi.");
+          return;
+        }
+      }
+      setReferenceImage(file);
+      setPromptError("");
+    } catch {
+      setPromptError("Không thể đọc ảnh tham chiếu trong trình duyệt.");
+    }
+  };
   useEffect(() => {
     if (examplesOpen) examplesDialog.current?.showModal();
     else examplesDialog.current?.close();
@@ -540,8 +609,21 @@ export default function CreateImagePage() {
       setState("preview");
       return;
     }
+    let referenceHash = pending.current?.referenceImageSha256;
+    if (referenceImage) {
+      try {
+        referenceHash = await referenceImageSha256(referenceImage);
+      } catch {
+        setPromptError("Không thể kiểm tra ảnh tham chiếu trong trình duyệt.");
+        return;
+      }
+      if (pending.current?.referenceImageSha256 && pending.current.referenceImageSha256 !== referenceHash) {
+        setPromptError("Ảnh tham chiếu không khớp yêu cầu đang khôi phục.");
+        return;
+      }
+    }
     if (!pending.current)
-      pending.current = { key: crypto.randomUUID(), prompt, aspectRatio, style };
+      pending.current = { key: crypto.randomUUID(), prompt, aspectRatio, style, ...(referenceHash ? { referenceImageSha256: referenceHash } : {}) };
     try {
       persistPending(profile.data.user.id, pending.current);
     } catch {
@@ -553,12 +635,25 @@ export default function CreateImagePage() {
     setPosting(true);
     setPromptError("");
     try {
+      let requestBody: BodyInit;
+      if (referenceImage && referenceHash) {
+        const form = new FormData();
+        form.set("prompt", pending.current.prompt);
+        form.set("aspectRatio", pending.current.aspectRatio ?? "auto");
+        form.set("style", pending.current.style ?? "none");
+        form.set("referenceImageSha256", referenceHash);
+        form.set("referenceImage", referenceImage, referenceImage.name || "reference-image");
+        requestBody = form;
+      } else {
+        requestBody = JSON.stringify({ prompt: pending.current.prompt, aspectRatio: pending.current.aspectRatio ?? "auto", style: pending.current.style ?? "none", ...(referenceHash ? { referenceImageSha256: referenceHash } : {}) });
+      }
       const result = await api<GenerationRecord>("/generations", {
         method: "POST",
         headers: { "Idempotency-Key": pending.current.key },
-        body: JSON.stringify({ prompt: pending.current.prompt, aspectRatio: pending.current.aspectRatio ?? "auto", style: pending.current.style ?? "none" }),
+        body: requestBody,
       });
       setJob(result);
+      setReferenceImage(null);
       setJobId(result.id);
       setState(result.status);
       setUsageRefreshKey((value) => value + 1);
@@ -572,6 +667,7 @@ export default function CreateImagePage() {
       // On network/5xx keep key+payload for an explicit retry, preventing duplicate jobs.
       if (
         reason instanceof ApiError &&
+        reason.code !== "REFERENCE_IMAGE_REQUIRED" &&
         ((reason.status >= 400 && reason.status < 500) ||
           reason.code === "GENERATION_NOT_CONFIGURED")
       ) {
@@ -591,6 +687,7 @@ export default function CreateImagePage() {
   const reset = () => {
     if (active) return;
     setJob(null);
+    setReferenceImage(null);
     setJobId("");
     setState("idle");
     pending.current = null;
@@ -626,9 +723,15 @@ export default function CreateImagePage() {
             onExamples={() => setExamplesOpen(true)}
             error={promptError}
             locked={posting || active || Boolean(pending.current)}
+            referenceImage={referenceImage}
+            onAttachImage={(file) => { void attachImage(file); }}
+            onRemoveImage={() => setReferenceImage(null)}
+            canAttachImage={canAttachImage}
+            referenceRecovery={referenceRecovery}
           />
           <GenerationPanel
             usage={usage.data}
+            model={job?.model.includes("flux-2-klein-4b") || referenceImage || pending.current?.referenceImageSha256 ? "FLUX.2 Klein 4B" : "FLUX.1 Schnell"}
           />
         {job?.status === "succeeded" && job.imageId ? (
           <section className="create-card create-result">

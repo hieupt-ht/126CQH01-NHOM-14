@@ -30,12 +30,20 @@ export interface GenerationQuotaReservation {
   releasedAt: Date | null;
 }
 
+export interface GenerationReferenceImage {
+  sha256: string;
+  width: number;
+  height: number;
+  format: 'png';
+}
+
 export interface Generation {
   userId: Types.ObjectId;
   requestKey: string;
   requestFingerprint: string;
   originalPrompt: string;
   submittedPrompt: string;
+  referenceImage: GenerationReferenceImage | null;
   provider: string;
   model: string;
   settings: Record<string, unknown>;
@@ -91,6 +99,16 @@ const quotaReservationSchema = new Schema<GenerationQuotaReservation>(
   { _id: false },
 );
 
+const referenceImageSchema = new Schema<GenerationReferenceImage>(
+  {
+    sha256: { type: String, required: true, match: /^[a-f0-9]{64}$/ },
+    width: { type: Number, required: true, min: 1, max: 511 },
+    height: { type: Number, required: true, min: 1, max: 511 },
+    format: { type: String, enum: ['png'], required: true },
+  },
+  { _id: false },
+);
+
 const generationSchema = new Schema<Generation>(
   {
     userId: { type: Schema.Types.ObjectId, ref: 'User', required: true, immutable: true },
@@ -98,6 +116,7 @@ const generationSchema = new Schema<Generation>(
     requestFingerprint: { type: String, required: true },
     originalPrompt: { type: String, required: true },
     submittedPrompt: { type: String, required: true },
+    referenceImage: { type: referenceImageSchema, default: null },
     provider: { type: String, required: true },
     model: { type: String, required: true },
     settings: { type: Schema.Types.Mixed, required: true, default: () => ({}) },

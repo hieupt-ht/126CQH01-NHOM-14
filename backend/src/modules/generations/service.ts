@@ -1,6 +1,6 @@
 import mongoose, { Types } from "mongoose";
 import { createHash, randomUUID } from "node:crypto";
-import { mkdir, readFile, rename, writeFile, unlink } from "node:fs/promises";
+import { mkdir, readFile, rename, writeFile, unlink, readdir } from "node:fs/promises";
 import { join } from "node:path";
 import sharp from "sharp";
 import { DEFAULT_PRESENTATION, applyImageStyle, padImageToRatio, type Presentation } from "./presentation.js";
@@ -12,6 +12,7 @@ import {
 } from "../../models/index.js";
 import { AppError } from "../../errors/app-error.js";
 import type { GenerationDocument } from "../../models/generation.model.js";
+import type { NormalizedReferenceImage } from "./reference-image.js";
 import type { ImageProvider } from "../../providers/cloudflare.js";
 import {
   containsVietnameseText,
@@ -30,6 +31,8 @@ export type GenerationOptions = {
   cooldownMs: number;
   checkpointDir: string;
 };
+const TEXT_MODEL = "@cf/black-forest-labs/flux-1-schnell";
+const REFERENCE_MODEL = "@cf/black-forest-labs/flux-2-klein-4b";
 export class GenerationService {
   private workerId = randomUUID();
   private running = false;
@@ -43,10 +46,17 @@ export class GenerationService {
     private promptTranslator?: PromptTranslator,
     private promptTranslationEnabled = false,
   ) {}
-  private matchReplay(job: GenerationDocument, fingerprint: string, prompt: string, presentation: Presentation) {
+  private referencePath(id: Types.ObjectId) {
+    return join(this.options.checkpointDir, String(id) + ".input.png");
+  }
+  private async removeReferenceImage(id: Types.ObjectId) {
+    await unlink(this.referencePath(id)).catch(() => undefined);
+  }
+  private matchReplay(job: GenerationDocument, fingerprint: string, prompt: string, presentation: Presentation, referenceSha256: string | null) {
     if (job.requestFingerprint !== fingerprint || job.originalPrompt !== prompt ||
       (job.settings.aspectRatio ?? "auto") !== presentation.aspectRatio ||
-      (job.settings.style ?? "none") !== presentation.style)
+      (job.settings.style ?? "none") !== presentation.style ||
+      (job.referenceImage?.sha256 ?? null) !== referenceSha256)
       throw new AppError(
         409,
         "IDEMPOTENCY_CONFLICT",
@@ -54,13 +64,28 @@ export class GenerationService {
       );
     return job;
   }
-  async accept(userId: Types.ObjectId, requestKey: string, prompt: string, presentation: Presentation = DEFAULT_PRESENTATION) {
+  async accept(
+    userId: Types.ObjectId,
+    requestKey: string,
+    prompt: string,
+    presentation: Presentation = DEFAULT_PRESENTATION,
+    referenceImage?: NormalizedReferenceImage,
+    expectedReferenceSha256?: string,
+  ) {
+    const referenceSha256 = referenceImage?.sha256 ?? expectedReferenceSha256 ?? null;
+    if (referenceImage && expectedReferenceSha256 && referenceImage.sha256 !== expectedReferenceSha256)
+      throw new AppError(400, "INVALID_REFERENCE_IMAGE", "Ảnh tham chiếu không khớp yêu cầu.");
+    if (referenceSha256 && !/^[a-f0-9]{64}$/.test(referenceSha256))
+      throw new AppError(400, "INVALID_REFERENCE_IMAGE", "Ảnh tham chiếu không hợp lệ.");
     // Preserve fingerprints for legacy/default requests; explicit options are part of intent.
     const intent = presentation.aspectRatio === "auto" && presentation.style === "none"
-      ? prompt : JSON.stringify([prompt, presentation.aspectRatio, presentation.style]);
+      ? (referenceSha256 ? JSON.stringify([prompt, presentation.aspectRatio, presentation.style, referenceSha256]) : prompt)
+      : JSON.stringify([prompt, presentation.aspectRatio, presentation.style, ...(referenceSha256 ? [referenceSha256] : [])]);
     const fingerprint = createHash("sha256").update(intent).digest("hex");
     const replay = await GenerationModel.findOne({ userId, requestKey });
-    if (replay) return this.matchReplay(replay, fingerprint, prompt, presentation);
+    if (replay) return this.matchReplay(replay, fingerprint, prompt, presentation, referenceSha256);
+    if (referenceSha256 && !referenceImage)
+      throw new AppError(400, "REFERENCE_IMAGE_REQUIRED", "Hãy đính kèm lại ảnh để gửi yêu cầu này.");
     let submittedPrompt = prompt;
     if (this.promptTranslationEnabled && containsVietnameseText(prompt)) {
       if (!this.promptTranslator)
@@ -88,13 +113,18 @@ export class GenerationService {
       now = new Date(),
       dateKey = now.toISOString().slice(0, 10);
     try {
+      if (referenceImage) {
+        await mkdir(this.options.checkpointDir, { recursive: true });
+        await writeFile(this.referencePath(id) + ".tmp", referenceImage.bytes, { mode: 0o600 });
+        await rename(this.referencePath(id) + ".tmp", this.referencePath(id));
+      }
       await mongoose.connection.transaction(async (session) => {
         const existing = await GenerationModel.findOne({
           userId,
           requestKey,
         }).session(session);
         if (existing) {
-          this.matchReplay(existing, fingerprint, prompt, presentation);
+          this.matchReplay(existing, fingerprint, prompt, presentation, referenceSha256);
           return;
         }
         const user = await UserModel.findOneAndUpdate(
@@ -150,8 +180,16 @@ export class GenerationService {
               requestFingerprint: fingerprint,
               originalPrompt: prompt,
               submittedPrompt,
+              referenceImage: referenceImage
+                ? {
+                    sha256: referenceImage.sha256,
+                    width: referenceImage.width,
+                    height: referenceImage.height,
+                    format: referenceImage.format,
+                  }
+                : null,
               provider: "cloudflare",
-              model: "@cf/black-forest-labs/flux-1-schnell",
+              model: referenceImage ? REFERENCE_MODEL : TEXT_MODEL,
               settings: { steps: 4, ...presentation,
                 ...(this.promptTranslationEnabled && containsVietnameseText(prompt) && this.promptTranslator?.revision
                   ? { promptTranslation: { model: this.promptTranslator.model ?? "unknown", revision: this.promptTranslator.revision } } : {}),
@@ -168,11 +206,16 @@ export class GenerationService {
         );
       });
     } catch (error) {
+      await this.removeReferenceImage(id);
+      await unlink(this.referencePath(id) + ".tmp").catch(() => undefined);
       const existing = await GenerationModel.findOne({ userId, requestKey });
-      if (existing) return this.matchReplay(existing, fingerprint, prompt, presentation);
+      if (existing) return this.matchReplay(existing, fingerprint, prompt, presentation, referenceSha256);
       throw error;
     }
-    return GenerationModel.findOne({ userId, requestKey });
+    const savedJob = await GenerationModel.findOne({ userId, requestKey });
+    if (savedJob && String(savedJob._id) !== String(id))
+      await this.removeReferenceImage(id);
+    return savedJob;
   }
   start() {
     if (this.timer || this.running) return;
@@ -204,6 +247,7 @@ export class GenerationService {
     code: string,
     message: string,
   ) {
+    let transitioned = false;
     await mongoose.connection.transaction(async (session) => {
       const job = await GenerationModel.findOneAndUpdate(
         {
@@ -226,13 +270,16 @@ export class GenerationService {
         },
         { session, returnDocument: "after" },
       );
-      if (job)
+      if (job) {
+        transitioned = true;
         await UserModel.updateOne(
           { _id: job.userId, activeGenerationId: id },
           { $set: { activeGenerationId: null } },
           { session },
         );
+      }
     });
+    if (transitioned) await this.removeReferenceImage(id);
   }
   async runOnce() {
     const now = new Date();
@@ -306,9 +353,12 @@ export class GenerationService {
       let bytes: Buffer;
       if (job.status === "saving") bytes = await readFile(path);
       else {
+        const referenceImage = job.referenceImage
+          ? await readFile(this.referencePath(job._id))
+          : undefined;
         try {
           dispatchStarted = true;
-          bytes = await this.provider.generate(job.submittedPrompt);
+          bytes = await this.provider.generate(job.submittedPrompt, referenceImage);
         } catch (error) {
           const known =
             error instanceof AppError && error.code !== "RESULT_UNCERTAIN";
@@ -336,6 +386,7 @@ export class GenerationService {
             },
           },
         );
+        if (job.referenceImage) await this.removeReferenceImage(job._id);
       }
       bytes = await padImageToRatio(bytes, (job.settings.aspectRatio ?? "auto") as Presentation["aspectRatio"]);
       if (bytes.length > 10 * 1024 * 1024)
@@ -473,6 +524,7 @@ export class GenerationService {
     }
   }
   private async failBeforeDispatch(id: Types.ObjectId) {
+    let transitioned = false;
     await mongoose.connection.transaction(async (session) => {
       const job = await GenerationModel.findOneAndUpdate(
         {
@@ -499,6 +551,7 @@ export class GenerationService {
         { session, returnDocument: "after" },
       );
       if (!job) return;
+      transitioned = true;
       for (const [scopeType, scopeId] of [
         ["user", String(job.userId)],
         ["application", "app"],
@@ -520,8 +573,17 @@ export class GenerationService {
         { session },
       );
     });
+    if (transitioned) await this.removeReferenceImage(id);
   }
   async cleanup() {
+    const checkpointFiles = await readdir(this.options.checkpointDir).catch(() => [] as string[]);
+    const inputFiles = checkpointFiles.filter((name) => /^[a-f0-9]{24}\.input\.png$/i.test(name)).slice(0, 25);
+    const ids = inputFiles.map((file) => new Types.ObjectId(file.slice(0, 24)));
+    const activeIds = new Set((await GenerationModel.find({ _id: { $in: ids }, status: { $in: ["queued", "processing"] } }).select("_id")).map((job) => String(job._id)));
+    for (const file of inputFiles) {
+      if (!activeIds.has(file.slice(0, 24)))
+        await unlink(join(this.options.checkpointDir, file)).catch(() => undefined);
+    }
     const images = await ImageModel.find({
       deletedAt: { $ne: null },
       storageDeletionStatus: { $in: ["pending", "failed"] },

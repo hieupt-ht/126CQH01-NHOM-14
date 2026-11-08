@@ -6,6 +6,17 @@
 
 # Frontend/Backend Contract
 
+## Ảnh tham chiếu trong trình soạn mô tả — 08/11/2026 (CONFIRMED)
+
+- Composer tại `/app/create` cho phép chọn hoặc dán đúng một ảnh PNG/JPEG/WebP; giới hạn upload 10 MiB, ảnh tĩnh tối đa4096px mỗi cạnh. FE preview bằng object URL và thu hồi URL khi bỏ/thay ảnh.
+- POST `/api/v1/generations` không ảnh tiếp tục nhận JSON `{prompt,aspectRatio?,style?}`. Có ảnh thì nhận `multipart/form-data`: `prompt`, `aspectRatio`, `style`, `referenceImageSha256` (SHA-256 bytes gốc) và `referenceImage` (binary). Cả hai dùng cùng `Idempotency-Key`, session, Origin, CSRF, quota và giới hạn một job đang chạy.
+- Retry sau khi reload có thể gửi JSON kèm `referenceImageSha256` nhưng không có bytes: nếu job cùng key/hash đã tồn tại, trả lại cùng DTO; nếu chưa tồn tại, trả400 `REFERENCE_IMAGE_REQUIRED` để người dùng chọn/dán lại đúng ảnh. Hash được tính phía FE chỉ để nhận diện intent; BE luôn băm bytes và xác minh lại.
+- BE xác thực signature/decoded image, MIME, số trang và kích thước; xoay theo orientation, bỏ metadata, chuẩn hóa PNG <=511×511 để đáp ứng model. Không lưu ảnh trong MongoDB/Cloudinary hoặc thư viện; file tạm được lưu mode0600 trong checkpoint dir dùng cho worker, tên dẫn xuất từ ObjectId server và xóa sau khi output inference được checkpoint, hoặc khi job terminal trước đó. History DTO chỉ thêm `usedReferenceImage`.
+- Có ảnh: backend chọn `@cf/black-forest-labs/flux-2-klein-4b` và multipart `input_image_0`; không ảnh tiếp tục `@cf/black-forest-labs/flux-1-schnell`. Frontend không chọn model. Model mới chưa được gọi live trong thay đổi này.
+- UI phải thông báo ảnh và prompt được gửi đến Cloudflare. Tác vụ vẫn là một lượt, một ảnh kết quả; không tạo hội thoại nhiều lượt, không gọi AI lúc chọn/dán ảnh.
+
+Tài liệu model: [FLUX.2 Klein 4B on Workers AI](https://developers.cloudflare.com/changelog/post/2026-01-15-flux-2-klein-4b-workers-ai/). Giá/usage: [Workers AI pricing](https://developers.cloudflare.com/workers-ai/platform/pricing/). Hạn mức tài khoản cần xem trong Cloudflare dashboard; không tự bật billing.
+
 ## Bảo vệ nghĩa prompt trong M2M100 — 04/11/2026 (CONFIRMED)
 
 Chủ dự án chọn giữ M2M100 sau khi dữ liệu thật cho thấy trâu→beetle và thổi sáo→
@@ -235,7 +246,7 @@ The existing endpoints retain Issue #1/PRD semantics under the confirmed `/api/v
 
 ## Request and response rules
 
-Generation request is `{ "prompt": "..." }`; frontend does not send provider keys, arbitrary model/steps/count or userId. A newly accepted request returns HTTP `202` with `{ "success": true, "data": { "id": "...", "status": "queued" } }`.
+Text-only generation request is `{ "prompt": "..." }`; a reference-image generation uses the multipart contract above. Frontend does not send provider keys, arbitrary model/steps/count or userId. A newly accepted request returns HTTP `202` with `{ "success": true, "data": { "id": "...", "status": "queued" } }`.
 
 Errors use `{ "success": false, "error": { "code": "...", "message": "..." } }`. Known codes include `INVALID_PROMPT`, `UNAUTHENTICATED`, `NOT_FOUND`, `DAILY_LIMIT_REACHED`, `GENERATION_IN_PROGRESS`, `PROVIDER_QUOTA_EXCEEDED`, `GENERATION_FAILED`, `RESULT_UNCERTAIN` and `STORAGE_FAILED`.
 
