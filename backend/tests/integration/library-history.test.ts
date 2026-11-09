@@ -180,6 +180,39 @@ test("library/history: owner scoping, tied cursors, private files and soft-delet
       assert.ok(history.some((item: { status: string }) => item.status === "needs_review"));
       assert.equal(history.find((item: { id: string }) => item.id === String(job._id)).imageDeleted, true);
     });
+    await t.test("bulk delete is validated, owner scoped, and covers every library page", async () => {
+      const otherJob = await GenerationModel.create({
+        userId: b.id, requestKey: "other-account-job", requestFingerprint: "other-account",
+        originalPrompt: "Other user's image", submittedPrompt: "Other user's image",
+        provider: "test", model: "fixture-model", status: "succeeded", createdAt,
+        quotaReservation: { dateKey: "2026-10-30", userReserved: true, appReserved: true },
+      });
+      const otherImage = await ImageModel.create({
+        userId: b.id, generationId: otherJob._id, title: "Other user's image",
+        storage: { provider: "test", accountAlias: "isolated", key: "other-image", deliveryMode: "private" },
+        width: 64, height: 64, bytes: bytes.length, format: "png", createdAt,
+      });
+      const ids = [String(images[3]._id), String(images[4]._id)];
+      for (const body of [{ ids: [ids[0]] }, { ids: ["bad", ids[1]] }, { all: false }, { all: true, userId: String(a.id) }])
+        assert.equal((await request("/images", "DELETE", body)).status, 400);
+      assert.equal((await request("/images", "DELETE", { ids }, a, "wrong")).status, 403);
+      assert.equal((await fetch(base + "/images", { method: "DELETE", headers: { Origin: origin } })).status, 401);
+      const foreign = await request("/images", "DELETE", { ids }, b);
+      assert.equal(foreign.status, 200);
+      assert.equal((await foreign.json()).data.deletedCount, 0);
+      const chosen = await request("/images", "DELETE", { ids });
+      assert.equal(chosen.status, 200);
+      assert.equal((await chosen.json()).data.deletedCount, 2);
+      assert.equal((await (await request("/images", "DELETE", { ids })).json()).data.deletedCount, 0);
+      const all = await request("/images", "DELETE", { all: true });
+      assert.equal(all.status, 200);
+      assert.equal((await all.json()).data.deletedCount, 42);
+      assert.deepEqual((await (await request("/images?limit=50")).json()).data.items, []);
+      assert.equal((await (await request("/images", "GET", undefined, b)).json()).data.items[0].id, String(otherImage._id));
+      assert.equal((await ImageModel.findById(images[44]._id))!.storageDeletionStatus, "pending");
+      assert.equal((await (await request("/generations?limit=50")).json()).data.items.length, 45);
+      assert.equal((await DailyUsageModel.findOne({ scopeId: String(a.id) }))!.reservedRequests, 3);
+    });
   } finally {
     if (server) await new Promise<void>((resolve) => server!.close(() => resolve()));
     await mongoose.disconnect();

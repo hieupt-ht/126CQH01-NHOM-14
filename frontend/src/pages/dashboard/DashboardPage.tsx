@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { type AspectRatio, type ImageStyle } from "../../domain/generationOptions";
 import DashboardLayout from "../../layouts/DashboardLayout";
 import DashboardHero from "../../components/dashboard/DashboardHero";
+import AnimatedWelcomeArtwork from "../../components/dashboard/AnimatedWelcomeArtwork";
 import PromptComposer from "../../components/dashboard/PromptComposer";
 import GenerationPanel from "../../components/dashboard/GenerationPanel";
 import CreationGallery from "../../components/dashboard/CreationGallery";
@@ -64,6 +65,9 @@ export default function DashboardPage() {
   const pendingRef = useRef<PendingGeneration | null>(null);
   const restoredPendingUser = useRef("");
   const artworkDialog = useRef<HTMLDialogElement>(null);
+  const welcomeDialog = useRef<HTMLDialogElement>(null);
+  const welcomeAutoHandled = useRef(false);
+  const [welcomeOpen, setWelcomeOpen] = useState(false);
   const referenceRecovery = Boolean(pendingRequest?.referenceImageSha256 && !referenceImage);
   const canAttachImage = !posting && (!pendingRequest || referenceRecovery);
   const locked = posting || Boolean(pendingRequest);
@@ -92,6 +96,25 @@ export default function DashboardPage() {
     if (selected) artworkDialog.current?.showModal();
     else artworkDialog.current?.close();
   }, [selected]);
+  useEffect(() => {
+    if (welcomeAutoHandled.current) return;
+    const forced = new URLSearchParams(window.location.search).get("welcome") === "1";
+    if (!forced && (recent.loading || recent.error || !recent.data)) return;
+    welcomeAutoHandled.current = true;
+    let dismissed = false;
+    try { dismissed = window.localStorage.getItem("flux_welcome_dismissed") === "1"; } catch { /* Storage may be blocked. */ }
+    if (forced || (!dismissed && recent.data?.items.length === 0)) setWelcomeOpen(true);
+  }, [recent.loading, recent.error, recent.data]);
+  useEffect(() => {
+    const dialog = welcomeDialog.current;
+    if (!dialog) return;
+    if (welcomeOpen && !dialog.open) dialog.showModal();
+    if (!welcomeOpen && dialog.open) dialog.close();
+  }, [welcomeOpen]);
+  const closeWelcome = () => {
+    setWelcomeOpen(false);
+    try { window.localStorage.setItem("flux_welcome_dismissed", "1"); } catch { /* Storage may be blocked. */ }
+  };
 
   const compose = () => {
     promptInput.current?.scrollIntoView({ block: "center" });
@@ -226,7 +249,7 @@ export default function DashboardPage() {
     >
       <div className="dashboard-workbench">
         <div className="dashboard-workbench__main">
-          <DashboardHero />
+          <DashboardHero onWelcome={() => setWelcomeOpen(true)} />
           <PromptComposer
             prompt={prompt}
             onPrompt={(value) => {
@@ -256,7 +279,7 @@ export default function DashboardPage() {
         <GenerationPanel />
       </div>
 
-      <section className="creation-gallery" aria-labelledby="recent-live-title">
+      {recent.data && recent.data.items.length > 0 && <section className="creation-gallery" aria-labelledby="recent-live-title">
         <header className="creation-gallery__header">
           <h2 id="recent-live-title">Ảnh đã lưu gần đây</h2>
           <a href="/app/library">Xem thư viện</a>
@@ -273,18 +296,10 @@ export default function DashboardPage() {
           </p>
         )}
         {stats.error && <p role="alert">{stats.error}</p>}
-        {recent.loading ? (
-          <p role="status">Đang tải ảnh gần đây…</p>
-        ) : recent.error ? (
-          <p role="alert">{recent.error}</p>
-        ) : !recent.data?.items.length ? (
-          <p>Chưa có ảnh đã lưu. Bắt đầu từ một mô tả của bạn.</p>
-        ) : (
-          <div className="creation-grid">
-            {recent.data.items.map((image) => <RecentImage key={image.id} image={image} />)}
-          </div>
-        )}
-      </section>
+        <div className="creation-grid">
+          {recent.data.items.map((image) => <RecentImage key={image.id} image={image} />)}
+        </div>
+      </section>}
       <CreationGallery
         artworks={visibleArtworks}
         favorites={favorites}
@@ -353,6 +368,13 @@ export default function DashboardPage() {
             </div>
           </>
         )}
+      </dialog>
+      <dialog className="welcome-dialog" ref={welcomeDialog} aria-label="Giới thiệu FLUX Studio"
+        onCancel={(event) => { event.preventDefault(); closeWelcome(); }}
+        onClick={(event) => { if (event.target === event.currentTarget) closeWelcome(); }}>
+        <button type="button" className="welcome-dialog__close studio-icon-button" aria-label="Đóng" onClick={closeWelcome}><Icon name="close" size={18} /></button>
+        <AnimatedWelcomeArtwork />
+        <div className="welcome-dialog__footer"><span>Minh họa quy trình, không tạo ảnh thật.</span><a className="studio-button studio-button--primary" href="/app/create" onClick={closeWelcome}>Bắt đầu tạo ảnh <Icon name="arrow" size={16} /></a></div>
       </dialog>
     </DashboardLayout>
   );

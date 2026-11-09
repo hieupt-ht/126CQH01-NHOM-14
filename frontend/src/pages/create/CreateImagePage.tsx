@@ -15,11 +15,12 @@ import { api, ApiError, type UserProfile } from "../../services/api";
 import { REFERENCE_IMAGE_TYPES, referenceImageSha256, submitGeneration, validateReferenceImage } from "../../services/generationSubmission";
 import { UI_PREVIEW } from "../../services/uiPreview";
 import { useResource } from "../../services/resources";
-import type { UsageRecord } from "../../services/resources";
+import type { ImageRecord, Page, StatsRecord, UsageRecord } from "../../services/resources";
 import type { GenerationRecord } from "../../services/resources";
 
 type GenerationState =
   | "idle"
+  | "submitting"
   | "queued"
   | "processing"
   | "saving"
@@ -265,11 +266,16 @@ function PromptEditor({
 
 function GenerationPanel({
   usage,
-  model,
+  model, usageError, usageLoading,
 }: {
   usage: UsageRecord | null;
   model: string;
+  usageError: string;
+  usageLoading: boolean;
 }) {
+  const available = !UI_PREVIEW && !usageLoading && !usageError && usage !== null;
+  const reset = available && Number.isFinite(Date.parse(usage.resetAt))
+    ? new Intl.DateTimeFormat("vi-VN", { hour: "2-digit", minute: "2-digit", day: "2-digit", month: "2-digit", timeZone: "Asia/Ho_Chi_Minh" }).format(new Date(usage.resetAt)) : null;
   return (
     <aside
       className="create-card create-generation"
@@ -295,14 +301,30 @@ function GenerationPanel({
           <span className="create-readonly__dot" />
         </div>
       </div>
-      <div className="create-generation__note">
-        <Icon name="shield" size={17} />
-        <p>
-          {usage ? `Còn ${usage.remainingToday} lượt tạo hôm nay.` : "Đang tải lượt tạo…"}
-        </p>
-      </div>
+      <dl className="usage-card__metrics">
+        <div><dt>Lượt hôm nay</dt><dd>{available ? `${usage.acceptedToday} / ${usage.grantedToday}` : usageLoading ? "Đang tải…" : "Không khả dụng"}</dd></div>
+      </dl>
+      {available && usage.grantedToday > 0 ? <progress className="usage-card__progress" max={usage.grantedToday} value={Math.min(usage.acceptedToday, usage.grantedToday)} aria-label="Tỷ lệ lượt đã nhận trong hạn mức cá nhân" /> : <div className="usage-card__progress-placeholder" aria-hidden="true" />}
+      <dl className="usage-card__metrics"><div><dt>Còn có thể dùng</dt><dd>{available ? usage.remainingToday : "—"}</dd></div></dl>
+      <p className="create-side-note">{reset ? `Đặt lại ${reset} (giờ Việt Nam).` : "Chưa có thời điểm đặt lại."}</p>
+      <p className="create-side-note">Lượt đã nhận khác số ảnh thành công. Lượt khả dụng còn phụ thuộc hạn mức chung.</p>
+      {usageError && <p className="create-side-note" role="alert">{usageError}</p>}
+      {available && !usage.configured && <p className="create-side-note">Dịch vụ tạo ảnh chưa được bật.</p>}
+      {available && usage.remainingToday === 0 && <p className="create-side-note" role="status">Hiện không còn lượt khả dụng.</p>}
     </aside>
   );
+}
+
+function StorageCard({ stats, loading, error }: { stats: StatsRecord | null; loading: boolean; error: string }) {
+  const available = !UI_PREVIEW && !loading && !error && stats !== null;
+  const bytes = available ? stats.totals.bytes : 0;
+  const size = bytes >= 1024 ** 3 ? `${(bytes / 1024 ** 3).toFixed(2)} GB` : `${(bytes / 1024 ** 2).toFixed(1)} MB`;
+  return <section className="create-card create-generation" aria-labelledby="storage-title">
+    <div className="create-card__heading create-generation__heading"><div><span className="create-card__icon"><Icon name="image" size={17} /></span><h2 id="storage-title">Ảnh đang lưu</h2></div><a className="create-side-link" href="/app/library">Xem thư viện</a></div>
+    <dl className="usage-card__metrics"><div><dt>Số ảnh</dt><dd>{available ? stats.totals.savedImages : "—"}</dd></div><div><dt>Dung lượng</dt><dd>{available ? size : loading ? "Đang tải…" : "Không khả dụng"}</dd></div></dl>
+    {error && <p className="create-side-note" role="alert">{error}</p>}
+    <p className="create-side-note">Dung lượng ảnh trong thư viện, không phải credit dịch vụ hay quota lưu trữ được cấp.</p>
+  </section>;
 }
 
 function StateIcon({ state }: { state: GenerationState }) {
@@ -330,6 +352,11 @@ function ResultPreview({
       label: "CHƯA TẠO",
       title: "Ảnh của bạn sẽ xuất hiện tại đây",
       body: "Bắt đầu bằng một mô tả cụ thể. Kết quả sẽ được hiển thị trong khu vực này.",
+    },
+    submitting: {
+      label: "ĐANG GỬI",
+      title: "Đang gửi yêu cầu...",
+      body: "Đang gửi yêu cầu tạo ảnh đến máy chủ.",
     },
     queued: {
       label: "QUEUED",
@@ -379,7 +406,7 @@ function ResultPreview({
   };
   const current = copy[state];
   const isProgress =
-    state === "queued" || state === "processing" || state === "saving";
+    state === "submitting" || state === "queued" || state === "processing" || state === "saving";
   return (
     <section
       className={`create-card create-result create-result--${state}`}
@@ -400,7 +427,7 @@ function ResultPreview({
       </div>
       {
         <div
-          className={`create-result__empty ${isProgress ? "create-result__empty--progress" : ""}`}
+          className={`create-result__empty ${state === "idle" || isProgress ? "create-result__empty--aurora" : ""}`}
         >
           <span className="create-result__empty-icon">
             {isProgress ? (
@@ -409,7 +436,7 @@ function ResultPreview({
               <StateIcon state={state} />
             )}
           </span>
-          <h3>{current.title}</h3>
+          <h3>{isProgress ? "Đang tạo ảnh..." : current.title}</h3>
           <p>{current.body}</p>
           {state === "failed" && (
             <button
@@ -447,7 +474,6 @@ function ResultPreview({
 
 export default function CreateImagePage() {
   const profile = useResource<{ user: UserProfile }>("/auth/me");
-  const usage = useResource<UsageRecord>("/usage/me");
   const [prompt, setPrompt] = useState(
     () => new URLSearchParams(window.location.search).get("prompt") ?? "",
   );
@@ -463,6 +489,9 @@ export default function CreateImagePage() {
   const [posting, setPosting] = useState(false);
   const [pollAttempt, setPollAttempt] = useState(0);
   const [usageRefreshKey, setUsageRefreshKey] = useState(0);
+  const usage = useResource<UsageRecord>("/usage/me", usageRefreshKey);
+  const stats = useResource<StatsRecord>("/stats/me", usageRefreshKey);
+  const recent = useResource<Page<ImageRecord>>("/images?limit=5", usageRefreshKey);
   const promptInput = useRef<HTMLTextAreaElement>(null);
   const pending = useRef<PendingGeneration | null>(null);
   useEffect(() => {
@@ -635,11 +664,11 @@ export default function CreateImagePage() {
       onCompose={() => promptInput.current?.focus()}
       activeItem="create"
       showSearch={false}
-      usageRefreshKey={usageRefreshKey}
     >
       <div className="create-page">
         <CreateHero />
         <div className="create-workspace">
+          <div className="create-workspace__main">
           <PromptEditor
             aspectRatio={aspectRatio} onAspectRatio={setAspectRatio}
             state={state} onGenerate={() => { void generate(); }}
@@ -658,10 +687,6 @@ export default function CreateImagePage() {
             onRemoveImage={() => setReferenceImage(null)}
             canAttachImage={canAttachImage}
             referenceRecovery={referenceRecovery}
-          />
-          <GenerationPanel
-            usage={usage.data}
-            model={job?.model.includes("flux-2-klein-4b") || referenceImage || pending.current?.referenceImageSha256 ? "FLUX.2 Klein 4B" : "FLUX.1 Schnell"}
           />
         {job?.status === "succeeded" && job.imageId ? (
           <section className="create-card create-result">
@@ -695,7 +720,7 @@ export default function CreateImagePage() {
           </section>
         ) : (
           <ResultPreview
-            state={state}
+            state={posting ? "submitting" : state}
             onReusePrompt={reset}
             onRetryStatus={() => setPollAttempt((value) => value + 1)}
           />
@@ -707,6 +732,15 @@ export default function CreateImagePage() {
             thể chuyển trang và theo dõi trong lịch sử.
           </p>
         )}
+        {!recent.error && recent.data && recent.data.items.length > 0 && <section className="create-card create-recent-images" aria-labelledby="recent-images-title">
+          <div className="create-card__heading create-recent-images__heading"><div><span className="create-card__icon"><Icon name="image" size={17} /></span><h2 id="recent-images-title">Ảnh gần đây</h2></div><a className="create-side-link" href="/app/library">Xem tất cả</a></div>
+          <div className="create-recent-images__grid">{recent.data.items.map(image => <a key={image.id} href={`/app/images/${image.id}`} aria-label={`Xem ảnh: ${image.prompt || image.title}`}><img loading="lazy" src={image.contentUrl} alt={(image.prompt?.trim() || image.title).slice(0, 100)} /></a>)}</div>
+        </section>}
+          </div>
+          <div className="create-workspace__side">
+            <GenerationPanel usage={usage.data} usageError={usage.error} usageLoading={usage.loading} model={job?.model.includes("flux-2-klein-4b") || referenceImage || pending.current?.referenceImageSha256 ? "FLUX.2 Klein 4B" : "FLUX.1 Schnell"} />
+            <StorageCard stats={stats.data} loading={stats.loading} error={stats.error} />
+          </div>
         </div>
       </div>
     </DashboardLayout>

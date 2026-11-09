@@ -1,0 +1,26 @@
+.welcome-artwork { position: relative; width: 100%; overflow: hidden; background: var(--bg-primary); aspect-ratio: 1672 / 941; }
+.welcome-artwork > img { display: block; width: 100%; height: 100%; object-fit: contain; transform: scale(1); animation: welcome-breathe 10s ease-in-out infinite alternate; }
+.welcome-artwork__light { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
+.welcome-artwork__mask { position: absolute; inset: 0; background: rgba(8, 12, 37, .84); backdrop-filter: blur(14px); pointer-events: none; }
+.welcome-artwork__mask--hoi-an { clip-path: polygon(46% 24%, 71% 29%, 74% 55%, 49% 54%); animation: welcome-reveal-one 12s linear infinite; }
+.welcome-artwork__mask--mountain { clip-path: polygon(77% 23%, 98% 21%, 96% 44%, 74% 45%); animation: welcome-reveal-two 12s linear infinite; }
+.welcome-artwork__mask--lotus { clip-path: polygon(79% 44%, 99% 42%, 98% 66%, 77% 66%); animation: welcome-reveal-three 12s linear infinite; }
+.welcome-artwork__click { position: absolute; z-index: 1; left: 63.5%; top: 82%; width: 8%; aspect-ratio: 1; border: 3px solid #d68aff; border-radius: 50%; box-shadow: 0 0 28px #a64dff, inset 0 0 24px #22d3ee; opacity: 0; transform: translate(-50%, -50%) scale(.25); animation: welcome-click 12s ease-out infinite; pointer-events: none; }
+.welcome-artwork__cursor { position: absolute; z-index: 2; left: 68%; top: 83%; width: 19px; height: 27px; background: #fff; clip-path: polygon(0 0, 0 85%, 6px 19px, 12px 27px, 17px 24px, 11px 16px, 19px 15px); filter: drop-shadow(1px 2px 2px #050920); opacity: 0; animation: welcome-pointer 12s ease-in-out infinite; pointer-events: none; }
+.welcome-artwork__trail { fill: none; stroke: url(#welcome-light-gradient); stroke-width: 30; stroke-linecap: round; stroke-dasharray: 90 430; opacity: .6; animation: welcome-flow 5s linear infinite; }
+.welcome-artwork__trail--second { animation-delay: -2.5s; animation-duration: 6s; }
+.welcome-artwork__spark { fill: #e8faff; transform-origin: center; opacity: .45; animation: welcome-twinkle 3.6s ease-in-out infinite alternate; }
+.welcome-artwork__spark--two { animation-delay: -1.2s; }
+.welcome-artwork__spark--three { animation-delay: -2.4s; }
+@keyframes welcome-breathe { to { transform: scale(1.012); } }
+@keyframes welcome-flow { to { stroke-dashoffset: -520; } }
+@keyframes welcome-twinkle { to { opacity: .9; } }
+@keyframes welcome-reveal-one { 0%, 18% { opacity: 1; } 27%, 90% { opacity: 0; } 100% { opacity: 1; } }
+@keyframes welcome-reveal-two { 0%, 34% { opacity: 1; } 43%, 90% { opacity: 0; } 100% { opacity: 1; } }
+@keyframes welcome-reveal-three { 0%, 50% { opacity: 1; } 59%, 90% { opacity: 0; } 100% { opacity: 1; } }
+@keyframes welcome-click { 0%, 7%, 15%, 100% { opacity: 0; transform: translate(-50%, -50%) scale(.25); } 10% { opacity: .95; transform: translate(-50%, -50%) scale(.8); } 13% { opacity: 0; transform: translate(-50%, -50%) scale(1.35); } }
+@keyframes welcome-pointer { 0% { opacity: 0; transform: translate(24px, 22px); } 4%, 9% { opacity: 1; transform: translate(0, 0); } 11% { opacity: 1; transform: translate(0, 2px) scale(.9); } 15%, 100% { opacity: 0; transform: translate(0, 2px) scale(.9); } }
+@media (prefers-reduced-motion: reduce) {
+  .welcome-artwork > img, .welcome-artwork__trail, .welcome-artwork__spark, .welcome-artwork__mask, .welcome-artwork__click, .welcome-artwork__cursor { animation: none; }
+  .welcome-artwork__mask, .welcome-artwork__click, .welcome-artwork__cursor { display: none; }
+}
