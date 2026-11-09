@@ -12,7 +12,7 @@ import { demoArtworks, type DemoArtwork } from "./dashboardData";
 import { UI_PREVIEW } from "../../services/uiPreview";
 import { restorePending, type PendingGeneration } from "../../services/pendingGeneration";
 import type { UserProfile } from "../../services/api";
-import { referenceImageSha256, submitGeneration, validateReferenceImage } from "../../services/generationSubmission";
+import { MAX_REFERENCE_IMAGES, referenceImageSha256, submitGeneration, validateReferenceImage } from "../../services/generationSubmission";
 import { validatePrompt } from "../../domain/prompt";
 import "./DashboardPage.css";
 import {
@@ -51,7 +51,7 @@ export default function DashboardPage() {
   const [prompt, setPrompt] = useState("");
   const [aspectRatio, setAspectRatio] = useState<AspectRatio>("auto");
   const [style, setStyle] = useState<ImageStyle>("none");
-  const [referenceImage, setReferenceImage] = useState<File | null>(null);
+  const [referenceImage, setReferenceImage] = useState<File[]>([]);
   const [posting, setPosting] = useState(false);
   const [pendingRequest, setPendingRequest] = useState<PendingGeneration | null>(null);
   const [search, setSearch] = useState("");
@@ -68,7 +68,7 @@ export default function DashboardPage() {
   const welcomeDialog = useRef<HTMLDialogElement>(null);
   const welcomeAutoHandled = useRef(false);
   const [welcomeOpen, setWelcomeOpen] = useState(false);
-  const referenceRecovery = Boolean(pendingRequest?.referenceImageSha256 && !referenceImage);
+  const referenceRecovery = Boolean(pendingRequest?.referenceImageSha256?.length && !referenceImage.length);
   const canAttachImage = !posting && (!pendingRequest || referenceRecovery);
   const locked = posting || Boolean(pendingRequest);
 
@@ -84,7 +84,7 @@ export default function DashboardPage() {
       setPrompt(saved.prompt);
       setAspectRatio(saved.aspectRatio ?? "auto");
       setStyle(saved.style ?? "none");
-      setNotice(saved.referenceImageSha256
+      setNotice(saved.referenceImageSha256?.length
         ? "Có yêu cầu ảnh đính kèm chưa xác định. Hãy nhấn Enter để kiểm tra cùng mã; nếu ảnh chưa được nhận, hãy đính kèm lại đúng ảnh."
         : "Có yêu cầu chưa xác định sau lần gửi trước. Nhấn Enter để kiểm tra cùng mã, không tạo mã mới.");
     } catch {
@@ -141,23 +141,24 @@ export default function DashboardPage() {
     setPendingRequest(value);
   };
 
-  const attachImage = async (file: File) => {
-    const validationError = validateReferenceImage(file);
-    if (validationError) {
-      setNotice(validationError);
-      setNoticeIsError(true);
-      return;
+  const attachImage = async (files: File[]) => {
+    const combined = [...referenceImage];
+    for (const file of files) {
+      const validationError = validateReferenceImage(file);
+      if (validationError) { setNotice(validationError); setNoticeIsError(true); return; }
+      if (!combined.some(existing => existing.name === file.name && existing.size === file.size && existing.lastModified === file.lastModified)) combined.push(file);
     }
+    if (combined.length > MAX_REFERENCE_IMAGES) { setNotice(`Chỉ có thể đính kèm tối đa ${MAX_REFERENCE_IMAGES} ảnh.`); setNoticeIsError(true); return; }
     try {
-      if (pendingRef.current?.referenceImageSha256) {
-        const hash = await referenceImageSha256(file);
-        if (hash !== pendingRef.current.referenceImageSha256) {
-          setNotice("Ảnh này khác ảnh của yêu cầu đang khôi phục. Hãy chọn đúng ảnh đã gửi.");
+      if (pendingRef.current?.referenceImageSha256?.length) {
+        const hashes = await Promise.all(combined.map(referenceImageSha256));
+        if (JSON.stringify(hashes) !== JSON.stringify(pendingRef.current.referenceImageSha256)) {
+          setNotice("Bộ ảnh này khác yêu cầu đang khôi phục. Hãy chọn đúng các ảnh đã gửi, theo cùng thứ tự.");
           setNoticeIsError(true);
           return;
         }
       }
-      setReferenceImage(file);
+      setReferenceImage(combined);
       setNotice("");
       setNoticeIsError(false);
     } catch {
@@ -192,7 +193,7 @@ export default function DashboardPage() {
         pending: pendingRef.current,
         onPendingChange: setPending,
       });
-      setReferenceImage(null);
+      setReferenceImage([]);
       window.location.assign(`/app/create?job=${encodeURIComponent(job.id)}`);
     } catch (reason) {
       setNotice((reason instanceof Error ? reason.message : "Không gửi được yêu cầu.") +
@@ -268,7 +269,7 @@ export default function DashboardPage() {
             onStyle={setStyle}
             referenceImage={referenceImage}
             onAttachImage={(file) => { void attachImage(file); }}
-            onRemoveImage={() => setReferenceImage(null)}
+            onRemoveImage={(index) => setReferenceImage(current => current.filter((_, itemIndex) => itemIndex !== index))}
             canAttachImage={canAttachImage}
             locked={locked}
             submitting={posting}

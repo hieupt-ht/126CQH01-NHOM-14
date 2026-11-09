@@ -5,9 +5,9 @@ Ngày30/10/2026. Task hiện tại đã được user yêu cầu thực thi theo
 
 ## Ảnh tham chiếu — 08/11/2026 (CONFIRMED theo yêu cầu triển khai)
 
-Composer tạo ảnh nhận một ảnh được chọn/dán cùng prompt. `POST /api/v1/generations` dùng multipart cho ảnh, JSON cho text-only. File được xác thực và chuẩn hóa <=511px; source tạm ở checkpoint private và xóa sau khi output được checkpoint. Generation lưu metadata hash/kích thước/format và history DTO báo `usedReferenceImage`; không thêm collection hoặc lưu Base64.
+Composer tạo ảnh nhận tối đa4 ảnh được chọn/dán cùng prompt theo yêu cầu chủ dự án ngày09/11/2026. `POST /api/v1/generations` dùng multipart cho ảnh, JSON cho text-only. Mỗi file được xác thực và chuẩn hóa <=511px; source tạm ở checkpoint private và xóa sau khi output được checkpoint. Generation lưu metadata hash/kích thước/format theo từng ảnh và history DTO báo `usedReferenceImage`; không thêm collection hoặc lưu Base64.
 
-Cloudflare Workers AI FLUX.2 Klein 4B chỉ được chọn cho request có ảnh; text-only tiếp tục FLUX.1 Schnell. Tài liệu Cloudflare hiện ghi Klein 4B nhận tối đa4 ảnh, mỗi ảnh dưới512×512, bước cố định4. App chỉ cho một ảnh. Không có live provider call trong task này; account access/actual output/usage vẫn chưa được nghiệm thu.
+Cloudflare Workers AI FLUX.2 Klein 4B chỉ được chọn cho request có ảnh; text-only tiếp tục FLUX.1 Schnell. Tài liệu Cloudflare hiện ghi Klein 4B nhận tối đa4 ảnh, mỗi ảnh dưới512×512, bước cố định4. Mức tối đa4 ảnh áp dụng ở composer và backend. Không có live provider call trong task này; account access/actual output/usage vẫn chưa được nghiệm thu.
 
 ## Đối chiếu tên hiển thị — D2, 02/11/2026 (CONFIRMED)
 
