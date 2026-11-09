@@ -67,7 +67,8 @@ services:
       timeout: 3s
       retries: 5
       start_period: 10s
-    command: ["npm", "run", "dev"]
+    # Avoid intermittent tsx watch crashes on Windows bind mounts. Restart this service after backend edits.
+    command: ["npm", "run", "dev:container"]
 
   mongodb:
     image: mongo:8.0.32-noble
