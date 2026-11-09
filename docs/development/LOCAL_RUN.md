@@ -54,6 +54,12 @@ Docker Compose khởi động frontend, backend và MongoDB; tự tạo MongoDB 
 
 Để chạy nền, dùng `docker compose up --build -d`; xem trạng thái bằng `docker compose ps` và log bằng `docker compose logs -f`. Dừng bằng `docker compose down` hoặc nhấn `Ctrl+C` trong terminal đang chạy Compose. **Không dùng `docker compose down -v`** nếu muốn giữ dữ liệu local.
 
+Backend Docker chạy ổn định không tự theo dõi file để tránh lỗi watcher trên Windows. Sau khi sửa mã trong `backend/src`, nạp lại bằng:
+
+```powershell
+docker compose restart backend
+```
+
 ## 3. Bật đăng nhập và API thật (tùy chọn)
 
 UI preview không gọi backend cho luồng đăng nhập. Để dùng đăng ký/đăng nhập và dữ liệu MongoDB thật:
