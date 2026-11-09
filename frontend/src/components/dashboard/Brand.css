@@ -1,11 +1,2 @@
 .studio-brand { display: flex; align-items: center; width: 100%; }
-.studio-brand__logo { display: block; width: 100%; max-width: 190px; aspect-ratio: 1200 / 670; object-fit: contain; object-position: center; border-radius: var(--radius-sm); }
-
-:root[data-theme="light"] .studio-brand {
-  box-sizing: border-box;
-  padding: 5px;
-  border: 1px solid var(--border-secondary);
-  border-radius: var(--radius-lg);
-  background: var(--artwork-surface);
-  box-shadow: var(--shadow-card);
-}
+.studio-brand__logo { display: block; width: 100%; max-width: 190px; aspect-ratio: 1200 / 377; object-fit: contain; object-position: center; border-radius: var(--radius-sm); }

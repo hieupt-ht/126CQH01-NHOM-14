@@ -1,4 +1,4 @@
-import logo from '../../assets/brand/logo-flux-studio.webp';
+import logo from '../../assets/brand/logo-flux-studio.png';
 import './Brand.css';
 
 export default function Brand({ href = '/app', className = '' }: { href?: string; className?: string }) {
