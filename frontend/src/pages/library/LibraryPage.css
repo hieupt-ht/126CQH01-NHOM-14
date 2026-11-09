@@ -102,3 +102,16 @@
 .library-image-actions__items { position: absolute; right: 0; top: 42px; display: grid; width: 170px; padding: 6px; border: 1px solid var(--border-primary); border-radius: var(--radius-md); background: var(--surface-elevated); box-shadow: var(--shadow-card); }
 .library-image-actions__items > * { padding: 10px; border: 0; border-radius: var(--radius-sm); background: var(--surface-elevated); color: var(--text-primary); text-align: left; font-size: 12px; }
 .library-image-actions__items > *:hover { background: var(--surface-hover); }
+.library-image-card--selected { border-color: var(--accent-primary-hover); box-shadow: 0 0 0 2px var(--shadow-primary); }
+.library-image-card__select { position: absolute; z-index: 4; top: 8px; right: 8px; display: grid; place-items: center; width: 36px; height: 36px; border: 1px solid var(--border-primary); border-radius: var(--radius-md); background: var(--surface-elevated); cursor: pointer; }
+.library-image-card__select input { width: 18px; height: 18px; margin: 0; accent-color: var(--accent-primary); cursor: pointer; }
+.library-image-card__select:has(input:focus-visible) { outline: 2px solid var(--accent-cyan); outline-offset: 2px; }
+.library-image-actions { left: 8px; right: auto; }
+.library-image-actions__items { left: 0; right: auto; }
+.library-selection-toolbar { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; padding: 10px 13px; border: 1px solid var(--border-secondary); border-radius: var(--radius-lg); background: var(--surface-primary); }
+.library-selection-toolbar > span { color: var(--text-secondary); font-size: 11px; }
+.library-selection-toolbar > div { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.library-selection-toolbar .studio-button, .library-selection-toolbar .library-button--danger { min-height: 35px; font-size: 10px; }
+.library-delete-all { color: var(--danger); }
+.library-delete-all:focus-visible, .library-button--danger:focus-visible { outline: 2px solid var(--accent-cyan); outline-offset: 2px; }
+@media (max-width: 767px) { .library-image-card__select { top: 6px; right: 6px; width: 30px; height: 30px; } .library-selection-toolbar > div { width: 100%; } }

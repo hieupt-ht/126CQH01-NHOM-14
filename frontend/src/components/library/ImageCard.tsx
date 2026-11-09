@@ -5,16 +5,22 @@ import { imageDetailHref } from "../../services/listNavigation";
 import PrivateImage from "./PrivateImage";
 import type { ImageAction } from "./ImageActionDialog";
 
-export default function ImageCard({ image, onAction }: {
+export default function ImageCard({ image, onAction, checked, onToggle, disabled = false }: {
   image: ImageRecord;
   onAction: (action: ImageAction, image: ImageRecord) => void;
+  checked: boolean;
+  onToggle: (id: string) => void;
+  disabled?: boolean;
 }) {
   const menu = useRef<HTMLDetailsElement>(null);
   const openDetail = (event: MouseEvent<HTMLAnchorElement>) => {
     event.currentTarget.href = imageDetailHref(image.id);
   };
-  return <article className="library-image-card">
+  return <article className={`library-image-card ${checked ? "library-image-card--selected" : ""}`}>
     <div className="library-image-card__visual">
+      <label className="library-image-card__select" title={`Chọn ảnh ${image.title}`}>
+        <input type="checkbox" checked={checked} disabled={disabled} onChange={() => onToggle(image.id)} aria-label={`Chọn ảnh ${image.title}`} />
+      </label>
       <div className="library-image-card__thumbnail">
         <PrivateImage key={image.contentUrl} src={image.contentUrl} title={image.title}
           href={imageDetailHref(image.id)} onFollow={openDetail} />

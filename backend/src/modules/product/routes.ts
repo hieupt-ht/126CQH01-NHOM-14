@@ -368,6 +368,21 @@ export function createProductRouter(
       throw new AppError(404, "NOT_FOUND", "Không tìm thấy hình ảnh.");
     response.status(204).end();
   });
+  router.delete("/images", async (request, response) => {
+    const input = parseInput(
+      z.union([
+        z.object({ ids: z.array(z.string().regex(/^[a-f0-9]{24}$/i)).min(2) }).strict(),
+        z.object({ all: z.literal(true) }).strict(),
+      ]),
+      request.body,
+    );
+    const filter = "all" in input ? {} : { _id: { $in: input.ids.map((id) => new Types.ObjectId(id)) } };
+    const result = await ImageModel.updateMany(
+      { userId: owner(response), deletedAt: null, ...filter },
+      { $set: { deletedAt: new Date(), storageDeletionStatus: "pending" } },
+    );
+    response.json({ success: true, data: { deletedCount: result.modifiedCount } });
+  });
   for (const mode of ["content", "download"])
     router.get("/images/:id/" + mode, async (request, response) => {
       const image = await ownedImage(request.params.id, response);
