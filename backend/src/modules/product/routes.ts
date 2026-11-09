@@ -55,7 +55,7 @@ function jobDto(job: GenerationDocument) {
     prompt: job.originalPrompt,
     aspectRatio: job.settings.aspectRatio ?? "auto",
     style: job.settings.style ?? "none",
-    usedReferenceImage: Boolean(job.referenceImage),
+    usedReferenceImage: Boolean(job.referenceImage || job.referenceImages?.length),
     status: job.status,
     model: job.model,
     createdAt: job.createdAt,
@@ -168,7 +168,7 @@ export function createProductRouter(
   }
   router.post(
     "/generations",
-    raw({ type: ["multipart/form-data"], limit: MAX_REFERENCE_IMAGE_BYTES + 64 * 1024, inflate: false }),
+    raw({ type: ["multipart/form-data"], limit: MAX_REFERENCE_IMAGE_BYTES * 4 + 64 * 1024, inflate: false }),
     async (request, response) => {
     const promptSchema = z.string().min(1)
       .refine((value) => value.length <= 2048, "Prompt không được vượt quá 2048 UTF-16 code units.")
@@ -179,13 +179,13 @@ export function createProductRouter(
       aspectRatio: z.enum(ASPECT_RATIOS).default("auto"),
       style: z.enum(IMAGE_STYLES).default("none"),
       prompt: promptSchema,
-      referenceImageSha256: z.string().regex(/^[a-f0-9]{64}$/i).optional(),
+      referenceImageSha256: z.union([z.string().regex(/^[a-f0-9]{64}$/i), z.array(z.string().regex(/^[a-f0-9]{64}$/i)).min(1).max(4)]).optional(),
     }).strict();
     let prompt: string;
     let aspectRatio: (typeof ASPECT_RATIOS)[number];
     let style: (typeof IMAGE_STYLES)[number];
-    let referenceImage;
-    let expectedHash: string | undefined;
+    let referenceImage: Awaited<ReturnType<typeof normalizeReferenceImage>>[] = [];
+    let expectedHash: string[] | undefined;
     if (mime === "multipart/form-data") {
       if (!Buffer.isBuffer(request.body))
         throw new AppError(400, "INVALID_REFERENCE_IMAGE", "Ảnh tham chiếu bị thiếu.");
@@ -201,26 +201,32 @@ export function createProductRouter(
       }
       const allowedFields = new Set(["prompt", "aspectRatio", "style", "referenceImage", "referenceImageSha256"]);
       if ([...form.keys()].some((field) => !allowedFields.has(field)) ||
-          [...allowedFields].some((field) => form.getAll(field).length > 1))
+          ["prompt", "aspectRatio", "style"].some((field) => form.getAll(field).length > 1))
         throw new AppError(400, "INVALID_REFERENCE_IMAGE", "Thông tin ảnh đính kèm không hợp lệ.");
-      const uploadedFile = form.get("referenceImage");
-      if (!uploadedFile || typeof uploadedFile === "string" || typeof uploadedFile.arrayBuffer !== "function")
+      const uploadedFiles = form.getAll("referenceImage");
+      const hashes = form.getAll("referenceImageSha256");
+      if (!uploadedFiles.length || uploadedFiles.length > 4 || hashes.length !== uploadedFiles.length ||
+          uploadedFiles.some(file => typeof file === "string" || typeof file.arrayBuffer !== "function"))
         throw new AppError(400, "INVALID_REFERENCE_IMAGE", "Ảnh tham chiếu bị thiếu.");
-      const rawImage = Buffer.from(await uploadedFile.arrayBuffer());
-      const rawHash = digest(rawImage);
-      expectedHash = parseInput(z.string().regex(/^[a-f0-9]{64}$/i), form.get("referenceImageSha256")).toLowerCase();
-      if (rawHash !== expectedHash)
-        throw new AppError(400, "INVALID_REFERENCE_IMAGE", "Không xác minh được ảnh tham chiếu.");
+      expectedHash = hashes.map(hash => parseInput(z.string().regex(/^[a-f0-9]{64}$/i), hash).toLowerCase());
+      const files = uploadedFiles as File[];
+      for (let index = 0; index < files.length; index++) {
+        const uploadedFile = files[index];
+        const rawImage = Buffer.from(await uploadedFile.arrayBuffer());
+        const rawHash = digest(rawImage);
+        if (rawHash !== expectedHash[index]) throw new AppError(400, "INVALID_REFERENCE_IMAGE", "Không xác minh được ảnh tham chiếu.");
+        referenceImage.push(await normalizeReferenceImage(rawImage, uploadedFile.type.toLowerCase(), rawHash));
+      }
       prompt = parseInput(promptSchema, form.get("prompt"));
       aspectRatio = parseInput(z.enum(ASPECT_RATIOS).default("auto"), form.get("aspectRatio") ?? undefined);
       style = parseInput(z.enum(IMAGE_STYLES).default("none"), form.get("style") ?? undefined);
-      referenceImage = await normalizeReferenceImage(rawImage, uploadedFile.type.toLowerCase(), rawHash);
     } else if (mime === "application/json") {
       const input = parseInput(jsonInputSchema, request.body);
       prompt = input.prompt;
       aspectRatio = input.aspectRatio;
       style = input.style;
-      expectedHash = input.referenceImageSha256?.toLowerCase();
+      const hashes = input.referenceImageSha256;
+      expectedHash = hashes === undefined ? undefined : (Array.isArray(hashes) ? hashes : [hashes]).map(hash => hash.toLowerCase());
     } else {
       throw new AppError(415, "INVALID_REQUEST_CONTENT_TYPE", "Yêu cầu phải là JSON hoặc ảnh đính kèm dạng multipart.");
     }

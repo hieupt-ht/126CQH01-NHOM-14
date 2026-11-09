@@ -44,6 +44,7 @@ export interface Generation {
   originalPrompt: string;
   submittedPrompt: string;
   referenceImage: GenerationReferenceImage | null;
+  referenceImages?: GenerationReferenceImage[];
   provider: string;
   model: string;
   settings: Record<string, unknown>;
@@ -117,6 +118,7 @@ const generationSchema = new Schema<Generation>(
     originalPrompt: { type: String, required: true },
     submittedPrompt: { type: String, required: true },
     referenceImage: { type: referenceImageSchema, default: null },
+    referenceImages: { type: [referenceImageSchema], default: undefined, validate: (value: GenerationReferenceImage[]) => value.length <= 4 },
     provider: { type: String, required: true },
     model: { type: String, required: true },
     settings: { type: Schema.Types.Mixed, required: true, default: () => ({}) },

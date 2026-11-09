@@ -5,6 +5,7 @@ import type { GenerationRecord } from "./resources";
 
 export const REFERENCE_IMAGE_TYPES = ["image/png", "image/jpeg", "image/webp"];
 export const MAX_REFERENCE_IMAGE_BYTES = 10 * 1024 * 1024;
+export const MAX_REFERENCE_IMAGES = 4;
 
 export function validateReferenceImage(file: File) {
   if (!REFERENCE_IMAGE_TYPES.includes(file.type))
@@ -32,23 +33,23 @@ export async function submitGeneration({
   prompt: string;
   aspectRatio: AspectRatio;
   style: ImageStyle;
-  referenceImage: File | null;
+  referenceImage: File[];
   pending: PendingGeneration | null;
   onPendingChange: (value: PendingGeneration | null) => void;
 }) {
-  let referenceHash = pending?.referenceImageSha256;
-  if (referenceImage) {
-    referenceHash = await referenceImageSha256(referenceImage);
-    if (pending?.referenceImageSha256 && pending.referenceImageSha256 !== referenceHash)
-      throw new Error("Ảnh tham chiếu không khớp yêu cầu đang khôi phục.");
-  }
+  const referenceHashes = referenceImage.length
+    ? await Promise.all(referenceImage.map(referenceImageSha256))
+    : pending?.referenceImageSha256;
+  if (pending?.referenceImageSha256 && referenceImage.length &&
+      JSON.stringify(pending.referenceImageSha256) !== JSON.stringify(referenceHashes))
+    throw new Error("Ảnh tham chiếu không khớp yêu cầu đang khôi phục.");
 
   const request = pending ?? {
     key: crypto.randomUUID(),
     prompt,
     aspectRatio,
     style,
-    ...(referenceHash ? { referenceImageSha256: referenceHash } : {}),
+    ...(referenceHashes?.length ? { referenceImageSha256: referenceHashes } : {}),
   };
   onPendingChange(request);
   try {
@@ -58,20 +59,22 @@ export async function submitGeneration({
   }
 
   let body: BodyInit;
-  if (referenceImage && referenceHash) {
+  if (referenceImage.length && referenceHashes?.length) {
     const form = new FormData();
     form.set("prompt", request.prompt);
     form.set("aspectRatio", request.aspectRatio ?? "auto");
     form.set("style", request.style ?? "none");
-    form.set("referenceImageSha256", referenceHash);
-    form.set("referenceImage", referenceImage, referenceImage.name || "reference-image");
+    referenceImage.forEach((file, index) => {
+      form.append("referenceImageSha256", referenceHashes[index]);
+      form.append("referenceImage", file, file.name || `reference-image-${index + 1}`);
+    });
     body = form;
   } else {
     body = JSON.stringify({
       prompt: request.prompt,
       aspectRatio: request.aspectRatio ?? "auto",
       style: request.style ?? "none",
-      ...(referenceHash ? { referenceImageSha256: referenceHash } : {}),
+      ...(referenceHashes?.length ? { referenceImageSha256: referenceHashes } : {}),
     });
   }
 

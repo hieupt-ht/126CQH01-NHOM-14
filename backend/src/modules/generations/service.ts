@@ -46,17 +46,25 @@ export class GenerationService {
     private promptTranslator?: PromptTranslator,
     private promptTranslationEnabled = false,
   ) {}
-  private referencePath(id: Types.ObjectId) {
-    return join(this.options.checkpointDir, String(id) + ".input.png");
+  private referencePath(id: Types.ObjectId, index?: number) {
+    return join(this.options.checkpointDir, String(id) + (index === undefined ? ".input.png" : `.input.${index}.png`));
   }
   private async removeReferenceImage(id: Types.ObjectId) {
-    await unlink(this.referencePath(id)).catch(() => undefined);
+    await Promise.all([
+      unlink(this.referencePath(id)).catch(() => undefined),
+      unlink(this.referencePath(id) + ".tmp").catch(() => undefined),
+      ...Array.from({ length: 4 }, (_, index) => Promise.all([
+        unlink(this.referencePath(id, index)).catch(() => undefined),
+        unlink(this.referencePath(id, index) + ".tmp").catch(() => undefined),
+      ])),
+    ]);
   }
-  private matchReplay(job: GenerationDocument, fingerprint: string, prompt: string, presentation: Presentation, referenceSha256: string | null) {
+  private matchReplay(job: GenerationDocument, fingerprint: string, prompt: string, presentation: Presentation, referenceSha256: string[] | null) {
+    const savedHashes = job.referenceImages?.length ? job.referenceImages.map(image => image.sha256) : job.referenceImage ? [job.referenceImage.sha256] : [];
     if (job.requestFingerprint !== fingerprint || job.originalPrompt !== prompt ||
       (job.settings.aspectRatio ?? "auto") !== presentation.aspectRatio ||
       (job.settings.style ?? "none") !== presentation.style ||
-      (job.referenceImage?.sha256 ?? null) !== referenceSha256)
+      JSON.stringify(savedHashes) !== JSON.stringify(referenceSha256 ?? []))
       throw new AppError(
         409,
         "IDEMPOTENCY_CONFLICT",
@@ -69,22 +77,24 @@ export class GenerationService {
     requestKey: string,
     prompt: string,
     presentation: Presentation = DEFAULT_PRESENTATION,
-    referenceImage?: NormalizedReferenceImage,
-    expectedReferenceSha256?: string,
+    referenceImage?: NormalizedReferenceImage | NormalizedReferenceImage[],
+    expectedReferenceSha256?: string | string[],
   ) {
-    const referenceSha256 = referenceImage?.sha256 ?? expectedReferenceSha256 ?? null;
-    if (referenceImage && expectedReferenceSha256 && referenceImage.sha256 !== expectedReferenceSha256)
+    const referenceImages = referenceImage ? (Array.isArray(referenceImage) ? referenceImage : [referenceImage]) : [];
+    const expectedHashes = expectedReferenceSha256 === undefined ? undefined : Array.isArray(expectedReferenceSha256) ? expectedReferenceSha256 : [expectedReferenceSha256];
+    const referenceSha256 = referenceImages.length ? referenceImages.map(image => image.sha256) : expectedHashes ?? null;
+    if (referenceImages.length > 4 || (expectedHashes && referenceImages.length && JSON.stringify(referenceImages.map(image => image.sha256)) !== JSON.stringify(expectedHashes)))
       throw new AppError(400, "INVALID_REFERENCE_IMAGE", "Ảnh tham chiếu không khớp yêu cầu.");
-    if (referenceSha256 && !/^[a-f0-9]{64}$/.test(referenceSha256))
+    if (referenceSha256?.some(hash => !/^[a-f0-9]{64}$/.test(hash)))
       throw new AppError(400, "INVALID_REFERENCE_IMAGE", "Ảnh tham chiếu không hợp lệ.");
     // Preserve fingerprints for legacy/default requests; explicit options are part of intent.
     const intent = presentation.aspectRatio === "auto" && presentation.style === "none"
-      ? (referenceSha256 ? JSON.stringify([prompt, presentation.aspectRatio, presentation.style, referenceSha256]) : prompt)
-      : JSON.stringify([prompt, presentation.aspectRatio, presentation.style, ...(referenceSha256 ? [referenceSha256] : [])]);
+      ? (referenceSha256 ? JSON.stringify([prompt, presentation.aspectRatio, presentation.style, ...(referenceSha256.length === 1 ? [referenceSha256[0]] : [referenceSha256])]) : prompt)
+      : JSON.stringify([prompt, presentation.aspectRatio, presentation.style, ...(referenceSha256 ? (referenceSha256.length === 1 ? [referenceSha256[0]] : [referenceSha256]) : [])]);
     const fingerprint = createHash("sha256").update(intent).digest("hex");
     const replay = await GenerationModel.findOne({ userId, requestKey });
     if (replay) return this.matchReplay(replay, fingerprint, prompt, presentation, referenceSha256);
-    if (referenceSha256 && !referenceImage)
+    if (referenceSha256?.length && !referenceImages.length)
       throw new AppError(400, "REFERENCE_IMAGE_REQUIRED", "Hãy đính kèm lại ảnh để gửi yêu cầu này.");
     let submittedPrompt = prompt;
     if (this.promptTranslationEnabled && containsVietnameseText(prompt)) {
@@ -113,10 +123,13 @@ export class GenerationService {
       now = new Date(),
       dateKey = now.toISOString().slice(0, 10);
     try {
-      if (referenceImage) {
+      if (referenceImages.length) {
         await mkdir(this.options.checkpointDir, { recursive: true });
-        await writeFile(this.referencePath(id) + ".tmp", referenceImage.bytes, { mode: 0o600 });
-        await rename(this.referencePath(id) + ".tmp", this.referencePath(id));
+        for (let index = 0; index < referenceImages.length; index++) {
+          const path = referenceImages.length === 1 ? this.referencePath(id) : this.referencePath(id, index);
+          await writeFile(path + ".tmp", referenceImages[index].bytes, { mode: 0o600 });
+          await rename(path + ".tmp", path);
+        }
       }
       await mongoose.connection.transaction(async (session) => {
         const existing = await GenerationModel.findOne({
@@ -180,16 +193,12 @@ export class GenerationService {
               requestFingerprint: fingerprint,
               originalPrompt: prompt,
               submittedPrompt,
-              referenceImage: referenceImage
-                ? {
-                    sha256: referenceImage.sha256,
-                    width: referenceImage.width,
-                    height: referenceImage.height,
-                    format: referenceImage.format,
-                  }
+              referenceImage: referenceImages.length === 1
+                ? { sha256: referenceImages[0].sha256, width: referenceImages[0].width, height: referenceImages[0].height, format: referenceImages[0].format }
                 : null,
+              ...(referenceImages.length > 1 ? { referenceImages: referenceImages.map(image => ({ sha256: image.sha256, width: image.width, height: image.height, format: image.format })) } : {}),
               provider: "cloudflare",
-              model: referenceImage ? REFERENCE_MODEL : TEXT_MODEL,
+              model: referenceImages.length ? REFERENCE_MODEL : TEXT_MODEL,
               settings: { steps: 4, ...presentation,
                 ...(this.promptTranslationEnabled && containsVietnameseText(prompt) && this.promptTranslator?.revision
                   ? { promptTranslation: { model: this.promptTranslator.model ?? "unknown", revision: this.promptTranslator.revision } } : {}),
@@ -353,12 +362,12 @@ export class GenerationService {
       let bytes: Buffer;
       if (job.status === "saving") bytes = await readFile(path);
       else {
-        const referenceImage = job.referenceImage
-          ? await readFile(this.referencePath(job._id))
-          : undefined;
+        const referenceImages = job.referenceImages?.length
+          ? await Promise.all(job.referenceImages.map((_, index) => readFile(this.referencePath(job._id, index))))
+          : job.referenceImage ? [await readFile(this.referencePath(job._id))] : [];
         try {
           dispatchStarted = true;
-          bytes = await this.provider.generate(job.submittedPrompt, referenceImage);
+          bytes = await this.provider.generate(job.submittedPrompt, referenceImages);
         } catch (error) {
           const known =
             error instanceof AppError && error.code !== "RESULT_UNCERTAIN";
@@ -386,7 +395,7 @@ export class GenerationService {
             },
           },
         );
-        if (job.referenceImage) await this.removeReferenceImage(job._id);
+        if (job.referenceImage || job.referenceImages?.length) await this.removeReferenceImage(job._id);
       }
       bytes = await padImageToRatio(bytes, (job.settings.aspectRatio ?? "auto") as Presentation["aspectRatio"]);
       if (bytes.length > 10 * 1024 * 1024)
@@ -577,7 +586,7 @@ export class GenerationService {
   }
   async cleanup() {
     const checkpointFiles = await readdir(this.options.checkpointDir).catch(() => [] as string[]);
-    const inputFiles = checkpointFiles.filter((name) => /^[a-f0-9]{24}\.input\.png$/i.test(name)).slice(0, 25);
+    const inputFiles = checkpointFiles.filter((name) => /^[a-f0-9]{24}\.input(?:\.\d+)?\.png$/i.test(name)).slice(0, 100);
     const ids = inputFiles.map((file) => new Types.ObjectId(file.slice(0, 24)));
     const activeIds = new Set((await GenerationModel.find({ _id: { $in: ids }, status: { $in: ["queued", "processing"] } }).select("_id")).map((job) => String(job._id)));
     for (const file of inputFiles) {

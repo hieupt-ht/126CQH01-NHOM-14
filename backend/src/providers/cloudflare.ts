@@ -1,6 +1,6 @@
 import { AppError } from "../errors/app-error.js";
 export interface ImageProvider {
-  generate(prompt: string, referenceImage?: Buffer): Promise<Buffer>;
+  generate(prompt: string, referenceImages?: Buffer[]): Promise<Buffer>;
 }
 const TEXT_MODEL = "@cf/black-forest-labs/flux-1-schnell";
 const REFERENCE_MODEL = "@cf/black-forest-labs/flux-2-klein-4b";
@@ -10,15 +10,15 @@ export class CloudflareProvider implements ImageProvider {
     private token: string,
     private transport: typeof fetch = fetch,
   ) {}
-  async generate(prompt: string, referenceImage?: Buffer): Promise<Buffer> {
+  async generate(prompt: string, referenceImages: Buffer[] = []): Promise<Buffer> {
     // No automatic retry: a network timeout may occur after provider accepted inference.
-    const model = referenceImage ? REFERENCE_MODEL : TEXT_MODEL;
+    const model = referenceImages.length ? REFERENCE_MODEL : TEXT_MODEL;
     let body: BodyInit;
     const headers: Record<string, string> = { Authorization: "Bearer " + this.token };
-    if (referenceImage) {
+    if (referenceImages.length) {
       const form = new FormData();
       form.append("prompt", prompt);
-      form.append("input_image_0", new Blob([new Uint8Array(referenceImage)], { type: "image/png" }), "reference.png");
+      referenceImages.forEach((image, index) => form.append(`input_image_${index}`, new Blob([new Uint8Array(image)], { type: "image/png" }), `reference-${index + 1}.png`));
       body = form;
     } else {
       headers["Content-Type"] = "application/json";

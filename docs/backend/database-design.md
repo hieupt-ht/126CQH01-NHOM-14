@@ -132,7 +132,7 @@ Nếu phát hiện DB cũ có `name`, cần kiểm kê và thống nhất task m
 | `requestFingerprint` | string | Có | Hash canonical validated input; phát hiện dùng lại key với body khác |
 | `originalPrompt` | string | Có | Prompt người dùng sau trim biên; giữ nội dung/dấu/ý phủ định |
 | `submittedPrompt` | string | Có | Prompt thực sự gửi provider; bằng original nếu không có xử lý được duyệt |
-| `referenceImage` | object | null | Có | `null` nếu chỉ dùng text; nếu có ảnh thì `{sha256,width,height,format}` metadata đã chuẩn hóa; binary chỉ ở checkpoint tạm và được xóa sau inference |
+| `referenceImage` / `referenceImages` | object / array | Có | `referenceImage` giữ dữ liệu cũ một ảnh; job mới ghi tối đa4 metadata `{sha256,width,height,format}` trong `referenceImages`; binary chỉ ở checkpoint tạm và được xóa sau inference |
 | `provider`, `model` | string | Có | Snapshot server-side đã dùng; không lấy từ client |
 | `settings` | object | Có | Tham số đã kiểm chứng, ví dụ `steps`; snapshot không nhận tùy ý từ body |
 | `status` | string enum | Có | `queued` mặc định; `processing`, `saving`, `succeeded`, `failed`, `needs_review` |
@@ -147,7 +147,7 @@ Nếu phát hiện DB cũ có `name`, cần kiểm kê và thống nhất task m
 
 **Indexes:** unique `{ userId: 1, requestKey: 1 }`; history `{ userId: 1, createdAt: -1, _id: -1 }`; worker scan `{ status: 1, createdAt: 1 }`; lease recovery có thể cần `{ status: 1, "lease.expiresAt": 1 }` sau khi kiểm chứng truy vấn.
 
-**Validation/invariants:** chỉ backend thay đổi state theo transition cho phép; prompt có nội dung và nằm trong giới hạn provider đã xác minh; một ảnh/job; request trùng cùng fingerprint trả cùng job, cùng key khác fingerprint trả conflict; timeout provider không tự tạo job mới; `succeeded` chỉ khi file và image metadata đã lưu; lease/checkpoint có TTL/quy tắc khôi phục rõ.
+**Validation/invariants:** chỉ backend thay đổi state theo transition cho phép; prompt có nội dung và nằm trong giới hạn provider đã xác minh; tối đa4 ảnh tham chiếu/job và đúng một ảnh đầu ra/job; request trùng cùng fingerprint trả cùng job, cùng key khác fingerprint trả conflict; timeout provider không tự tạo job mới; `succeeded` chỉ khi file và image metadata đã lưu; lease/checkpoint có TTL/quy tắc khôi phục rõ.
 
 **Document mẫu:**
 

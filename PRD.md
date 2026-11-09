@@ -129,7 +129,7 @@ Layout gồm điều hướng, tên người dùng và đăng xuất. Loading, c
 
 ### 4.2. Ảnh tham chiếu — bổ sung theo yêu cầu 08/11/2026 (CONFIRMED)
 
-- Composer tại `/app/create` và `/app` cho phép chọn một ảnh PNG/JPEG/WebP hoặc dán ảnh đã sao chép vào ô mô tả; có preview, bỏ ảnh và lỗi file rõ ràng. Enter gửi yêu cầu; Shift+Enter xuống dòng. Trang Tổng quan dùng cùng API và tùy chọn phong cách/khung hình, sau khi nhận job chuyển đến trang theo dõi kết quả. Đây là một lần tạo ảnh, không phải hội thoại nhiều lượt.
+- Composer tại `/app/create` và `/app` cho phép chọn tối đa4 ảnh PNG/JPEG/WebP cùng lúc hoặc dán ảnh đã sao chép vào ô mô tả; có preview, bỏ từng ảnh và lỗi file rõ ràng. Enter gửi yêu cầu; Shift+Enter xuống dòng. Trang Tổng quan dùng cùng API và tùy chọn phong cách/khung hình, sau khi nhận job chuyển đến trang theo dõi kết quả. Đây là một lần tạo một ảnh kết quả, không phải hội thoại nhiều lượt.
 - Người dùng nhập mô tả chỉnh sửa và chủ động nhấn Tạo ảnh; một yêu cầu vẫn tạo tối đa một ảnh mới.
 - Ảnh và prompt được gửi đến Cloudflare. Ảnh được kiểm tra, bỏ metadata và thu nhỏ tối đa 511×511 trước khi gửi model; không cam kết giữ nguyên mọi chi tiết.
 - Chỉ yêu cầu có ảnh tham chiếu dùng FLUX.2 Klein 4B; yêu cầu chỉ có văn bản giữ FLUX.1 Schnell. Model được chọn phía backend.
@@ -433,7 +433,7 @@ Tất cả API dưới đây, ngoại trừ đăng ký/đăng nhập, yêu cầu
 | GET | `/api/usage/me` | Số lượt còn và thời điểm reset |
 | GET | `/api/stats/me` | P1: thống kê cá nhân |
 
-Request tạo ảnh văn bản dùng `{ "prompt": "..." }`. Nếu có ảnh tham chiếu, dùng multipart với `prompt`, `aspectRatio`, `style`, `referenceImageSha256` và một field `referenceImage`. Frontend không được tự truyền API key, provider/model, steps hoặc số ảnh tùy ý.
+Request tạo ảnh văn bản dùng `{ "prompt": "..." }`. Nếu có ảnh tham chiếu (tối đa4), dùng multipart với `prompt`, `aspectRatio`, `style`, các field lặp `referenceImageSha256` và `referenceImage` theo thứ tự. Frontend không được tự truyền API key, provider/model, steps hoặc số ảnh kết quả tùy ý.
 
 Response tạo job: HTTP 202, `{ "success": true, "data": { "id": "...", "status": "queued" } }`.
 

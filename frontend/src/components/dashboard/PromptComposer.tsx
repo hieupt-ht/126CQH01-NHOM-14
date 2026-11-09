@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ClipboardEvent, type RefObject } from "react";
 import { aspectOptions, styleOptions, type AspectRatio, type ImageStyle } from "../../domain/generationOptions";
 import { MAX_PROMPT_LENGTH } from "../../domain/prompt";
-import { REFERENCE_IMAGE_TYPES } from "../../services/generationSubmission";
+import { MAX_REFERENCE_IMAGES, REFERENCE_IMAGE_TYPES } from "../../services/generationSubmission";
 import StylePicker, { StyleArtwork } from "../create/StylePicker";
 import Icon from "../ui/Icon";
 
@@ -37,16 +37,16 @@ export default function PromptComposer({
   onAspectRatio: (value: AspectRatio) => void;
   style: ImageStyle;
   onStyle: (value: ImageStyle) => void;
-  referenceImage: File | null;
-  onAttachImage: (file: File) => void;
-  onRemoveImage: () => void;
+  referenceImage: File[];
+  onAttachImage: (files: File[]) => void;
+  onRemoveImage: (index: number) => void;
   canAttachImage: boolean;
   locked: boolean;
   submitting: boolean;
   disabled: boolean;
   referenceRecovery: boolean;
 }) {
-  const [previewUrl, setPreviewUrl] = useState("");
+  const [previewUrls, setPreviewUrls] = useState<string[]>([]);
   const [picker, setPicker] = useState<"style" | "ratio" | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
   const panel = useRef<HTMLDivElement>(null);
@@ -54,22 +54,18 @@ export default function PromptComposer({
   const ratioTrigger = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
-    if (!referenceImage) {
-      setPreviewUrl("");
-      return;
-    }
-    const url = URL.createObjectURL(referenceImage);
-    setPreviewUrl(url);
-    return () => URL.revokeObjectURL(url);
+    const urls = referenceImage.map(file => URL.createObjectURL(file));
+    setPreviewUrls(urls);
+    return () => urls.forEach(URL.revokeObjectURL);
   }, [referenceImage]);
 
   const capturePastedImage = (event: ClipboardEvent<HTMLTextAreaElement>) => {
-    const image = Array.from(event.clipboardData.items)
-      .find((item) => item.kind === "file" && REFERENCE_IMAGE_TYPES.includes(item.type))
-      ?.getAsFile();
-    if (!image) return;
+    const images = Array.from(event.clipboardData.items)
+      .filter((item) => item.kind === "file" && REFERENCE_IMAGE_TYPES.includes(item.type))
+      .map(item => item.getAsFile()).filter((file): file is File => Boolean(file));
+    if (!images.length) return;
     event.preventDefault();
-    onAttachImage(image);
+    onAttachImage(images);
   };
 
   const closePicker = () => {
@@ -155,14 +151,16 @@ export default function PromptComposer({
         aria-describedby="prompt-hint prompt-notice"
       />
 
-      {referenceImage && (
-        <div className="prompt-composer__image" aria-label="Ảnh tham chiếu đã chọn">
-          <img src={previewUrl} alt="Xem trước ảnh đính kèm" />
-          <span><strong>{referenceImage.name || "Ảnh đã dán"}</strong><small>{(referenceImage.size / 1024 / 1024).toFixed(2)} MiB</small></span>
-          <button type="button" className="studio-icon-button" aria-label="Bỏ ảnh đính kèm" disabled={!canAttachImage} onClick={onRemoveImage}><Icon name="close" size={16} /></button>
+      {referenceImage.length > 0 && (
+        <div className="prompt-composer__images" aria-label={`${referenceImage.length} ảnh tham chiếu đã chọn`}>
+          {referenceImage.map((file, index) => <div className="prompt-composer__image" key={`${file.name}-${file.size}-${index}`}>
+            <img src={previewUrls[index]} alt={`Xem trước ảnh đính kèm ${index + 1}`} />
+            <span><strong>{file.name || "Ảnh đã dán"}</strong><small>{(file.size / 1024 / 1024).toFixed(2)} MiB</small></span>
+            <button type="button" className="studio-icon-button" aria-label={`Bỏ ảnh đính kèm ${index + 1}`} disabled={!canAttachImage} onClick={() => onRemoveImage(index)}><Icon name="close" size={16} /></button>
+          </div>)}
         </div>
       )}
-      {referenceRecovery && !referenceImage && (
+      {referenceRecovery && !referenceImage.length && (
         <p className="prompt-composer__recovery" role="status">Yêu cầu trước có ảnh đính kèm. Hãy chọn hoặc dán lại đúng ảnh để thử khôi phục yêu cầu.</p>
       )}
 
@@ -174,14 +172,15 @@ export default function PromptComposer({
             type="file"
             accept="image/png,image/jpeg,image/webp"
             aria-label="Chọn ảnh đính kèm"
-            disabled={!canAttachImage}
+            disabled={!canAttachImage || referenceImage.length >= MAX_REFERENCE_IMAGES}
             onChange={(event) => {
-              const file = event.currentTarget.files?.[0];
+            const files = Array.from(event.currentTarget.files ?? []);
               event.currentTarget.value = "";
-              if (file) onAttachImage(file);
+            if (files.length) onAttachImage(files);
             }}
+            multiple
           />
-          <button type="button" className="studio-button studio-button--subtle" disabled={!canAttachImage} onClick={() => fileInput.current?.click()}><Icon name="image" size={15} />Đính kèm</button>
+          <button type="button" className="studio-button studio-button--subtle" disabled={!canAttachImage || referenceImage.length >= MAX_REFERENCE_IMAGES} onClick={() => fileInput.current?.click()}><Icon name="image" size={15} />Đính kèm</button>
           <button ref={styleTrigger} type="button" className="studio-button studio-button--subtle" disabled={locked} aria-expanded={picker === "style"} aria-controls="dashboard-style-popover" onClick={() => setPicker(picker === "style" ? null : "style")}><Icon name="image" size={15} />Phong cách<Icon name="chevron" size={13} /></button>
           <button ref={ratioTrigger} type="button" className="studio-button studio-button--subtle" disabled={locked} aria-expanded={picker === "ratio"} aria-controls="dashboard-ratio-popover" onClick={() => setPicker(picker === "ratio" ? null : "ratio")}><Icon name="grid" size={15} />Khung hình <span>{aspectRatio === "auto" ? "Gốc" : aspectRatio}</span><Icon name="chevron" size={13} /></button>
         </div>
