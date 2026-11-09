@@ -12,6 +12,10 @@
 .studio-nav__item:disabled { color: var(--text-muted); }
 .studio-nav__soon { margin-left: auto; font-size: 8px; white-space: nowrap; color: var(--text-secondary); border: 1px solid var(--border-secondary); border-radius: var(--radius-sm); padding: 1px 5px; }
 .studio-sidebar__bottom { padding: 30px 17px 18px; margin-top: auto; }
+@media (min-height: 768px) {
+  .studio-sidebar__brand { padding-top: 24px; padding-bottom: 24px; }
+  .studio-sidebar__bottom { padding-top: 16px; }
+}
 .inspiration-card { position: relative; overflow: hidden; padding: 19px 17px 17px; border: 1px solid var(--border-secondary); border-radius: var(--radius-lg); background: var(--gradient-hero); }
 .inspiration-card__icon { display: inline-flex; padding: 8px; border-radius: var(--radius-lg); border: 1px solid var(--accent-primary); background: var(--surface-secondary); color: var(--accent-primary-hover); }
 .inspiration-card__decoration { position: absolute; top: 25px; right: 17px; color: var(--accent-primary); opacity: .55; transform: rotate(-12deg); }

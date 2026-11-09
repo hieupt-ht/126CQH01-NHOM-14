@@ -2,8 +2,6 @@ import { useEffect, useRef, type ReactNode } from "react";
 import { useState } from "react";
 import { api, type UserProfile } from "../services/api";
 import { UI_PREVIEW } from "../services/uiPreview";
-import { useResource, type UsageRecord, type StatsRecord } from "../services/resources";
-import UsageCard from "../components/dashboard/UsageCard";
 import Brand from "../components/dashboard/Brand";
 import Icon from "../components/ui/Icon";
 import ProfileAvatar from "../components/ui/ProfileAvatar";
@@ -19,13 +17,12 @@ type Props = {
   onCompose: () => void;
   activeItem?: "home" | "create" | "library" | "history" | "settings";
   showSearch?: boolean;
-  usageRefreshKey?: number;
   profileRefreshKey?: number;
 };
 type SidebarProps = Pick<
   Props,
   "favoritesOnly" | "onFavorites" | "onCompose" | "activeItem"
-> & { onNavigate?: () => void; usage: UsageRecord | null; usageError: string; usageLoading: boolean; stats: StatsRecord | null; statsError: string; statsLoading: boolean };
+> & { onNavigate?: () => void };
 
 function SidebarContent({
   favoritesOnly,
@@ -33,8 +30,6 @@ function SidebarContent({
   onCompose,
   activeItem = "home",
   onNavigate,
-  usage,
-  usageError, usageLoading, stats, statsError, statsLoading,
 }: SidebarProps) {
   return (
     <>
@@ -136,12 +131,6 @@ function SidebarContent({
             <Icon name="arrow" size={17} />
           </button>
         </div>
-        <UsageCard usage={usage} usageError={usageError} usageLoading={usageLoading}
-          stats={stats} statsError={statsError} statsLoading={statsLoading} />
-        <div className="studio-sidebar__footer">
-          <span className="status-dot" />
-          FLUX STUDIO<span>v0.1</span>
-        </div>
       </div>
     </>
   );
@@ -156,11 +145,8 @@ export default function DashboardLayout({
   onCompose,
   activeItem = "home",
   showSearch = true,
-  usageRefreshKey = 0,
   profileRefreshKey = 0,
 }: Props) {
-  const usage = useResource<UsageRecord>("/usage/me", usageRefreshKey);
-  const stats = useResource<StatsRecord>("/stats/me", usageRefreshKey);
   const [user, setUser] = useState<UserProfile | null>(null);
   const [accountError, setAccountError] = useState("");
   const [loggingOut, setLoggingOut] = useState(false);
@@ -208,10 +194,6 @@ export default function DashboardLayout({
     onFavorites,
     onCompose,
     activeItem,
-    usage: usage.data,
-    usageError: usage.error,
-    usageLoading: usage.loading,
-    stats: stats.data, statsError: stats.error, statsLoading: stats.loading,
   };
   return (
     <div className="studio-shell" id="home">
